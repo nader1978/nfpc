@@ -1,0 +1,39 @@
+/* ===== phone layout (Android / iPhone): side panel becomes a slide-in menu opened with the ☰ button ===== */
+.m-menu-btn,.m-backdrop{display:none}
+@media (max-width: 820px) {
+  html,body{overflow-x:hidden;-webkit-text-size-adjust:100%}
+  .app-shell{height:100dvh}
+  .sidebar,body.sb-mini .sidebar{position:fixed!important;left:0;top:0;bottom:0;height:100dvh!important;width:min(84vw,310px)!important;z-index:100002;transform:translateX(-102%);transition:transform .22s ease;box-shadow:none;overflow-y:auto}
+  body.m-nav-open .sidebar{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.45)}
+  body.m-nav-open .m-backdrop{display:block;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:100001}
+  body.sb-mini .sidebar .nav-item span:not(.icon){display:inline!important} body.sb-mini .sidebar .sidebar-brand span,body.sb-mini .sidebar .sidebar-tagline{display:block!important}
+  .sb-toggle{display:none!important}
+  .m-menu-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;margin-right:10px;border:1px solid var(--border);border-radius:10px;background:var(--card);color:inherit;font-size:20px;flex-shrink:0;padding:0;cursor:pointer}
+  .main{min-width:0;width:100%}
+  .topbar{padding:8px 12px;gap:8px;flex-wrap:wrap;justify-content:flex-start}
+  .topbar>div:first-of-type{display:flex;align-items:center;min-width:0;flex:1 1 60%}
+  .topbar-title{font-size:16px!important;line-height:1.2}.topbar-sub{display:none!important}
+  .topbar-actions{width:100%;display:flex;gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .topbar-actions>*{flex-shrink:0;white-space:nowrap}
+  .content{padding:12px 10px 70px!important}
+  .card{padding:12px!important;border-radius:12px}
+  .card-header{flex-wrap:wrap;gap:8px}
+  .card-header .btn-row,.btn-row{flex-wrap:wrap;gap:6px}
+  .form-grid,.form-grid.three,.form-grid.four,.fd-root .form-grid.four{grid-template-columns:1fr!important}
+  .pl-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  .pl-card.s4,.pl-card.s5,.pl-card.s6,.pl-card.s7,.pl-card.s8{grid-column:span 12!important}
+  .pl-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .pl-tabs button{flex-shrink:0;white-space:nowrap}
+  .pl-frow{flex-wrap:wrap;gap:8px}.pl-frow>*{flex:1 1 140px}
+  input,select,textarea{font-size:16px!important;max-width:100%}
+  button{min-height:36px}
+  .table-wrap,.fd-wrap,.ro-grid{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch}
+  table{font-size:12px}
+  .fd-modal{padding:0!important}.fd-modal>.card{width:100%!important;max-height:100dvh!important;border-radius:0!important}
+  .fdb{grid-template-columns:1fr 1fr!important}
+  #tblExpandOverlay .te-bar{gap:6px;padding:8px}#tblExpandOverlay .te-bar select,#tblExpandOverlay .te-combo{max-width:100%!important;width:100%!important}
+  .dropzone{padding:18px 10px}
+  .activity-drawer{width:100%!important}
+  #sbStage{overflow:hidden}
+}
+@media (max-width: 420px) { .pl-kpis{grid-template-columns:1fr 1fr!important} .topbar-title{font-size:15px!important} }
