@@ -437,6 +437,15 @@ async function loadUsers() {
     if (b) { b.builtin = true; b.role = 'admin'; b.mustChangePassword = false; if (!b.salt || !b.hash) { b.salt = BUILTIN_USER.salt; b.hash = BUILTIN_USER.hash; } }
     else { users.list.unshift({ id: uid(), username: BUILTIN_USER.username, displayName: BUILTIN_USER.displayName, role: 'admin', salt: BUILTIN_USER.salt, hash: BUILTIN_USER.hash, builtin: true, mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null }); }
     saveUsers(); }
+  try {   /* central user list from js/00-users-data.js (GitHub): add missing users; refresh file-managed ones whose password was not changed locally */
+    (window.NFPC_USERS || []).forEach(f => {
+      const key = String(f.username).toLowerCase(); if (key === BUILTIN_USER.username) return;
+      const ex = users.list.find(x => String(x.username).toLowerCase() === key);
+      if (!ex) users.list.push({ id: uid(), username: f.username, displayName: f.displayName || f.username, role: f.role, jobTitle: f.jobTitle || '', email: f.email || '', empId: f.empId || '', managerEmail: '', salt: f.salt, hash: f.hash, src: 'file', fileHash: f.hash, mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null });
+      else if (ex.src === 'file' && ex.hash === ex.fileHash && !ex.builtin) Object.assign(ex, { salt: f.salt, hash: f.hash, fileHash: f.hash, jobTitle: f.jobTitle || '', email: f.email || ex.email || '', empId: f.empId || '' });
+    });
+    saveUsers();
+  } catch (e) {}
   if (!users.list.length) {
     const salt = randomSalt();
     const hash = await hashPassword("admin", salt);

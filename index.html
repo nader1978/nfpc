@@ -2896,6 +2896,7 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
+<script src="js/00-users-data.js"></script>
 <script src="js/01-core-constants-helpers.js"></script>
 <script src="js/02-users-and-roles-ui.js"></script>
 <script src="js/03-excel-styling-fetch-lists-profiles.js"></script>
@@ -2945,6 +2946,16 @@
 <script src="js/47-foc-release-voucher.js"></script>
 <script src="js/48-list-analytics.js"></script>
 <script src="js/49-side-panel-batch-allocation-tabs.js"></script>
+<script src="js/50-logistics-ready-plan.js"></script>
 <script src="js/99-boot.js"></script>
+<script>
+/* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
+window.addEventListener('load', function () { setTimeout(function () {
+  var cssOk = !!getComputedStyle(document.documentElement).getPropertyValue('--brand').trim(), jsOk = typeof navApply === 'function';
+  if (cssOk && jsOk) return; var d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#fff;color:#111;font:16px/1.6 system-ui,sans-serif;padding:32px;overflow:auto';
+  d.innerHTML = '<h2>The page files could not be loaded</h2><p>' + (!cssOk ? '❌ the <b>css/</b> folder was not found. ' : '') + (!jsOk ? '❌ the <b>js/</b> folder was not found or was blocked. ' : '') + '</p><ol><li>Upload the <b>folders</b> <code>css</code> and <code>js</code> together with <code>index.html</code> (unzip first — GitHub does not unzip files).</li><li>Open the site through <b>GitHub Pages</b> (<code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code>), not through <code>raw.githubusercontent.com</code> or the “blob” page — those do not run scripts and styles.</li><li>Test: open <code>…/css/01-base.css</code> in the browser — it must show the style text.</li></ol><p>Or use the single-file version <b>SC_Mngt_FNL_Version_65.html</b>.</p>';
+  document.body.appendChild(d); }, 800); });
+</script>
 </body>
 </html>
