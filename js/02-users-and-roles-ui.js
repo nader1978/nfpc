@@ -456,7 +456,8 @@ function userForm_open({ mode, user }) {
       } else if (mode === 'edit') {
         const role = q('ufRole').value;
         if (user.id === currentUser.id && role !== 'admin' && !confirm('You are demoting yourself. You will lose admin access. Continue?')) { fresh.disabled = false; return; }
-        user.displayName = q('ufDisplay').value.trim() || user.username; user.role = role; user.email = email; user.managerEmail = mgr; user.locationId = q('ufLoc').value.trim(); user.locUser = 1; user.profileId = q('ufProf').value; try { navApply(true); } catch (x) {}
+        user.displayName = q('ufDisplay').value.trim() || user.username; user.role = role; user.email = email; user.managerEmail = mgr; const oldLoc = user.locationId || ''; user.locationId = q('ufLoc').value.trim(); user.locUser = 1; user.profileId = q('ufProf').value; try { tpSetUserProfile(user); } catch (x) {} try { navApply(true); } catch (x) {}
+        try { tpSaveUserToSP(user, oldLoc !== user.locationId); } catch (x) {}
         saveUsers();
         if (user.id === currentUser.id) { currentUser = user; applyPermissions(); $('userRole').textContent = ROLES[currentUser.role].label; $('userRole').className = 'user-role ' + currentUser.role; }
         renderUsersView();
@@ -494,7 +495,8 @@ function renderUsersView() {
       <td><code>${escapeHtml(u.username)}</code>${u.mustChangePassword ? ' <span class="badge required">CHANGE PW</span>' : ''}</td>
       <td>${escapeHtml(u.displayName)}</td>
       <td><span class="badge role-${u.role}">${ROLES[u.role].label}</span></td>
-      <td style="font-size:12px;">${u.locationId ? '📍 ' + escapeHtml(u.locationId) : '<em>all</em>'}${u.bu ? '<br><span style="color:var(--gray-500);">' + escapeHtml(u.bu) + '</span>' : ''}${typeof tpLabel === 'function' && tpLabel(u) ? '<br><span style="color:var(--gray-500);">🧭 ' + escapeHtml(tpLabel(u)) + '</span>' : ''}</td>
+      <td style="font-size:12px;">${u.locationId ? '📍 ' + escapeHtml(u.locationId) : '<em>all</em>'}${u.bu ? '<br><span style="color:var(--gray-500);">' + escapeHtml(u.bu) + '</span>' : ''}${typeof locWhName === 'function' && locWhName(u) ? '<br><span style="color:var(--gray-500);">' + escapeHtml(locWhName(u)) + '</span>' : ''}</td>
+      <td style="font-size:12px;">${typeof tpLabel === 'function' && tpLabel(u) ? '🧭 ' + escapeHtml(tpLabel(u)) : '<em>' + (u.role === 'admin' ? 'all (admin)' : 'all') + '</em>'}${u.spProfile ? '<br><span style="color:var(--gray-500);">SharePoint: ' + escapeHtml(u.spProfile) + '</span>' : ''}</td>
       <td style="font-size:12px;">${u.email ? escapeHtml(u.email) : '<em>— no email —</em>'}<br><span style="color:var(--gray-500);">Mgr: ${u.managerEmail ? escapeHtml(u.managerEmail) : '—'}</span></td>
       <td style="font-size:12px;">${listsLabel}</td>
       <td>${formatDate(u.createdAt)}</td>

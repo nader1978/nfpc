@@ -302,7 +302,7 @@ function lulAllowKey(f, want) { if (want in f) return want; const n = lulNorm(wa
 function lulUserKeys(f, col) { if (col) { const k = lulAllowKey(f, col); return k ? [k] : []; } return Object.keys(f).filter(k => !/^(@|_|id$|attachments|content|edit|modified|created|author|editor|linktitle|appauthor|appeditor|itemchild|folderchild|compliance)/i.test(k)); }
 async function lulFetch() {
   const c = lulCfg(); let token = getGlobalAccessToken(); const site = getGlobalSiteUrl(); if (!token || !site) return { state: 'notoken' };
-  const run = async () => { const a = await resolveIds(site, c.list, getGlobalAccessToken()); return fetchAllItems(a.siteId, a.listId, getGlobalAccessToken()); };
+  const run = async () => { const a = await resolveIds(site, c.list, getGlobalAccessToken()); window.__locSkipList = a.listId; return fetchAllItems(a.siteId, a.listId, getGlobalAccessToken()); };
   try { return { state: 'ok', items: await run() }; }
   catch (e) { const m = String(e.message || e);
     if (/\b(401|403)\b/.test(m)) { try { if (await ms_signIn(false)) return { state: 'ok', items: await run() }; } catch (x) {} return { state: 'notoken', msg: m }; }

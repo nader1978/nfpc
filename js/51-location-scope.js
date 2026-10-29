@@ -17,13 +17,14 @@ const locColOf = (listId, fields) => {
 };
 function locProfile(f) {   /* read the profile columns of a LoginUserList row */
   const get = re => { const k = Object.keys(f).find(x => re.test(normalize(x))); return k == null ? undefined : String(lulVals(f[k])[0] == null ? '' : lulVals(f[k])[0]).trim(); }, o = {};
-  const W = get(/^whsname$|^whname$|^warehousename$|^warehouse$|^locationname$|^locname$|^whsdesc$|^whdesc$/), L = get(/^locationid$/), B = get(/^budesc$|^bu$/), R = get(/^region$/), M = get(/^linemngr$|^linemanager$/), A = get(/^accesslevel$/), E = get(/^empid$/), T = get(/^title$|^jobtitle$/);
-  if (W !== undefined && W) o.whName = W; if (L !== undefined) o.locationId = L; if (B !== undefined) o.bu = B; if (R !== undefined) o.region = R; if (M !== undefined) o.lineMngr = M; if (A !== undefined) o.accessLevel = A; if (E !== undefined) o.empId = E; if (T !== undefined && T) o.jobTitle = T;
+  const P = get(/^websysaccessprofile$/), W = get(/^whsname$|^whname$|^warehousename$|^warehouse$|^locationname$|^locname$|^whsdesc$|^whdesc$/), L = get(/^locationid$/), B = get(/^budesc$|^bu$/), R = get(/^region$/), M = get(/^linemngr$|^linemanager$/), A = get(/^accesslevel$/), E = get(/^empid$/), T = get(/^title$|^jobtitle$/);
+  if (P !== undefined) o.spProfile = P; if (W !== undefined && W) o.whName = W; if (L !== undefined) o.locationId = L; if (B !== undefined) o.bu = B; if (R !== undefined) o.region = R; if (M !== undefined) o.lineMngr = M; if (A !== undefined) o.accessLevel = A; if (E !== undefined) o.empId = E; if (T !== undefined && T) o.jobTitle = T;
   return o;
 }
 function locApplyRow(f) {   /* refresh the signed-in user's profile from SharePoint */
-  if (!f || !currentUser || currentUser.builtin || currentUser.locUser === 1) return; const o = locProfile(f); if (!Object.keys(o).length) return;
-  const u = users.list.find(x => x.id === currentUser.id) || currentUser; Object.assign(u, o); if (u !== currentUser) Object.assign(currentUser, o); saveUsers(); locBadge();
+  if (!f || !currentUser || currentUser.builtin) return; const o = locProfile(f); if (currentUser.locUser === 1) delete o.locationId; if (!Object.keys(o).length) return;
+  const u = users.list.find(x => x.id === currentUser.id) || currentUser, before = String(u.spProfile || '') + '|' + String(u.locationId || ''); Object.assign(u, o); if (u !== currentUser) Object.assign(currentUser, o); saveUsers(); locBadge();
+  if (before !== String(u.spProfile || '') + '|' + String(u.locationId || '')) { try { navApply(true); } catch (e) {} try { if (activeViewId() === 'home' && window.homeRender) window.homeRender(); } catch (e) {} }
 }
 const locNameMap = () => { try { return (JSON.parse(localStorage.getItem(LS_BASE + '_tprof') || '{}').names) || {}; } catch (e) { return {}; } };
 function locWhName(u) { u = u || currentUser; if (!u) return ''; if (u.whName) return String(u.whName); const m = locNameMap(), ids = locIds(u); return ids.map(i => m[i] || m[String(+i)] || '').filter(Boolean).join(' / '); }
@@ -49,6 +50,7 @@ const _locCreate = createItem;
 createItem = function (siteId, listId, fields, token) { return _locCreate(siteId, listId, locStamp(listId, fields), token); };
 /* ---- views: keep only the user's location ---- */
 function locKeep(listId, items) {
+  if (listId === window.__locSkipList) return items;   /* the login list is never scoped */
   if (!locScoped() || !Array.isArray(items) || !items.length) return items;
   const col = locColOf(listId, (items[0] || {}).fields); if (!col) return items; const ids = new Set(locIds(currentUser)), hb = locCfg().hideBlank;
   return items.filter(it => { const v = locNorm((it.fields || {})[col]); return v === '' ? !hb : ids.has(v); });
