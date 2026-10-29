@@ -699,3 +699,19 @@ $('changePasswordBtn').addEventListener('click', async () => {
   addActivity('auth', 'Changed own password');
 });
 
+
+/* ---- Users page: search + filters ---- */
+function usrFilter() {
+  const q = ((document.querySelector('#usrSearch') || {}).value || '').toLowerCase().split(/\s+/).filter(Boolean), role = (document.querySelector('#usrRole') || {}).value || '', pf = (document.querySelector('#usrProf') || {}).value || '';
+  const rows = [...document.querySelectorAll('#usersTableBody tr')]; let n = 0;
+  rows.forEach(tr => { const c = tr.cells; if (!c || c.length < 5) return; const t = tr.textContent.toLowerCase(), r = c[2].textContent.trim().toLowerCase(), p = c[4].textContent.replace(/[^\w ]/g, '').trim().toLowerCase();
+    const ok = q.every(w => t.includes(w)) && (!role || r === role) && (!pf || (pf === '(none)' ? /^all/.test(p) : p.split('sharepoint')[0].trim() === pf.toLowerCase())); tr.style.display = ok ? '' : 'none'; if (ok) n++; });
+  const e = document.querySelector('#usrCount'); if (e) e.textContent = (q.length || role || pf) ? n + ' of ' + rows.length + ' users' : rows.length + ' users';
+}
+(function () {
+  const fill = () => { const s = document.querySelector('#usrProf'); if (!s) return; const cur = s.value; let names = []; try { names = tpCfg().profiles.map(p => p.name); } catch (e) {} s.innerHTML = '<option value="">All profiles</option>' + names.map(n => '<option>' + escapeHtml(n) + '</option>').join('') + '<option value="(none)">No profile (sees all)</option>'; s.value = cur; };
+  const _r = renderUsersView; renderUsersView = function () { const r = _r.apply(this, arguments); fill(); usrFilter(); return r; };
+  document.addEventListener('input', e => { if (e.target.id === 'usrSearch') usrFilter(); });
+  document.addEventListener('change', e => { if (e.target.id === 'usrRole' || e.target.id === 'usrProf') usrFilter(); });
+  document.addEventListener('click', e => { if (e.target.id === 'usrClear') { ['#usrSearch', '#usrRole', '#usrProf'].forEach(i => { const x = document.querySelector(i); if (x) x.value = ''; }); usrFilter(); } });
+})();
