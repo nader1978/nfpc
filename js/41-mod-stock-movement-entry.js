@@ -2,7 +2,7 @@
 /* ---------- Stock Movement Entry (SKUs_Movements_Batch_tbl) ---------- */
 (function () {
   const Q = s => document.querySelector(s), esc = escapeHtml, ID = 'smv', DEF_LIST = 'SKUs_Movements_Batch_tbl';
-  const F = [['Trans_Date', 'Transaction date', ['transdate', 'date']], ['SKU_Code', 'SKU code', ['skucode', 'sku']], ['SKU_Dtls', 'SKU description', ['skudtls', 'skudetails', 'description']], ['Batch_Code', 'Batch code', ['batchcode', 'batch']], ['Qty_Rcvd', 'Quantity received', ['qtyrcvd', 'received']], ['Qty_Rlsd', 'Quantity released', ['qtyrlsd', 'released']], ['Qty_Bal', 'Quantity balance', ['qtybal', 'balance']], ['Prod_Date', 'Production date', ['proddate', 'productiondate']], ['Expiry_Date', 'Expiry date', ['expirydate', 'expiry']], ['Recevied_Trl_Nr', 'Received trailer no. / source', ['receviedtrlnr', 'receivedtrlnr', 'trailer']], ['UOM_Base', 'UoM base (units per UoM)', ['uombase']], ['UOM_Desc', 'UoM', ['uomdesc', 'uom']], ['User_Name', 'User name', ['username', 'user']], ['Ref_Nr', 'Reference no.', ['refnr', 'reference']], ['Action_TimeStamp', 'Action time stamp', ['actiontimestamp', 'timestamp']], ['Trans_Type', 'Transaction type', ['transtype', 'type']]];
+  const F = [['Trans_Date', 'Transaction date', ['transdate', 'date']], ['SKU_Code', 'SKU code', ['skucode', 'sku']], ['SKU_Dtls', 'SKU description', ['skudtls', 'skudetails', 'description']], ['Batch_Code', 'Batch code', ['batchcode', 'batch']], ['Qty_Rcvd', 'Quantity received', ['qtyrcvd', 'received']], ['Qty_Rlsd', 'Quantity released', ['qtyrlsd', 'released']], ['Qty_Bal', 'Quantity balance', ['qtybal', 'balance']], ['Prod_Date', 'Production date', ['proddate', 'productiondate']], ['Expiry_Date', 'Expiry date', ['expirydate', 'expiry']], ['Recevied_Trl_Nr', 'Received trailer no. / source', ['receviedtrlnr', 'receivedtrlnr', 'trailer']], ['UOM_Base', 'UoM base (units per UoM)', ['uombase']], ['UOM_Desc', 'UoM', ['uomdesc', 'uom']], ['User_Name', 'User name', ['username', 'user']], ['Ref_Nr', 'Reference no.', ['refnr', 'reference']], ['Action_TimeStamp', 'Action time stamp', ['actiontimestamp', 'timestamp']], ['Trans_Type', 'Transaction type', ['transtype', 'type']], ['Location_Code', 'Store / pallet location code — optional', ['locationcode', 'location']]];
   utRegister(ID, { section: 'Warehouse', label: 'Stock Movement Entry → SKUs_Movements_Batch_tbl', fields: () => F.map(f => ({ key: f[0], label: f[1], alias: [f[0]].concat(f[2]), doc: true })), note: 'Used by Warehouse → Stock Movement Entry. The list defaults to ' + DEF_LIST + ' and the columns are matched by name automatically.' });
   const st = { type: 'SKU Receive', lines: [], hist: null, loading: false, saving: false, n: 0 };
   const uid = () => (currentUser && currentUser.id) || 'anon', DK = () => LS_BASE + '_smv_draft_' + uid();
@@ -17,7 +17,7 @@
   const fmt = n => (Math.round(n * 1000) / 1000).toLocaleString();
   const stamp = () => { const d = new Date(), M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][d.getMonth()]; let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return `${M} ${d.getDate()}, ${d.getFullYear()} ${h}:${pad(d.getMinutes())} ${ap}`; };
   const msg = (t, k) => sectionToast(t, k);
-  const blank = () => ({ id: ++st.n, sku: '', dtls: '', batch: '', prod: '', exp: '', rcvd: '', rlsd: '', uom: 'PC', base: '1' });
+  const blank = () => ({ id: ++st.n, sku: '', dtls: '', batch: '', prod: '', exp: '', loc: '', rcvd: '', rlsd: '', uom: 'PC', base: '1' });
   const head = () => ({ date: (Q('#smvDate') || {}).value || today(), ref: (Q('#smvRef') || {}).value || '', trl: (Q('#smvTrl') || {}).value || '' });
   const saveDraft = () => { try { localStorage.setItem(DK(), JSON.stringify({ type: st.type, h: head(), lines: st.lines })); } catch (e) {} };
   const css = document.createElement('style'); css.textContent = `
@@ -38,7 +38,7 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
   document.head.appendChild(css);
   /* ---------- history (SKU master, batches, balances) ---------- */
   async function loadHist(force) {
-    if (st.loading) return; if (st.hist && !force) return; const c = utGet(ID); if (!c.list) utSet(ID, { list: DEF_LIST, map: c.map || {} });
+    srkLoad(force).then(() => render()); if (st.loading) return; if (st.hist && !force) return; const c = utGet(ID); if (!c.list) utSet(ID, { list: DEF_LIST, map: c.map || {} });
     const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) { say('Sign-in / Site URL is not ready — suggestions are off. You can still type everything by hand.', 1); return; }
     st.loading = true; say('Loading recent movements and SKU master from SharePoint…');
     try { const list = utGet(ID).list || DEF_LIST, ids = await resolveIds(site, list, token); try { await fetchColumns(ids.siteId, ids.listId, token); } catch (e) {}
@@ -64,28 +64,29 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
   function problems(L, i) { const p = [], rel = st.type === 'SKU Release';
     if (!String(L.sku).trim()) p.push('SKU code'); if (String(L.batch).trim() === '') p.push('Batch code');
     if (!(rel ? num(L.rlsd) > 0 : num(L.rcvd) > 0)) p.push(rel ? 'Quantity released' : 'Quantity received');
-    if (!rel) { if (!L.prod) p.push('Production date'); if (!L.exp) p.push('Expiry date'); }
+    if (!rel) { if (!L.prod) p.push('Production date'); if (!L.exp) p.push('Expiry date'); if (!String(L.loc || '').trim()) p.push('Location code'); }
+    if (String(L.loc || '').trim() && SRK.ok && !srkFind(L.loc)) p.push('Location code not in ' + SRK_LIST);
     if (L.prod && L.exp && L.exp <= L.prod) p.push('Expiry must be after production'); return p; }
   /* ---------- rendering ---------- */
   function render() {
     const root = Q('#smvRoot'); if (!root) return; const rel = st.type === 'SKU Release', h0 = head(), keep = { date: h0.date, ref: h0.ref, trl: h0.trl };
     const ak = document.activeElement, ref = ak && ak.dataset && ak.dataset.f ? [ak.closest('tr').dataset.id, ak.dataset.f, ak.selectionStart] : null;
     const sk = st.hist ? [...st.hist.sku.values()] : [];
-    root.innerHTML = `<datalist id="smvSkuDl">${sk.map(s => `<option value="${esc(s.code)}">${esc(s.dtls)}</option>`).join('')}</datalist>
+    root.innerHTML = `${srkDatalist('smvRk')}<datalist id="smvSkuDl">${sk.map(s => `<option value="${esc(s.code)}">${esc(s.dtls)}</option>`).join('')}</datalist>
     ${st.lines.map(L => { const s = st.hist && st.hist.sku.get(String(L.sku).trim()); return `<datalist id="smvB${L.id}">${s ? [...s.batches.values()].map(b => `<option value="${esc(b.batch)}">${esc((b.exp ? 'exp ' + b.exp + ' · ' : '') + 'bal ' + fmt(b.bal))}</option>`).join('') : ''}</datalist>`; }).join('')}
     <div class="smv-kpis"><div class="smv-kpi"><span>Lines</span><b id="smvKL">0</b></div><div class="smv-kpi"><span>Total received</span><b id="smvKR">0</b></div><div class="smv-kpi"><span>Total released</span><b id="smvKX">0</b></div><div class="smv-kpi"><span>Net balance</span><b id="smvKB">0</b></div><div class="smv-kpi"><span>Entered by</span><b style="font-size:15px">${esc(getCurrentUserValue())}</b></div></div>
-    <div class="smv-wrap"><table class="smv-t"><thead><tr><th>SKU code *</th><th>Description</th><th>Batch *</th><th>Prod. date${rel ? '' : ' *'}</th><th>Expiry${rel ? '' : ' *'}</th><th>Qty received${rel ? '' : ' *'}</th><th>Qty released${rel ? ' *' : ''}</th><th>Balance</th><th>UoM</th><th>Base</th>${rel ? '<th>Available</th>' : ''}<th></th></tr></thead><tbody>
+    <div class="smv-wrap"><table class="smv-t"><thead><tr><th>SKU code *</th><th>Description</th><th>Batch *</th><th>Prod. date${rel ? '' : ' *'}</th><th>Expiry${rel ? '' : ' *'}</th><th>Location code${rel ? '' : ' *'}</th><th>Qty received${rel ? '' : ' *'}</th><th>Qty released${rel ? ' *' : ''}</th><th>Balance</th><th>UoM</th><th>Base</th>${rel ? '<th>Available</th>' : ''}<th></th></tr></thead><tbody>
     ${st.lines.map((L, i) => `<tr data-id="${L.id}">
       <td style="min-width:120px"><input data-f="sku" list="smvSkuDl" value="${esc(L.sku)}" autocomplete="off" placeholder="e.g. GF2001"></td>
       <td style="min-width:200px"><input data-f="dtls" value="${esc(L.dtls)}" placeholder="auto from SKU"></td>
       <td style="min-width:100px"><input data-f="batch" list="smvB${L.id}" value="${esc(L.batch)}" autocomplete="off" placeholder="batch"></td>
-      <td style="min-width:130px"><input type="date" data-f="prod" value="${esc(L.prod)}"></td><td style="min-width:130px"><input type="date" data-f="exp" value="${esc(L.exp)}"></td>
+      <td style="min-width:130px"><input type="date" data-f="prod" value="${esc(L.prod)}"></td><td style="min-width:130px"><input type="date" data-f="exp" value="${esc(L.exp)}"></td><td style="min-width:150px"><input data-f="loc" list="smvRk" value="${esc(L.loc)}" autocomplete="off" placeholder="rack / pallet code" style="text-transform:uppercase"><div class="smv-hint" data-c="locd">${esc(srkDesc(L.loc))}</div></td>
       <td style="min-width:95px"><input data-f="rcvd" inputmode="decimal" value="${esc(L.rcvd)}" ${rel ? 'title="Optional on a release"' : ''}></td><td style="min-width:95px"><input data-f="rlsd" inputmode="decimal" value="${esc(rel ? L.rlsd : '')}" ${rel ? '' : 'disabled placeholder="0"'}></td>
       <td class="c" data-c="bal">0</td>
       <td style="min-width:70px"><select data-f="uom">${['PC', 'CT', 'OT', 'TR', 'KG'].concat(L.uom && !['PC', 'CT', 'OT', 'TR', 'KG'].includes(L.uom) ? [L.uom] : []).map(u => `<option ${u === L.uom ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></td>
       <td style="min-width:60px"><input data-f="base" value="${esc(L.base)}"></td>${rel ? '<td class="c" data-c="av">—</td>' : ''}
-      <td><button class="ghost small" type="button" data-rm="${L.id}" title="Remove line">✕</button></td></tr>`).join('') || `<tr><td colspan="12" style="text-align:center;padding:26px;color:var(--gray-600)">No lines yet — press <b>➕ Add line</b> or paste from Excel.</td></tr>`}
-    </tbody></table></div>`;
+      <td><button class="ghost small" type="button" data-rm="${L.id}" title="Remove line">✕</button></td></tr>`).join('') || `<tr><td colspan="13" style="text-align:center;padding:26px;color:var(--gray-600)">No lines yet — press <b>➕ Add line</b> or paste from Excel.</td></tr>`}
+    </tbody></table></div><div class="smv-hint" style="margin-top:6px">${esc(srkNote())}</div>`;
     Object.entries(keep).forEach(([k, v]) => { const el = Q({ date: '#smvDate', ref: '#smvRef', trl: '#smvTrl' }[k]); if (el && v) el.value = v; });
     calc(); if (ref) { const el = root.querySelector(`tr[data-id="${ref[0]}"] [data-f="${ref[1]}"]`); if (el) { el.focus(); try { el.setSelectionRange(ref[2], ref[2]); } catch (e) {} } }
     renderRecent();
@@ -101,7 +102,7 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
   function setType(t) { st.type = t; Q('#smvRoot').closest('.card').querySelectorAll('[data-type]').forEach(b => { b.classList.toggle('on', b.dataset.type === t); b.classList.toggle('rel', t === 'SKU Release' && b.dataset.type === t); }); if (t !== 'SKU Release') st.lines.forEach(L => { L.rlsd = ''; }); render(); saveDraft(); }
   function parseRows(grid) { const first = grid[0] || [], hdr = first.map(x => String(x || '').toLowerCase().replace(/[^a-z]/g, '')), hasH = hdr.includes('skucode'); const idx = k => hdr.indexOf(k), body = hasH ? grid.slice(1) : grid, out = [], H = {};
     body.forEach(r => { if (!r || !r.some(x => x !== '' && x != null)) return; const g = (k, d) => hasH ? (idx(k) >= 0 ? r[idx(k)] : '') : r[d]; const L = blank(); L.sku = String(g('skucode', 0) || '').trim(); L.batch = String(g('batchcode', 1) == null ? '' : g('batchcode', 1)).trim();
-      if (hasH) { L.dtls = String(g('skudtls') || ''); L.rcvd = g('qtyrcvd') === '' ? '' : String(g('qtyrcvd')); L.rlsd = g('qtyrlsd') === '' ? '' : String(g('qtyrlsd')); L.prod = pd(g('proddate')); L.exp = pd(g('expirydate')); L.uom = String(g('uomdesc') || 'PC'); L.base = String(g('uombase') || '1');
+      if (hasH) { L.dtls = String(g('skudtls') || ''); L.rcvd = g('qtyrcvd') === '' ? '' : String(g('qtyrcvd')); L.rlsd = g('qtyrlsd') === '' ? '' : String(g('qtyrlsd')); L.prod = pd(g('proddate')); L.exp = pd(g('expirydate')); L.loc = String(g('locationcode') || '').trim().toUpperCase(); L.uom = String(g('uomdesc') || 'PC'); L.base = String(g('uombase') || '1');
         if (!H.type && g('transtype')) H.type = String(g('transtype')); if (!H.date && g('transdate')) H.date = pd(g('transdate')); if (!H.ref && g('refnr')) H.ref = String(g('refnr')); if (!H.trl && idx('receviedtrlnr') >= 0 && r[idx('receviedtrlnr')]) H.trl = String(r[idx('receviedtrlnr')]).trim(); }
       else { const q = String(g('', 2) || ''); if (st.type === 'SKU Release') L.rlsd = q; else L.rcvd = q; L.prod = pd(r[3]); L.exp = pd(r[4]); }
       fillSku(L); fillBatch(L); out.push(L); }); return { lines: out, H }; }
@@ -124,7 +125,7 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
     const over = rel ? lines.filter(L => { const a = avail(L); return a != null && num(L.rlsd) > a; }) : []; if (over.length && !confirm(over.length + ' line(s) release more than the available balance (' + over.slice(0, 3).map(L => L.sku + '/' + L.batch).join(', ') + ').\n\nSave anyway?')) return;
     if (!confirm('Save ' + lines.length + ' ' + st.type.replace('SKU ', '').toLowerCase() + ' line(s) to SharePoint?')) return;
     st.saving = true; const b = Q('#smvSave'); if (b) b.disabled = true; const ts = stamp(), d = toDate(h.date);
-    const rows = lines.map(L => ({ Trans_Date: d, SKU_Code: L.sku.trim(), SKU_Dtls: L.dtls, Batch_Code: String(L.batch).trim(), Qty_Rcvd: num(L.rcvd), Qty_Rlsd: rel ? num(L.rlsd) : 0, Qty_Bal: bal(L), Prod_Date: L.prod ? toDate(L.prod) : '', Expiry_Date: L.exp ? toDate(L.exp) : '', Recevied_Trl_Nr: h.trl.trim(), UOM_Base: String(L.base || ''), UOM_Desc: L.uom, User_Name: getCurrentUserValue(), Ref_Nr: h.ref.trim(), Action_TimeStamp: ts, Trans_Type: st.type }));
+    const rows = lines.map(L => ({ Trans_Date: d, SKU_Code: L.sku.trim(), SKU_Dtls: L.dtls, Batch_Code: String(L.batch).trim(), Qty_Rcvd: num(L.rcvd), Qty_Rlsd: rel ? num(L.rlsd) : 0, Qty_Bal: bal(L), Prod_Date: L.prod ? toDate(L.prod) : '', Expiry_Date: L.exp ? toDate(L.exp) : '', Recevied_Trl_Nr: h.trl.trim(), UOM_Base: String(L.base || ''), UOM_Desc: L.uom, User_Name: getCurrentUserValue(), Ref_Nr: h.ref.trim(), Action_TimeStamp: ts, Trans_Type: st.type, Location_Code: (srkFind(L.loc) || { code: String(L.loc || '').trim().toUpperCase() }).code }));
     try { const c = utGet(ID); if (!c.list) utSet(ID, { list: DEF_LIST, map: c.map || {} }); try { const ids = await resolveIds(getGlobalSiteUrl(), utGet(ID).list, getGlobalAccessToken()); await fetchColumns(ids.siteId, ids.listId, getGlobalAccessToken()); } catch (e) {}
       const r = await utPush(ID, rows, x => x.SKU_Code + '/' + x.Batch_Code, (n, t) => say('Saving… ' + n + '/' + t));
       if (r.fail) { say('Saved ' + r.ok + ', failed ' + r.fail + ': ' + (r.errors[0] || ''), 1); msg('⚠ ' + r.fail + ' line(s) failed — nothing was cleared, check the message and try again.', 'error'); }
@@ -134,9 +135,9 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
     catch (e) { say('Could not save: ' + e.message, 1); msg('Could not save — ' + e.message, 'error'); } finally { st.saving = false; if (b) b.disabled = false; }
   }
   function data() { const h = head(), rel = st.type === 'SKU Release', L = st.lines.filter(x => String(x.sku).trim() || String(x.batch).trim() || num(x.rcvd) || num(x.rlsd)), n = v => (Math.round(v * 1000) / 1000);
-    const headers = ['Date', 'Type', 'Ref no.', 'SKU code', 'Description', 'Batch', 'Prod. date', 'Expiry date', 'Qty received', 'Qty released', 'Balance', 'UoM', 'Base'].concat(rel ? ['Available'] : []);
-    const rows = L.map(x => [h.date, st.type, h.ref, x.sku, x.dtls, x.batch, x.prod, x.exp, n(num(x.rcvd)), rel ? n(num(x.rlsd)) : 0, n(bal(x)), x.uom, x.base].concat(rel ? [(avail(x) == null ? '' : n(avail(x)))] : []));
-    const t = r => rows.reduce((s, x) => s + (+x[r] || 0), 0), totals = ['TOTAL', '', '', '', '', '', '', '', n(t(8)), n(t(9)), n(t(10)), '', ''].concat(rel ? [''] : []);
+    const headers = ['Date', 'Type', 'Ref no.', 'SKU code', 'Description', 'Batch', 'Prod. date', 'Expiry date', 'Location', 'Qty received', 'Qty released', 'Balance', 'UoM', 'Base'].concat(rel ? ['Available'] : []);
+    const rows = L.map(x => [h.date, st.type, h.ref, x.sku, x.dtls, x.batch, x.prod, x.exp, x.loc || '', n(num(x.rcvd)), rel ? n(num(x.rlsd)) : 0, n(bal(x)), x.uom, x.base].concat(rel ? [(avail(x) == null ? '' : n(avail(x)))] : []));
+    const t = r => rows.reduce((s, x) => s + (+x[r] || 0), 0), totals = ['TOTAL', '', '', '', '', '', '', '', '', n(t(9)), n(t(10)), n(t(11)), '', ''].concat(rel ? [''] : []);
     return { title: 'Stock movement — ' + st.type.replace('SKU ', '') + (h.ref ? ' · ' + h.ref : ''), sheet: 'Stock movement entry', note: [st.type, h.date, h.ref && 'Ref ' + h.ref, h.trl && 'Trailer / source ' + h.trl, 'Entered by ' + getCurrentUserValue()].filter(Boolean).join(' · '), headers, rows, totals }; }
   function full(on) { const c = Q('#smvCard'), b = Q('#smvFullBtn'); if (!c) return; on = on == null ? !c.classList.contains('smv-full') : on; c.classList.toggle('smv-full', on); document.body.classList.toggle('smv-fs', on); if (b) { b.textContent = on ? '✕ Close' : '⤢ Expand'; b.title = on ? 'Back to the normal view (Esc)' : 'Open this section in a large window'; if (on) b.dataset.x = 'close'; else b.dataset.x = ''; } }
   /* ---------- wiring ---------- */
@@ -150,6 +151,7 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
       if (el.dataset.f === 'sku' && fillSku(L)) { tr.querySelector('[data-f=dtls]').value = L.dtls; tr.querySelector('[data-f=base]').value = L.base; tr.querySelector('[data-f=uom]').value = L.uom; render(); }
       if (el.dataset.f === 'batch') { const o = { p: L.prod, x: L.exp }; fillBatch(L); if (L.prod !== o.p || L.exp !== o.x) render(); }
       if (el.dataset.f === 'prod' && L.prod && !L.exp && st.type !== 'SKU Release') { const s = st.hist && st.hist.sku.get(String(L.sku).trim()); if (s && s.sd) { L.exp = addDays(L.prod, s.sd); tr.querySelector('[data-f=exp]').value = L.exp; say('Expiry set to ' + L.exp + ' = production + ' + s.sd + ' days (this SKU\'s usual shelf life).'); } }
+      if (el.dataset.f === 'loc') { const d = tr.querySelector('[data-c=locd]'); if (d) d.textContent = srkDesc(L.loc); }
       calc(); saveDraft(); });
     v.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.f) { e.preventDefault(); const tr = e.target.closest('tr'), nx = tr.nextElementSibling; if (nx && nx.querySelector('[data-f]')) nx.querySelector(`[data-f="${e.target.dataset.f}"]`).focus(); else if (e.target.dataset.f === 'rcvd' || e.target.dataset.f === 'rlsd') { addLines(1); const l = v.querySelectorAll('tbody tr'); const last = l[l.length - 1]; if (last) last.querySelector('[data-f=sku]').focus(); } } });
     Q('#smvFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) importFile(f); });
