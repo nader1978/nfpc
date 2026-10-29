@@ -126,7 +126,7 @@ html body .sidebar .user-card .logout-btn{color:#fff}html body .sidebar .user-ca
 .hm-row{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;border-radius:10px;font-size:14px;font-weight:600;color:var(--hm-t)!important;text-decoration:none}.hm-row:hover{background:var(--hm-bg)}.hm-row span{display:flex;align-items:center;gap:10px}.hm-row i{width:8px;height:8px;border-radius:50%;background:var(--zc)}.hm-row b{color:var(--hm-m)}
 @media(max-width:700px){#view-home{margin:-12px -10px}.hmC,.hmB{padding:18px 14px}}`;
   document.head.appendChild(st); document.body.classList.add('on-home'); lastV = 'home';
-  const sb = Q('.sidebar-brand'); if (sb) { sb.title = 'Switchboard — main page'; sb.addEventListener('click', () => { const n = Q('#navHomeHidden'); if (n) n.click(); }); }
+  const sb = Q('.sidebar-brand'); if (sb) { sb.title = 'Dashboard — main page'; sb.addEventListener('click', () => { const n = Q('#navHomeHidden'); if (n) n.click(); }); }
   document.addEventListener('click', e => {
     const host = Q('#view-home'); if (!host || !host.contains(e.target)) return;
     const g = e.target.closest('[data-go]'), card = e.target.closest('.hm-card header'), sel = e.target.closest('[data-sel]');

@@ -342,7 +342,7 @@ const VIEW_META = {
   flt: { title: 'Fleet Management', sub: 'Vehicles, drivers, maintenance, fuel, documents, incidents, tyres and trips' },
   prj: { title: 'Project Progress', sub: 'Register projects, phase progress, costs and manpower' },
   smv: { title: 'Stock Movement Entry', sub: 'Receive / release SKUs by batch → SKUs_Movements_Batch_tbl' },
-  home: { title: 'Switchboard', sub: 'Your starting point — every group and page you can open' },
+  home: { title: 'Dashboard', sub: 'Your starting point — every group and page you can open' },
   uploader: { title: 'Uploader', sub: 'Push Excel/CSV data to SharePoint lists' },
   warehouse: { title: 'Batch Allocation (FEFO)', sub: 'Warehouse order preparation with FEFO batch allocation' },
   listan: { title: 'List Analytics', sub: 'Self-adapting dashboard for any list downloaded from Data Download' },
