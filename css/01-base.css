@@ -170,7 +170,7 @@
   label { font-size: 12px; font-weight: 600; color: var(--gray-600); letter-spacing: 0.2px; }
   label .hint { font-weight: 400; color: var(--gray-400); font-size: 11px; }
   label .required { color: var(--error); }
-  input[type="text"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], select, textarea {
+  input[type="text"], input[type="password"], input[type="number"], input[type="date"], input[type="datetime-local"], input[type="email"], input[type="search"], input[type="tel"], input[type="url"], input[type="time"], input[type="month"], input:not([type]), select, textarea {
     width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px;
     font-size: 13px; font-family: inherit; background: var(--card); color: var(--gray-800);
     transition: border 0.15s, box-shadow 0.15s;
@@ -1197,3 +1197,5 @@ body.dark .vis-pop{background:#1e293b}
 .mg-ck{display:inline-flex;gap:5px;align-items:center;font-size:13px;font-weight:500}.mg-ck input{width:auto;margin:0}
 #view-mgw .pl-kpis{margin-top:12px}#view-mgw .pl-grid{margin-top:12px}#view-mgw .fd-tbl td,#view-mgw .fd-tbl th{white-space:nowrap}#view-mgw .fd-tbl tr.t td{background:var(--gray-100)}#view-mgt .pl-kpis{margin-top:12px}#view-mgt .pl-grid{margin-top:12px}#view-mgt .fd-tbl td,#view-mgt .fd-tbl th{white-space:nowrap}#view-mgt .fd-tbl tr.t td{background:var(--gray-100)}
 
+
+#usrBar input,#usrBar select,#ccBar input{height:36px;margin:0;box-sizing:border-box}
