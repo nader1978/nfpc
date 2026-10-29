@@ -441,8 +441,8 @@ async function loadUsers() {
     (window.NFPC_USERS || []).forEach(f => {
       const key = String(f.username).toLowerCase(); if (key === BUILTIN_USER.username) return;
       const ex = users.list.find(x => String(x.username).toLowerCase() === key);
-      if (!ex) users.list.push({ id: uid(), username: f.username, displayName: f.displayName || f.username, role: f.role, jobTitle: f.jobTitle || '', email: f.email || '', empId: f.empId || '', managerEmail: '', salt: f.salt, hash: f.hash, src: 'file', fileHash: f.hash, mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null });
-      else if (ex.src === 'file' && ex.hash === ex.fileHash && !ex.builtin) Object.assign(ex, { salt: f.salt, hash: f.hash, fileHash: f.hash, jobTitle: f.jobTitle || '', email: f.email || ex.email || '', empId: f.empId || '' });
+      if (!ex) users.list.push({ id: uid(), username: f.username, displayName: f.displayName || f.username, role: f.role, jobTitle: f.jobTitle || '', email: f.email || '', empId: f.empId || '', locationId: f.locationId != null ? String(f.locationId) : '', bu: f.bu || '', region: f.region || '', lineMngr: f.lineMngr || '', accessLevel: f.accessLevel != null ? String(f.accessLevel) : '', managerEmail: '', salt: f.salt, hash: f.hash, src: 'file', fileHash: f.hash, mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null });
+      else if (ex.src === 'file' && ex.hash === ex.fileHash && !ex.builtin) Object.assign(ex, { salt: f.salt, hash: f.hash, fileHash: f.hash, jobTitle: f.jobTitle || '', email: f.email || ex.email || '', empId: f.empId || '', bu: f.bu || '', region: f.region || '', lineMngr: f.lineMngr || '', accessLevel: f.accessLevel != null ? String(f.accessLevel) : '' }); if (f.locationId != null && ex.locUser !== 1) ex.locationId = String(f.locationId);
     });
     saveUsers();
   } catch (e) {}

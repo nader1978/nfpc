@@ -276,6 +276,7 @@ function u_renderMappingTable() {
     tr.querySelector('.combo-cell').appendChild(combo);
     body.appendChild(tr);
   });
+  try { locMapRow(body, t); } catch (e) {}
 
   u_updateMappingSummary();
 }

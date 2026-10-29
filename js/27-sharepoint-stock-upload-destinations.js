@@ -212,7 +212,7 @@ function utSet(id, v) { try { localStorage.setItem(utKey(id), JSON.stringify(v))
 const utReady = id => { const c = utGet(id); return !!c.list && Object.values(c.map).some(v => v && v !== SKIP_VALUE); };
 const utIsAdmin = () => typeof isAdmin === 'function' ? !!isAdmin() : !!(currentUser && currentUser.role === 'admin');
 const ut = { pickers: {}, cols: {}, draft: {}, ids: {} };
-function utFields(id) { const d = UT_REG[id], f = (typeof d.fields === 'function' ? d.fields() : d.fields).slice(); if (!f.some(x => x.key === CURRENT_USER_FIELD_KEY)) f.push(currentUserOutputField()); return f; }
+function utFields(id) { const d = UT_REG[id], f = (typeof d.fields === 'function' ? d.fields() : d.fields).slice(); if (!f.some(x => x.key === CURRENT_USER_FIELD_KEY)) f.push(currentUserOutputField()); if (!f.some(x => x.key === LOC_FIELD_KEY)) f.push(locOutputField()); return f; }
 const utNz = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 function utAuto(id) {
   const used = new Set(), map = {}, cols = ut.cols[id] || [];
@@ -280,7 +280,7 @@ async function utPush(id, rows, keyFn, onProg) {   // rows: array of objects key
   const cfg = utGet(id), token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!cfg.list) throw new Error('No upload destination is set for this section — an administrator sets it in Upload Destinations.'); cfg.map = await utEffMap(id);
   const active = Object.entries(cfg.map).filter(([, v]) => v && v !== SKIP_VALUE); if (!active.length) throw new Error('The upload destination has no field mapping — an administrator must map the fields in Upload Destinations.');
   if (!token || !site) throw new Error('Configure the Site URL and sign-in first.'); const { siteId, listId } = await resolveIds(site, cfg.list, token); let ok = 0, fail = 0, done = 0, next = 0; const errors = [];
-  const worker = async () => { while (next < rows.length) { const r = rows[next++], fields = {}; active.forEach(([k, col]) => { if (k === CURRENT_USER_FIELD_KEY) { fields[col] = getCurrentUserValue(); return; } const v = r[k]; if (v === '' || v == null) return; fields[col] = v; });
+  const worker = async () => { while (next < rows.length) { const r = rows[next++], fields = {}; active.forEach(([k, col]) => { if (k === CURRENT_USER_FIELD_KEY) { fields[col] = getCurrentUserValue(); return; } if (k === LOC_FIELD_KEY) { const lv = locOne(); if (lv) fields[col] = lv; return; } const v = r[k]; if (v === '' || v == null) return; fields[col] = v; });
     if (!Object.keys(fields).length) fail++; else { try { await createItem(siteId, listId, fields, token); ok++; } catch (err) { fail++; if (errors.length < 5) errors.push(`${keyFn ? keyFn(r) : ''}: ${err.message}`); } } done++; if (onProg) onProg(done, rows.length); } };
   await Promise.all(Array.from({ length: 4 }, worker)); return { ok, fail, errors, list: cfg.list };
 }
@@ -374,7 +374,7 @@ function mdpOpPlan() {
     if (!ex && rem <= 0) return; out.push({ key: o.key, date: o.date, route: o.route, code: o.code, desc: o.desc, uom: o.uom, ordered, picked, thisRound: o.pa, rem, transit: Math.min(rem, o.pt), round: ex ? (ex.round || 0) + 1 : 1, status: rem > 0 ? 'Open' : 'Fulfilled', ex, act: ex ? (rem > 0 ? 'Update' : 'Fulfilled') : 'New' }); });
   return out.sort((a, b) => mdpNat(a.route, b.route) || a.code.localeCompare(b.code));
 }
-function mdpOpFields(map, rec) { const f = {}; Object.entries(map).forEach(([k, col]) => { if (!col || col === SKIP_VALUE) return; if (k === CURRENT_USER_FIELD_KEY) { f[col] = getCurrentUserValue(); return; } const v = rec[k]; if (v === '' || v == null) return; f[col] = v; }); return f; }
+function mdpOpFields(map, rec) { const f = {}; Object.entries(map).forEach(([k, col]) => { if (!col || col === SKIP_VALUE) return; if (k === CURRENT_USER_FIELD_KEY) { f[col] = getCurrentUserValue(); return; } if (k === LOC_FIELD_KEY) { const lv = locOne(); if (lv) f[col] = lv; return; } const v = rec[k]; if (v === '' || v == null) return; f[col] = v; }); return f; }
 async function mdpOpWrite(list, rows, fn) {   // fn(row) -> {id|null, rec}; creates or updates (2 at a time, a failed row is retried)
   const token = getGlobalAccessToken(), site = getGlobalSiteUrl(), { siteId, listId } = await resolveIds(site, list.list, token); let ok = 0, fail = 0, next = 0; const errors = [];
   /* read the column types first: numbers/dates/choices are converted to what each column expects and columns that cannot be written (lookup, person, calculated, read-only) are left out */

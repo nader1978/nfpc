@@ -317,7 +317,7 @@ function lulJudge(items) {
   if (!M.length) return { found: false, allowed: false, ids };
   const t = Math.min(...M.map(h => h.tier)), hits = M.filter(h => h.tier === t), detail = 'Matched on “' + ids[t] + '” — ' + hits.length + ' row(s), ' + c.allow + ' = ' + hits.map(h => h.raw).join(' , ');
   if (!hits.some(h => h.hasCol)) return { found: true, allowed: false, noCol: true, ids, detail };
-  return { found: true, allowed: hits.some(h => h.allow), ids, detail };
+  return { found: true, allowed: hits.some(h => h.allow), ids, detail, f: (hits.find(h => h.allow) || hits[0]).f };
 }
 async function lulSha(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
 async function lulLogin(username, password) {
@@ -325,17 +325,18 @@ async function lulLogin(username, password) {
   const r = await lulFetch(); if (r.state !== 'ok') return { state: 'unreach', msg: r.msg || r.state };
   const rows = r.items.filter(it => { const f = it.fields || {}; return lulUserKeys(f, c.user).some(k => lulVals(f[k]).some(v => String(v).trim().toLowerCase() === un)); });
   if (!rows.length) return bad;
-  let ok = false, off = false, role = '', email = '', name = '';
+  let ok = false, off = false, role = '', email = '', name = '', prof = null;
   for (const it of rows) { const f = it.fields || {}, pk = lulAllowKey(f, c.pw); if (!pk) continue; const stored = String(lulVals(f[pk])[0] || '').trim(); if (!stored) continue;
     const pass = /^[a-f0-9]{64}$/i.test(stored) ? (await lulSha(password)).toLowerCase() === stored.toLowerCase() : stored === password; if (!pass) continue;
     const ak = lulAllowKey(f, c.allow); if (ak && !lulTrue(f[ak])) { off = true; continue; } if (!ak) { off = true; continue; }
-    ok = true; const rk = lulAllowKey(f, c.role); role = rk ? String(lulVals(f[rk])[0] || '').trim().toLowerCase() : ''; const ek = Object.keys(f).find(k => /^e-?mail$|^email|mail$/i.test(k)); email = ek ? String(lulVals(f[ek])[0] || '') : ''; const nk = Object.keys(f).find(k => /display ?name|fullname|^name$/i.test(k)); name = nk ? String(lulVals(f[nk])[0] || '') : ''; break; }
+    ok = true; const rk = lulAllowKey(f, c.role); role = rk ? String(lulVals(f[rk])[0] || '').trim().toLowerCase() : ''; const ek = Object.keys(f).find(k => /^e-?mail$|^email|mail$/i.test(k)); email = ek ? String(lulVals(f[ek])[0] || '') : ''; const nk = Object.keys(f).find(k => /display ?name|fullname|^name$/i.test(k)); name = nk ? String(lulVals(f[nk])[0] || '') : ''; try { prof = locProfile(f); } catch (e) {} break; }
   if (!ok) return off ? { state: 'off', msg: 'Your account is deactivated. Please contact the administrator.' } : bad;
   if (!['viewer', 'operator', 'admin'].includes(role)) role = 'operator';
   let u = findUser(username);
   if (u && u.builtin) { return { state: 'ok', user: u }; }
   if (!u) { u = { id: uid(), username: String(username).trim(), displayName: name || String(username).trim(), role, salt: '', hash: '', email, managerEmail: '', mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null, fromSP: true }; users.list.push(u); }
   else { u.role = role; if (email && !u.email) u.email = email; if (name && !u.displayName) u.displayName = name; u.fromSP = true; }
+  if (prof) Object.assign(u, prof);
   u.lastLogin = Date.now(); saveUsers(); return { state: 'ok', user: u };
 }
 function lulLockEl() {
@@ -353,7 +354,7 @@ async function lulRun() {
     if (!lul.ok) lulShow('🔐', 'Checking your access…', 'Verifying your account with SharePoint (' + plEsc(c.list) + ')…', []);
     let r = await lulFetch(); if (r.state === 'notoken' && !lul.ok) { try { await ms_signIn(false); } catch (e) {} r = await lulFetch(); }
     if (r.state === 'ok') { const j = lulJudge(r.items);
-      if (j.allowed) { lul.ok = Date.now(); lul.denied = false; lulHide(); }
+      if (j.allowed) { lul.ok = Date.now(); lul.denied = false; lulHide(); try { locApplyRow(j.f); } catch (e) {} }
       else { lul.denied = true; try { addActivity('auth', `Access denied by ${c.list}: ${currentUser.username}`); } catch (e) {}
         lulShow('⛔', j.found ? 'Your access is deactivated' : 'You are not on the access list', j.found ? (j.noCol ? `Your row in <b>${plEsc(c.list)}</b> has no “${plEsc(c.allow)}” column.` : `Your account is switched off (<b>${plEsc(c.allow)}</b> is not Yes). Please contact the administrator.${j.detail ? '<div style="margin-top:10px;font-size:12px;color:#888">' + plEsc(j.detail) + '</div>' : ''}`) : `No row for <b>${plEsc(j.ids.join(' / ') || currentUser.username)}</b> was found in <b>${plEsc(c.list)}</b>. Please contact the administrator.`, [['Sign out', lulSignOut], ['Check again', () => { lul.ok = 0; lulRun(); }, 'secondary']]); } }
     else if (r.state === 'nolist') { lulHide(); if (!lul.warned) { lul.warned = true; sectionToast('Login control is on but the list “' + c.list + '” was not found — access is not being checked. ' + (r.msg || ''), 'warn'); } }

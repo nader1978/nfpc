@@ -70,7 +70,7 @@ const HOME_DEFAULT = { style: 'A', accent: '', font: '', scale: 100, radius: 16 
   function render() {
     const host = Q('#view-home'); if (!host) return; const st = getStyle(), m = model();
     applyCfg(host); host.innerHTML = '<div class="hm-zoom">' + (st === 'B' ? viewB(m) : st === 'C' ? viewC(m) : viewA(m)) + (m.total ? '' : '<p class="hm-note">Charts fill in as you open pages — they show your own activity on this browser.</p>') + '</div>';
-    host.className = host.className.replace(/\bhm-s[ABC]\b/g, '') + ' hm-s' + st;
+    host.className = host.className.replace(/\bhm-s[ABC]\b/g, '') + ' hm-s' + st; try { locHomeStrip(host); } catch (e) {}
   }
   window.homeRender = render;
   const st = document.createElement('style'); st.textContent = `

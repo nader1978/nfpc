@@ -426,6 +426,8 @@ function userForm_open({ mode, user }) {
         <div class="form-group" data-uf="role"><label>Role</label><select id="ufRole"><option value="viewer">Viewer</option><option value="operator">Operator</option><option value="admin">Admin</option></select></div>
         <div class="form-group"><label>User email <span class="hint">— added in CC by default when sharing by email</span></label><input type="email" id="ufEmail" placeholder="name@company.com" /></div>
         <div class="form-group"><label>Line manager email <span class="hint">— used in TO by default when sharing by email</span></label><input type="email" id="ufMgr" placeholder="manager@company.com" /></div>
+        <div class="form-group" data-uf="loc"><label>Location ID <span class="hint">— the warehouse this user works in. It limits what he sees and is saved with his uploads. Empty or 0 = all locations; several: 4,5</span></label><input type="text" id="ufLoc" placeholder="e.g. 4" /></div>
+        <div class="form-group" data-uf="prof"><label>Side-panel profile <span class="hint">— which sections open for this user by default. “Auto” follows his job title (Users page → Default sections by job title)</span></label><select id="ufProf"><option value="">Auto (by job title)</option></select></div>
         <div class="form-group" data-uf="password"><label>Initial password <span class="hint">— min 6 characters</span></label><input type="password" id="ufPassword" autocomplete="new-password" /></div>
       </div>
       <div id="ufStatus" class="status-msg"></div>
@@ -434,10 +436,10 @@ function userForm_open({ mode, user }) {
     m.addEventListener('click', e => { if (e.target === m || e.target.id === 'ufClose' || e.target.id === 'ufCancel') m.style.display = 'none'; });
   }
   const q = id => document.querySelector('#' + id), show = (k, on) => { const el = m.querySelector(`[data-uf="${k}"]`); if (el) el.style.display = on ? '' : 'none'; };
-  show('username', mode === 'add'); show('display', mode !== 'me'); show('role', mode !== 'me'); show('password', mode === 'add');
+  show('username', mode === 'add'); show('display', mode !== 'me'); show('role', mode !== 'me'); show('loc', mode !== 'me'); show('prof', mode !== 'me'); try { tpFillSelect(q('ufProf'), user); } catch (e) {} show('password', mode === 'add');
   q('ufTitle').textContent = mode === 'add' ? '➕ Add User' : mode === 'edit' ? `✏ Edit ${user.username}` : '✉ My email & line manager';
   q('ufUsername').value = ''; q('ufDisplay').value = user ? user.displayName || '' : ''; q('ufRole').value = user ? user.role : 'viewer';
-  q('ufEmail').value = user ? user.email || '' : ''; q('ufMgr').value = user ? user.managerEmail || '' : ''; q('ufPassword').value = '';
+  q('ufEmail').value = user ? user.email || '' : ''; q('ufMgr').value = user ? user.managerEmail || '' : ''; q('ufLoc').value = user ? user.locationId || '' : ''; q('ufPassword').value = '';
   const st = (t, c) => { const el = q('ufStatus'); el.className = 'status-msg ' + (c || 'info'); el.textContent = t; };
   st('');
   const save = q('ufSave'), fresh = save.cloneNode(true); save.parentNode.replaceChild(fresh, save);
@@ -454,7 +456,7 @@ function userForm_open({ mode, user }) {
       } else if (mode === 'edit') {
         const role = q('ufRole').value;
         if (user.id === currentUser.id && role !== 'admin' && !confirm('You are demoting yourself. You will lose admin access. Continue?')) { fresh.disabled = false; return; }
-        user.displayName = q('ufDisplay').value.trim() || user.username; user.role = role; user.email = email; user.managerEmail = mgr;
+        user.displayName = q('ufDisplay').value.trim() || user.username; user.role = role; user.email = email; user.managerEmail = mgr; user.locationId = q('ufLoc').value.trim(); user.locUser = 1; user.profileId = q('ufProf').value; try { navApply(true); } catch (x) {}
         saveUsers();
         if (user.id === currentUser.id) { currentUser = user; applyPermissions(); $('userRole').textContent = ROLES[currentUser.role].label; $('userRole').className = 'user-role ' + currentUser.role; }
         renderUsersView();
@@ -469,7 +471,7 @@ function userForm_open({ mode, user }) {
         const assign = await promptListAssignment({ username, allowedLists: [], editableLists: [] });
         if (assign === null) { m.style.display = 'flex'; fresh.disabled = false; return; }
         const salt = randomSalt(), hash = await hashPassword(password, salt);
-        users.list.push({ id: uid(), username, displayName: q('ufDisplay').value.trim() || username, role: q('ufRole').value, salt, hash, email, managerEmail: mgr, mustChangePassword: false, allowedLists: assign.allowedLists, editableLists: assign.editableLists, createdAt: Date.now(), lastLogin: null });
+        users.list.push({ id: uid(), username, displayName: q('ufDisplay').value.trim() || username, role: q('ufRole').value, salt, hash, email, managerEmail: mgr, locationId: q('ufLoc').value.trim(), profileId: q('ufProf').value, mustChangePassword: false, allowedLists: assign.allowedLists, editableLists: assign.editableLists, createdAt: Date.now(), lastLogin: null });
         saveUsers(); renderUsersView(); addActivity('auth', `Created user "${username}"`);
       }
       m.style.display = 'none';
@@ -492,6 +494,7 @@ function renderUsersView() {
       <td><code>${escapeHtml(u.username)}</code>${u.mustChangePassword ? ' <span class="badge required">CHANGE PW</span>' : ''}</td>
       <td>${escapeHtml(u.displayName)}</td>
       <td><span class="badge role-${u.role}">${ROLES[u.role].label}</span></td>
+      <td style="font-size:12px;">${u.locationId ? '📍 ' + escapeHtml(u.locationId) : '<em>all</em>'}${u.bu ? '<br><span style="color:var(--gray-500);">' + escapeHtml(u.bu) + '</span>' : ''}${typeof tpLabel === 'function' && tpLabel(u) ? '<br><span style="color:var(--gray-500);">🧭 ' + escapeHtml(tpLabel(u)) + '</span>' : ''}</td>
       <td style="font-size:12px;">${u.email ? escapeHtml(u.email) : '<em>— no email —</em>'}<br><span style="color:var(--gray-500);">Mgr: ${u.managerEmail ? escapeHtml(u.managerEmail) : '—'}</span></td>
       <td style="font-size:12px;">${listsLabel}</td>
       <td>${formatDate(u.createdAt)}</td>
@@ -569,6 +572,7 @@ $('exportUsersBtn').addEventListener('click', () => {
         allowedLists: u.allowedLists || [], editableLists: u.editableLists || [],
         mustChangePassword: u.mustChangePassword || false,
         createdAt: u.createdAt, lastLogin: u.lastLogin,
+        email: u.email || '', managerEmail: u.managerEmail || '', locationId: u.locationId || '', bu: u.bu || '', region: u.region || '', lineMngr: u.lineMngr || '', accessLevel: u.accessLevel || '', empId: u.empId || '', jobTitle: u.jobTitle || '',
       };
       if (includePasswords) { base.salt = u.salt; base.hash = u.hash; }
       return base;
@@ -620,6 +624,7 @@ async function importUsersFromFile(file) {
         editableLists: Array.isArray(incoming.editableLists) ? incoming.editableLists : [],
         createdAt: incoming.createdAt || Date.now(),
         lastLogin: incoming.lastLogin || null,
+        email: incoming.email || existing?.email || '', managerEmail: incoming.managerEmail || existing?.managerEmail || '', locationId: incoming.locationId != null ? String(incoming.locationId) : (existing?.locationId || ''), bu: incoming.bu || '', region: incoming.region || '', lineMngr: incoming.lineMngr || '', accessLevel: incoming.accessLevel || '', empId: incoming.empId || '', jobTitle: incoming.jobTitle || '',
       };
       if (hasPasswords && incoming.salt && incoming.hash) {
         record.salt = incoming.salt;
