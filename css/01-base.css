@@ -1199,3 +1199,9 @@ body.dark .vis-pop{background:#1e293b}
 
 
 #usrBar input,#usrBar select,#ccBar input{height:36px;margin:0;box-sizing:border-box}
+
+.nav-sub-head{display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;border-radius:6px;margin:4px 6px 0 10px;padding:6px 8px;font-size:13px;font-weight:700;color:#c9d3e6;border-left:3px solid var(--acc-3,#4d7cf0);background:rgba(255,255,255,.04)}.nav-sub-head:hover{color:#fff;background:rgba(255,255,255,.09)}
+.nav-sub-head .caret{display:inline-block;width:12px;transition:transform .15s;font-size:12px}.nav-sub.collapsed .caret{transform:rotate(-90deg)}.nav-sub-head .sname{flex:1}.nav-sub-head .gcount{font-size:11.5px;background:rgba(255,255,255,.12);border-radius:9px;padding:0 6px;font-weight:600}
+.nav-sub-body{margin-left:14px;border-left:1px solid rgba(255,255,255,.12)}.nav-sub.collapsed .nav-sub-body{display:none}.nav-sub.collapsed:has(.nav-item.active) .sname::after{content:' •';color:var(--brand)}
+body.sb-mini .nav-sub-head{padding:0;margin:4px 14px;height:1px;min-height:1px;background:var(--sidebar-hover);border:0}body.sb-mini .nav-sub-head .caret,body.sb-mini .nav-sub-head .sname,body.sb-mini .nav-sub-head .gcount{display:none}body.sb-mini .nav-sub-body{margin-left:0;border:0}body.sb-mini .nav-sub.collapsed .nav-sub-body{display:block}
+.ns-sub{margin:8px 0 0 18px;padding:6px 8px;border-left:3px solid var(--brand);background:rgba(127,127,127,.06);border-radius:0 8px 8px 0}.ns-sname{flex:1;min-width:120px;margin:0;font-weight:600}

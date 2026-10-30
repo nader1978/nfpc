@@ -426,7 +426,7 @@ function acApplyNav() {
     if (ov[v] === false) { el.style.display = 'none'; el.classList.add('locked'); el.style.pointerEvents = 'none'; }
     else { el.style.display = ''; el.classList.remove('locked'); el.style.pointerEvents = ''; }
   });
-  document.querySelectorAll('.sidebar-nav .nav-group').forEach(g => { g.style.display = [...g.querySelectorAll('.nav-item')].some(n => n.style.display !== 'none') ? '' : 'none'; });
+  document.querySelectorAll('.sidebar-nav .nav-sub').forEach(g => { g.style.display = [...g.querySelectorAll('.nav-item')].some(n => n.style.display !== 'none') ? '' : 'none'; }); document.querySelectorAll('.sidebar-nav .nav-group').forEach(g => { g.style.display = [...g.querySelectorAll('.nav-item')].some(n => n.style.display !== 'none') ? '' : 'none'; });
   acRoApply();
 }
 function acRoApply() {

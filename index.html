@@ -7,10 +7,10 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>" />
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=79">
-<link rel="stylesheet" href="css/02-mobile.css?v=79">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=79">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=79">
+<link rel="stylesheet" href="css/01-base.css?v=81">
+<link rel="stylesheet" href="css/02-mobile.css?v=81">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=81">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=81">
 </head>
 <body>
 
@@ -2756,7 +2756,7 @@
           <div class="card-header"><div class="card-title">🧭 Side panel layout</div><button id="navSetCollapse" class="ghost small" type="button" aria-expanded="true" title="Collapse or expand this section">▾ Collapse</button></div>
           <div class="card-desc">Arrange the side panel the way you work: rename groups, move sections between groups, change the order and choose which groups start collapsed. Your layout is saved for your account; an administrator can also save it as the default for everyone. A <strong>layout file</strong> (.json) lets you move it to another computer. What each user is allowed to open is set in <em>Users &amp; Roles → 🧭 Sections</em>.</div>
           <div id="navSetHost"></div>
-          <div class="btn-row" style="margin-top:10px;"><button id="navSetAdd" class="ghost small" type="button">➕ Add group</button><button id="navSetSave" class="success" type="button">💾 Save for me</button><button id="navSetDefault" class="secondary small" type="button">👥 Save as default for everyone</button><button id="navSetReset" class="ghost small" type="button">↺ Reset mine</button><button id="navSetExport" class="ghost small" type="button">⬇ Layout file</button><button id="navSetImportBtn" class="ghost small" type="button">⬆ Load layout file</button><input type="file" id="navSetFile" accept=".json,application/json" hidden><span id="navSetStatus" class="text-sm"></span></div>
+          <div class="btn-row" style="margin-top:10px;"><button id="navSetAdd" class="ghost small" type="button">➕ Add group</button><button id="navSetAuto" class="secondary small" type="button" title="Create suggested subgroups inside every main group (you can still edit them)">✨ Suggest subgroups for all groups</button><button id="navSetSave" class="success" type="button">💾 Save for me</button><button id="navSetDefault" class="secondary small" type="button">👥 Save as default for everyone</button><button id="navSetReset" class="ghost small" type="button">↺ Reset mine</button><button id="navSetExport" class="ghost small" type="button">⬇ Layout file</button><button id="navSetImportBtn" class="ghost small" type="button">⬆ Load layout file</button><input type="file" id="navSetFile" accept=".json,application/json" hidden><span id="navSetStatus" class="text-sm"></span></div>
         </div>
         <div class="card" id="hmSetCard">
           <div class="card-header"><div class="card-title">🏠 Switchboard (main page) appearance <span class="badge role-admin">ADMIN ONLY</span></div></div>
@@ -2908,65 +2908,65 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=79"></script>
-<script src="js/01-core-constants-helpers.js?v=79"></script>
-<script src="js/02-users-and-roles-ui.js?v=79"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=79"></script>
-<script src="js/04-confirm-combo-csv.js?v=79"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=79"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=79"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=79"></script>
-<script src="js/08-uom-tracker-attachments.js?v=79"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=79"></script>
-<script src="js/10-refresh-all-good-return.js?v=79"></script>
-<script src="js/11-fefo-filter-engine.js?v=79"></script>
-<script src="js/12-uploader-main-lookup.js?v=79"></script>
-<script src="js/13-uploader-key-computation.js?v=79"></script>
-<script src="js/14-exporter-prefilters.js?v=79"></script>
-<script src="js/15-value-cache-record-editor.js?v=79"></script>
-<script src="js/16-data-editor-download.js?v=79"></script>
-<script src="js/17-mapping-sample-check.js?v=79"></script>
-<script src="js/18-schedules-notifications-settings.js?v=79"></script>
-<script src="js/19-email-results.js?v=79"></script>
-<script src="js/20-prefilters-compose.js?v=79"></script>
-<script src="js/21-planning-filters-charts.js?v=79"></script>
-<script src="js/22-planning-dept.js?v=79"></script>
-<script src="js/23-daily-plan-model-charts.js?v=79"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=79"></script>
-<script src="js/25-fd-plan-trips.js?v=79"></script>
-<script src="js/26-production-vs-distribution.js?v=79"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=79"></script>
-<script src="js/28-oasis-prism-signboards.js?v=79"></script>
-<script src="js/29-staff-roster.js?v=79"></script>
-<script src="js/30-roster-edits-templates.js?v=79"></script>
-<script src="js/31-attendance-leave-planner.js?v=79"></script>
-<script src="js/32-management-daily-report.js?v=79"></script>
-<script src="js/33-logistics-trip-planning.js?v=79"></script>
-<script src="js/34-filter-fields-expand-window.js?v=79"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=79"></script>
-<script src="js/36-attendance-ot-calc.js?v=79"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=79"></script>
-<script src="js/38-mod-switchboard.js?v=79"></script>
-<script src="js/39-mod-tab-hide.js?v=79"></script>
-<script src="js/40-mod-activity-archive.js?v=79"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=79"></script>
-<script src="js/42-mod-relogin-button.js?v=79"></script>
-<script src="js/43-mod-project-progress.js?v=79"></script>
-<script src="js/44-mod-fleet-management.js?v=79"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=79"></script>
-<script src="js/45a-combobox.js?v=79"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=79"></script>
-<script src="js/46b-rmpm-mobile.js?v=79"></script>
-<script src="js/47-foc-release-voucher.js?v=79"></script>
-<script src="js/48-list-analytics.js?v=79"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=79"></script>
-<script src="js/50-logistics-ready-plan.js?v=79"></script>
-<script src="js/51-location-scope.js?v=79"></script>
-<script src="js/52-title-profiles.js?v=79"></script>
-<script src="js/53-rack-locations.js?v=79"></script>
-<script src="js/55-central-config.js?v=79"></script>
-<script src="js/56-mod-equipment-workshop.js?v=79"></script>
-<script src="js/99-boot.js?v=79"></script>
+<script src="js/00-users-data.js?v=81"></script>
+<script src="js/01-core-constants-helpers.js?v=81"></script>
+<script src="js/02-users-and-roles-ui.js?v=81"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=81"></script>
+<script src="js/04-confirm-combo-csv.js?v=81"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=81"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=81"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=81"></script>
+<script src="js/08-uom-tracker-attachments.js?v=81"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=81"></script>
+<script src="js/10-refresh-all-good-return.js?v=81"></script>
+<script src="js/11-fefo-filter-engine.js?v=81"></script>
+<script src="js/12-uploader-main-lookup.js?v=81"></script>
+<script src="js/13-uploader-key-computation.js?v=81"></script>
+<script src="js/14-exporter-prefilters.js?v=81"></script>
+<script src="js/15-value-cache-record-editor.js?v=81"></script>
+<script src="js/16-data-editor-download.js?v=81"></script>
+<script src="js/17-mapping-sample-check.js?v=81"></script>
+<script src="js/18-schedules-notifications-settings.js?v=81"></script>
+<script src="js/19-email-results.js?v=81"></script>
+<script src="js/20-prefilters-compose.js?v=81"></script>
+<script src="js/21-planning-filters-charts.js?v=81"></script>
+<script src="js/22-planning-dept.js?v=81"></script>
+<script src="js/23-daily-plan-model-charts.js?v=81"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=81"></script>
+<script src="js/25-fd-plan-trips.js?v=81"></script>
+<script src="js/26-production-vs-distribution.js?v=81"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=81"></script>
+<script src="js/28-oasis-prism-signboards.js?v=81"></script>
+<script src="js/29-staff-roster.js?v=81"></script>
+<script src="js/30-roster-edits-templates.js?v=81"></script>
+<script src="js/31-attendance-leave-planner.js?v=81"></script>
+<script src="js/32-management-daily-report.js?v=81"></script>
+<script src="js/33-logistics-trip-planning.js?v=81"></script>
+<script src="js/34-filter-fields-expand-window.js?v=81"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=81"></script>
+<script src="js/36-attendance-ot-calc.js?v=81"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=81"></script>
+<script src="js/38-mod-switchboard.js?v=81"></script>
+<script src="js/39-mod-tab-hide.js?v=81"></script>
+<script src="js/40-mod-activity-archive.js?v=81"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=81"></script>
+<script src="js/42-mod-relogin-button.js?v=81"></script>
+<script src="js/43-mod-project-progress.js?v=81"></script>
+<script src="js/44-mod-fleet-management.js?v=81"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=81"></script>
+<script src="js/45a-combobox.js?v=81"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=81"></script>
+<script src="js/46b-rmpm-mobile.js?v=81"></script>
+<script src="js/47-foc-release-voucher.js?v=81"></script>
+<script src="js/48-list-analytics.js?v=81"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=81"></script>
+<script src="js/50-logistics-ready-plan.js?v=81"></script>
+<script src="js/51-location-scope.js?v=81"></script>
+<script src="js/52-title-profiles.js?v=81"></script>
+<script src="js/53-rack-locations.js?v=81"></script>
+<script src="js/55-central-config.js?v=81"></script>
+<script src="js/56-mod-equipment-workshop.js?v=81"></script>
+<script src="js/99-boot.js?v=81"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {
