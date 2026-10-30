@@ -288,6 +288,7 @@ async function tf_loadUrl(quiet) {
   $('tfExportBtn').addEventListener('click', () => {
     if (!isAdmin()) { tf_set('✘ Only administrators can export the token file.', 'error'); return; }
     const g = loadGlobalSettings(); if (!g.siteUrl || !g.accessToken) { tf_set('⚠ Save the Site URL and token above first.', 'warn'); return; }
+    if (!confirm('⚠ Security warning\n\nThis file contains YOUR Microsoft access token. Anyone who gets the file can read and write SharePoint with your rights until it expires.\n\nUsers should renew their own session with “Renew Microsoft session” instead. Export only in an emergency, and delete the file after use.\n\nExport anyway?')) return;
     const o = { siteUrl: g.siteUrl, accessToken: g.accessToken, spToken: sp_token() || undefined, expiresAt: tf_exp(g.accessToken) || undefined, exportedAt: Date.now(), exportedBy: currentUser ? currentUser.username : '' };
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(o, null, 2)], { type: 'application/json' })); a.download = 'sp_token.json'; document.body.appendChild(a); a.click(); document.body.removeChild(a);
     tf_set('✅ sp_token.json downloaded. Upload it to the shared location and enter that location above.' + (o.expiresAt ? ' It expires ' + new Date(o.expiresAt).toLocaleString() + '.' : ''), 'success');
