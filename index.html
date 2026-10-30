@@ -7,10 +7,10 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>" />
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=78">
-<link rel="stylesheet" href="css/02-mobile.css?v=78">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=78">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=78">
+<link rel="stylesheet" href="css/01-base.css?v=79">
+<link rel="stylesheet" href="css/02-mobile.css?v=79">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=79">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=79">
 </head>
 <body>
 
@@ -104,6 +104,8 @@
       <div class="nav-item" data-view="rmp" data-perm="uploader"><span class="icon">🧪</span><span>RMPM Inventory Control</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Fleet</div>
       <div class="nav-item" data-view="flt" data-perm="planning"><span class="icon">🚚</span><span>Fleet Management</span><span class="badge new">NEW</span></div>
+      <div class="nav-section-label">Workshop</div>
+      <div class="nav-item" data-view="eqw" data-perm="uploader"><span class="icon">🛠</span><span>Equipment Workshop</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Projects</div>
       <div class="nav-item" data-view="prj" data-perm="planning"><span class="icon">🏗</span><span>Project Progress</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Management Report</div>
@@ -205,6 +207,15 @@
           <div class="pl-tabs" id="rmpTabs" style="margin:6px 0 10px"></div>
           <div id="rmpStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
           <div id="rmpBody"></div>
+        </div>
+      </div>
+      <div class="view" id="view-eqw">
+        <div class="card" id="eqwCard">
+          <div class="card-header"><div class="card-title">🛠 Marketing Equipment Workshop <span class="text-sm" style="font-weight:400;">— receive · estimate vs book value · repair or dispose · technician KPIs · asset history</span></div>
+            <div class="btn-row"><button class="secondary small" type="button" data-ew="reload" title="Re-read the workshop lists">🔄 Reload</button><button class="secondary small" data-acm="1" type="button" title="All actions of this screen" aria-haspopup="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-3px"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Actions</button><span class="tm-hid" style="display:none"><button type="button" data-rp="print" data-ew="print" data-a="print" title="Print">🖨 Print</button><button type="button" data-rp="excel" data-ew="excel" data-a="excel" title="Excel">📊 Excel</button><button type="button" data-rp="mail" data-ew="mail" data-a="mail" title="Email">✉ Email</button><button type="button" data-rp="reload" data-ew="reload" data-a="reload" title="Reload">🔄 Reload data</button><button type="button" data-rp="dest" data-ew="dest" data-a="dest" title="Lists and mapping">🔌 Lists &amp; mapping</button><button type="button" data-rp="guide" data-ew="guide" data-a="guide" title="Columns to create">🧭 List setup guide</button></span></div></div>
+          <div class="pl-tabs" id="ewTabs" style="margin:6px 0 10px"></div>
+          <div id="ewStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
+          <div id="ewBody"></div>
         </div>
       </div>
       <div class="view" id="view-uploader">
@@ -2897,64 +2908,65 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=78"></script>
-<script src="js/01-core-constants-helpers.js?v=78"></script>
-<script src="js/02-users-and-roles-ui.js?v=78"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=78"></script>
-<script src="js/04-confirm-combo-csv.js?v=78"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=78"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=78"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=78"></script>
-<script src="js/08-uom-tracker-attachments.js?v=78"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=78"></script>
-<script src="js/10-refresh-all-good-return.js?v=78"></script>
-<script src="js/11-fefo-filter-engine.js?v=78"></script>
-<script src="js/12-uploader-main-lookup.js?v=78"></script>
-<script src="js/13-uploader-key-computation.js?v=78"></script>
-<script src="js/14-exporter-prefilters.js?v=78"></script>
-<script src="js/15-value-cache-record-editor.js?v=78"></script>
-<script src="js/16-data-editor-download.js?v=78"></script>
-<script src="js/17-mapping-sample-check.js?v=78"></script>
-<script src="js/18-schedules-notifications-settings.js?v=78"></script>
-<script src="js/19-email-results.js?v=78"></script>
-<script src="js/20-prefilters-compose.js?v=78"></script>
-<script src="js/21-planning-filters-charts.js?v=78"></script>
-<script src="js/22-planning-dept.js?v=78"></script>
-<script src="js/23-daily-plan-model-charts.js?v=78"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=78"></script>
-<script src="js/25-fd-plan-trips.js?v=78"></script>
-<script src="js/26-production-vs-distribution.js?v=78"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=78"></script>
-<script src="js/28-oasis-prism-signboards.js?v=78"></script>
-<script src="js/29-staff-roster.js?v=78"></script>
-<script src="js/30-roster-edits-templates.js?v=78"></script>
-<script src="js/31-attendance-leave-planner.js?v=78"></script>
-<script src="js/32-management-daily-report.js?v=78"></script>
-<script src="js/33-logistics-trip-planning.js?v=78"></script>
-<script src="js/34-filter-fields-expand-window.js?v=78"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=78"></script>
-<script src="js/36-attendance-ot-calc.js?v=78"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=78"></script>
-<script src="js/38-mod-switchboard.js?v=78"></script>
-<script src="js/39-mod-tab-hide.js?v=78"></script>
-<script src="js/40-mod-activity-archive.js?v=78"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=78"></script>
-<script src="js/42-mod-relogin-button.js?v=78"></script>
-<script src="js/43-mod-project-progress.js?v=78"></script>
-<script src="js/44-mod-fleet-management.js?v=78"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=78"></script>
-<script src="js/45a-combobox.js?v=78"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=78"></script>
-<script src="js/46b-rmpm-mobile.js?v=78"></script>
-<script src="js/47-foc-release-voucher.js?v=78"></script>
-<script src="js/48-list-analytics.js?v=78"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=78"></script>
-<script src="js/50-logistics-ready-plan.js?v=78"></script>
-<script src="js/51-location-scope.js?v=78"></script>
-<script src="js/52-title-profiles.js?v=78"></script>
-<script src="js/53-rack-locations.js?v=78"></script>
-<script src="js/55-central-config.js?v=78"></script>
-<script src="js/99-boot.js?v=78"></script>
+<script src="js/00-users-data.js?v=79"></script>
+<script src="js/01-core-constants-helpers.js?v=79"></script>
+<script src="js/02-users-and-roles-ui.js?v=79"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=79"></script>
+<script src="js/04-confirm-combo-csv.js?v=79"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=79"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=79"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=79"></script>
+<script src="js/08-uom-tracker-attachments.js?v=79"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=79"></script>
+<script src="js/10-refresh-all-good-return.js?v=79"></script>
+<script src="js/11-fefo-filter-engine.js?v=79"></script>
+<script src="js/12-uploader-main-lookup.js?v=79"></script>
+<script src="js/13-uploader-key-computation.js?v=79"></script>
+<script src="js/14-exporter-prefilters.js?v=79"></script>
+<script src="js/15-value-cache-record-editor.js?v=79"></script>
+<script src="js/16-data-editor-download.js?v=79"></script>
+<script src="js/17-mapping-sample-check.js?v=79"></script>
+<script src="js/18-schedules-notifications-settings.js?v=79"></script>
+<script src="js/19-email-results.js?v=79"></script>
+<script src="js/20-prefilters-compose.js?v=79"></script>
+<script src="js/21-planning-filters-charts.js?v=79"></script>
+<script src="js/22-planning-dept.js?v=79"></script>
+<script src="js/23-daily-plan-model-charts.js?v=79"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=79"></script>
+<script src="js/25-fd-plan-trips.js?v=79"></script>
+<script src="js/26-production-vs-distribution.js?v=79"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=79"></script>
+<script src="js/28-oasis-prism-signboards.js?v=79"></script>
+<script src="js/29-staff-roster.js?v=79"></script>
+<script src="js/30-roster-edits-templates.js?v=79"></script>
+<script src="js/31-attendance-leave-planner.js?v=79"></script>
+<script src="js/32-management-daily-report.js?v=79"></script>
+<script src="js/33-logistics-trip-planning.js?v=79"></script>
+<script src="js/34-filter-fields-expand-window.js?v=79"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=79"></script>
+<script src="js/36-attendance-ot-calc.js?v=79"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=79"></script>
+<script src="js/38-mod-switchboard.js?v=79"></script>
+<script src="js/39-mod-tab-hide.js?v=79"></script>
+<script src="js/40-mod-activity-archive.js?v=79"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=79"></script>
+<script src="js/42-mod-relogin-button.js?v=79"></script>
+<script src="js/43-mod-project-progress.js?v=79"></script>
+<script src="js/44-mod-fleet-management.js?v=79"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=79"></script>
+<script src="js/45a-combobox.js?v=79"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=79"></script>
+<script src="js/46b-rmpm-mobile.js?v=79"></script>
+<script src="js/47-foc-release-voucher.js?v=79"></script>
+<script src="js/48-list-analytics.js?v=79"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=79"></script>
+<script src="js/50-logistics-ready-plan.js?v=79"></script>
+<script src="js/51-location-scope.js?v=79"></script>
+<script src="js/52-title-profiles.js?v=79"></script>
+<script src="js/53-rack-locations.js?v=79"></script>
+<script src="js/55-central-config.js?v=79"></script>
+<script src="js/56-mod-equipment-workshop.js?v=79"></script>
+<script src="js/99-boot.js?v=79"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {

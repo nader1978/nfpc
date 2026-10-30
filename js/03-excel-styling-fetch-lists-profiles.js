@@ -337,6 +337,7 @@ $('activityExportBtn').addEventListener('click', () => {
    Navigation
    ============================================================ */
 const VIEW_META = {
+  eqw: { title: 'Marketing Equipment Workshop', sub: 'Receive equipment from sales, estimate repair vs book value, assign technicians, track KPIs and asset history' },
   rmp: { title: 'RMPM Inventory Control', sub: 'Raw & packaging materials — GRN with QC, FEFO issue to production, alerts, bins, stock count' },
   wmv: { title: 'WHs Movements (FEFO)', sub: 'Inbound / outbound by pallets or bulk with FEFO batch allocation' },
   flt: { title: 'Fleet Management', sub: 'Vehicles, drivers, maintenance, fuel, documents, incidents, tyres and trips' },
