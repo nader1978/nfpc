@@ -18,7 +18,7 @@
   const INTERACTIVE = 'input,select,textarea,button,a,label,summary,[contenteditable],[data-action]';
   let cur = { rows: [], idx: 0, col: -1, headers: [], kind: 'table' };
   const txt = el => { const f = el.querySelector('input,select,textarea'); const v = f ? (f.type === 'checkbox' ? (f.checked ? 'Yes' : 'No') : f.value) : el.textContent; return String(v ?? '').replace(/\s+/g, ' ').trim(); };
-  const eligibleTable = t => t && !SKIP_TABLE.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw') && !t.classList.contains('map-table') && !t.closest('[id$="Modal"],#gdModal,.modal');
+  const eligibleTable = t => t && !SKIP_TABLE.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw, #view-wh3d') && !t.classList.contains('map-table') && !t.closest('[id$="Modal"],#gdModal,.modal');
   function headersOf(t) { const hr = t.tHead && t.tHead.rows.length ? t.tHead.rows[t.tHead.rows.length - 1] : t.rows[0]; return hr ? Array.from(hr.cells).map(c => txt(c)) : []; }
   /* hide / show fields (remembered), hide-empty, search, maximise */
   const LSH = LS_BASE + '_gdhide', LSE = LS_BASE + '_gdhideempty', LSM = LS_BASE + '_gdmax';
@@ -169,7 +169,7 @@
   ov.innerHTML = '<div class="te-bar"><strong id="teTitle" style="font-size:15px;">Table</strong><select id="teCol" style="margin:0;width:auto;max-width:220px;"></select><div class="te-combo" id="teCombo"></div><span id="teCount" class="text-sm" style="color:var(--gray-500);"></span><div class="spacer" style="flex:1"></div><button id="teExcel" class="success small" type="button">⬇ Excel</button><button id="teEmail" class="secondary small" type="button">📧 Email</button><button id="tePrint" class="ghost small" type="button">🖨 Print</button><button id="teClose" class="ghost small" type="button">✖ Close</button></div><div id="teExtra" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:40;background:var(--card);"></div><div class="te-body" id="teBody"></div>';
   document.body.appendChild(ov);
   const SKIP = new Set(['mappingTable', 'inlineEditTable', 'wFefoUploadMapTable', 'incUploadMapTable', 'plDataTable', 'dpDataTable', 'mdpImpTable', 'wGRBTable', 'wGRBUpMapTable']);
-  const ok = t => t && !SKIP.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw') && !t.classList.contains('map-table') && !t.closest('#tblExpandOverlay,[id$="Modal"],#gdModal,.modal');
+  const ok = t => t && !SKIP.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw, #view-wh3d') && !t.classList.contains('map-table') && !t.closest('#tblExpandOverlay,[id$="Modal"],#gdModal,.modal');
   let tbl = null, sel = [], colSel = {}, colOpts = {}, gOpts = new Set();
   const rowsOf = () => Array.from(tbl.tBodies).flatMap(b => Array.from(b.rows));
   const cellText = c => String(c.textContent || '').replace(/\s+/g, ' ').trim();
