@@ -54,7 +54,8 @@ function locKeep(listId, items) {
   if (listId === window.__locSkipList) return items;   /* the login list is never scoped */
   if (!locScoped() || !Array.isArray(items) || !items.length) return items;
   const col = locColOf(listId, (items[0] || {}).fields); if (!col) return items; const ids = new Set(locIds(currentUser)), hb = locCfg().hideBlank;
-  return items.filter(it => { const v = locNorm((it.fields || {})[col]); return v === '' ? !hb : ids.has(v); });
+  const oth = (typeof SRK !== 'undefined' && SRK.other && SRK.other.size) ? SRK.other : null, offLoc = f => { if (!oth) return false; for (const k in f) { if (/^(location_?code|storage_?location|location|loc_?code|rack_?code)$/i.test(k.replace(/_x0020_/gi, '_')) && f[k] != null && oth.has(String(f[k]).trim().toUpperCase())) return true; } return false; };
+  return items.filter(it => { const f = it.fields || {}, v = locNorm(f[col]); return v === '' ? (!hb && !offLoc(f)) : ids.has(v); });
 }
 /* one hook for EVERY read of a list's items (Data Download, Data Editor, Batch Allocation, WHs / RMPM / stock movement, FOC voucher, Milco planning, Oasis, uploads' key look-ups …) */
 const _locFetch = fetchWithRetry;
