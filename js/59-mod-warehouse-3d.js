@@ -68,8 +68,9 @@
     used.forEach(k => { const [a, b] = k.split('|').map(Number), x = X0 + bi.get(b) * BW, z = az(a); for (const xx of [0, BW - .08]) for (const dz of [0, DEP - .06]) B.push({ x: x + xx, y: 0, z: z + dz, w: .08, h: maxL * LH + .3, d: .06, c: [60, 100, 190] }); });
     frames.forEach(k => { const [a, b, l] = k.split('|').map(Number), x = X0 + bi.get(b) * BW, z = az(a); for (const dz of [0, DEP - .06]) B.push({ x, y: (l - 1) * LH + .35, z: z + dz, w: BW, h: .09, d: .06, c: [230, 120, 40] }); });
     S.forEach(s => { if (!ai.has(s.aisle) || !bi.has(s.bay)) return; const x = bx(s.bay, s.rank), y = (s.lvl - 1) * LH + .44, z = az(s.aisle) + .03;
-      if (!s.occ) { if (W.empty) B.push({ x, y, z, w: BW0, h: .04, d: DEP - .1, c: [52, 68, 104], m: s }); return; }
-      if (s.l3) { B.push({ x, y, z, w: BW0, h: .14, d: DEP - .1, c: [170, 125, 70], m: s }); s.pall.slice(0, s.depth).forEach((ln, i) => B.push({ x: x + .08, y: y + .14, z: z + DEP - .2 - (i + 1) * PD, w: BW0 - .16, h: LH * .6, d: PD - .1, c: colOf(s, ln), m: s })); return; }
+      const Ld = s.l3 ? s.depth * PD + .2 : DEP - .1, zl = s.l3 ? z + DEP - .1 - Ld : z;
+      if (!s.occ) { if (W.empty) B.push({ x, y, z: zl, w: BW0, h: .04, d: Ld, c: [52, 68, 104], m: s }); return; }
+      if (s.l3) { B.push({ x, y, z: zl, w: BW0, h: .14, d: Ld, c: [170, 125, 70], m: s }); s.pall.slice(0, s.depth).forEach((ln, i) => B.push({ x: x + .08, y: y + .14, z: z + DEP - .2 - (i + 1) * PD, w: BW0 - .16, h: LH * .6, d: PD - .1, c: colOf(s, ln), m: s })); return; }
       B.push({ x, y, z, w: BW0, h: .14, d: DEP - .1, c: [170, 125, 70], m: s }); const f = Math.max(.18, Math.min(1, fillOf(s))), dd = (DEP - .18) * f; B.push({ x: x + .06, y: y + .14, z: z + .04, w: BW0 - .12, h: LH * .6, d: dd, c: colOf(s), m: s }); });
     W.boxes = B; W.g = { TX, TZ, ais, X0, Z0, az, maxL, bays, bi, BW }; W.ext = Math.hypot(TX, TZ) / 2 + 3;
   }
