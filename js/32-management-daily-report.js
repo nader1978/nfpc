@@ -362,7 +362,9 @@ async function lulRun() {
     else if (!lul.ok) lulShow('⚠', 'Could not check your access', plEsc(r.msg || 'SharePoint did not answer.'), [['Retry', () => { lul.busy = false; lulRun(); }], ['Sign out', lulSignOut, 'ghost']]);
   } finally { lul.busy = false; }
 }
-function lulStart() { lul.ok = 0; lul.warned = false; clearInterval(lul.timer); if (!lulCfg().on || lulExempt()) { lulHide(); return; } lulRun(); lul.timer = setInterval(() => { if (!currentUser) { clearInterval(lul.timer); return; } lulRun(); }, 5 * 60 * 1000); }
+async function lulProfileOnly() {   /* admins / built-in users are never locked out, but their profile (Location ID …) is still refreshed from the login list at every login */
+  try { if (!currentUser || currentUser.builtin) return; const c = lulCfg(); if (!c.on) return; const r = await lulFetch(); if (r.state !== 'ok') { if (!lulProfileOnly.again) { lulProfileOnly.again = 1; setTimeout(() => { lulProfileOnly.again = 0; lulProfileOnly(); }, 10000); } return; } const j = lulJudge(r.items); if (j.found && j.f) locApplyRow(j.f); } catch (e) {} }
+function lulStart() { lul.ok = 0; lul.warned = false; clearInterval(lul.timer); if (!lulCfg().on || lulExempt()) { lulHide(); lulProfileOnly(); return; } lulRun(); lul.timer = setInterval(() => { if (!currentUser) { clearInterval(lul.timer); return; } lulRun(); }, 5 * 60 * 1000); }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser && lulCfg().on && !lulExempt() && Date.now() - lul.ok > 60000) lulRun(); });
 (function () {   // settings card
   const q = id => document.getElementById(id); if (!q('lulCard')) return; const c = lulCfg();

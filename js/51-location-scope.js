@@ -22,9 +22,9 @@ function locProfile(f) {   /* read the profile columns of a LoginUserList row */
   return o;
 }
 function locApplyRow(f) {   /* refresh the signed-in user's profile from SharePoint */
-  if (!f || !currentUser || currentUser.builtin) return; const o = locProfile(f); if (currentUser.locUser === 1) delete o.locationId; if (!Object.keys(o).length) return;
+  if (!f || !currentUser || currentUser.builtin) return; const o = locProfile(f); if (!Object.keys(o).length) return;
   const u = users.list.find(x => x.id === currentUser.id) || currentUser, before = String(u.spProfile || '') + '|' + String(u.locationId || ''); Object.assign(u, o); if (u !== currentUser) Object.assign(currentUser, o); saveUsers(); locBadge();
-  if (before !== String(u.spProfile || '') + '|' + String(u.locationId || '')) { try { navApply(true); } catch (e) {} try { if (activeViewId() === 'home' && window.homeRender) window.homeRender(); } catch (e) {} }
+  if (before !== String(u.spProfile || '') + '|' + String(u.locationId || '')) { try { if (typeof SRK !== 'undefined') { SRK.p = null; SRK.ok = false; } } catch (e) {} try { navApply(true); } catch (e) {} try { if (activeViewId() === 'home' && window.homeRender) window.homeRender(); } catch (e) {} }
 }
 const locNameMap = () => { try { return (JSON.parse(localStorage.getItem(LS_BASE + '_tprof') || '{}').names) || {}; } catch (e) { return {}; } };
 function locWhName(u) { u = u || currentUser; if (!u) return ''; if (u.whName) return String(u.whName); const m = locNameMap(), ids = locIds(u); return ids.map(i => m[i] || m[String(+i)] || '').filter(Boolean).join(' / '); }

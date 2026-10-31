@@ -1,5 +1,5 @@
 /* ---------- new-version check: the page compares its own build with version.json (never cached) and offers a one-click refresh ---------- */
-const APP_BUILD = '100';
+const APP_BUILD = '101';
 (function () {
   if (location.protocol === 'file:') return; let shown = false;
   const go = b => { try { if (window.caches && caches.keys) caches.keys().then(k => k.forEach(x => caches.delete(x))); } catch (e) {} const u = new URL(location.href); u.searchParams.set('r', b + '-' + Date.now()); location.replace(u.toString()); };
