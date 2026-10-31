@@ -53,9 +53,13 @@ createItem = function (siteId, listId, fields, token) { return _locCreate(siteId
 function locKeep(listId, items) {
   if (listId === window.__locSkipList) return items;   /* the login list is never scoped */
   if (!locScoped() || !Array.isArray(items) || !items.length) return items;
-  const col = locColOf(listId, (items[0] || {}).fields); if (!col) return items; const ids = new Set(locIds(currentUser)), hb = locCfg().hideBlank;
+  const col = locColOf(listId, (items[0] || {}).fields);
+  if (!col) { const o2 = (typeof SRK !== 'undefined' && SRK.other && SRK.other.size) ? SRK.other : null; if (!o2) return items;   /* no Location_ID column: rows whose location code is a rack of ANOTHER location are still hidden */
+    const LC2 = /^(location_?code|storage_?location|location|loc_?code|rack_?code)$/i; return items.filter(it => { const f = it.fields || {}; for (const k in f) if (LC2.test(k.replace(/_x0020_/gi, '_')) && f[k] != null && o2.has(String(f[k]).trim().toUpperCase())) return false; return true; }); } const ids = new Set(locIds(currentUser)), hb = locCfg().hideBlank;
   const oth = (typeof SRK !== 'undefined' && SRK.other && SRK.other.size) ? SRK.other : null, offLoc = f => { if (!oth) return false; for (const k in f) { if (/^(location_?code|storage_?location|location|loc_?code|rack_?code)$/i.test(k.replace(/_x0020_/gi, '_')) && f[k] != null && oth.has(String(f[k]).trim().toUpperCase())) return true; } return false; };
-  return items.filter(it => { const f = it.fields || {}, v = locNorm(f[col]); return v === '' ? (!hb && !offLoc(f)) : ids.has(v); });
+  const LCK = /^(location_?code|storage_?location|location|loc_?code)$/i, noLoc = f => { const ks = Object.keys(f).filter(k => LCK.test(k.replace(/_x0020_/gi, '_'))); return ks.length > 0 && ks.every(k => f[k] == null || String(f[k]).trim() === ''); }; let hid = 0;
+  const out = items.filter(it => { const f = it.fields || {}, v = locNorm(f[col]); const keep = v !== '' ? ids.has(v) : (!hb && !offLoc(f) && !noLoc(f)); if (!keep) hid++; return keep; });   /* a row with no Location_ID AND no location code cannot be placed in any location → hidden for a user of one location */
+  (window.__locHid = window.__locHid || {})[listId] = hid; return out;
 }
 /* one hook for EVERY read of a list's items (Data Download, Data Editor, Batch Allocation, WHs / RMPM / stock movement, FOC voucher, Milco planning, Oasis, uploads' key look-ups …) */
 const _locFetch = fetchWithRetry;
