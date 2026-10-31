@@ -4,7 +4,7 @@
   const W = { tab: 'view', zone: '', aisle: '', bay: '', lvl: 0, mode: 'exp', empty: true, q: '', slots: [], zones: new Map(), loaded: false, loading: false, sel: null, hover: null, boxes: [], hit: [], yaw: -.62, pit: .5, zoom: 1, px: 0, py: 0, ext: 30, unmapped: 0, view: 'iso', capu: (() => { try { return localStorage.getItem(LS_BASE + '_w3cap') || 'pallets'; } catch (e) { return 'pallets'; } })(), unm: new Map(), pm: {}, stores: new Map(), stErr: '' };
   const BW0 = 1.35, LH = 1.7, PD = 1.12; let AS = 5.2, DEP = 1.25;
   const ORD_KEY = LS_BASE + '_w3ord', ORD_OK = ['bay', 'aisle', 'level', 'depth', 'skip'];
-  const ordGet = () => { let v = ''; try { v = localStorage.getItem(ORD_KEY) || ''; } catch (e) {} const a = v.split(',').map(x => x.trim().toLowerCase()); return a.length === 4 && a.every(x => ORD_OK.includes(x)) ? a : ['bay', 'aisle', 'level', 'depth']; };
+  const ordGet = () => { let v = ''; try { v = localStorage.getItem(ORD_KEY) || ''; } catch (e) {} const a = v.split(',').map(x => x.trim().toLowerCase()); return a.length === 4 && a.every(x => ORD_OK.includes(x)) ? a : ['aisle', 'bay', 'level', 'depth']; };
   const num = v => { const n = Number(String(v == null ? '' : v).replace(/[,\s]/g, '')); return isFinite(n) ? n : 0; }, fmt = n => (Math.round(n * 100) / 100).toLocaleString();
   const today0 = () => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(); };
   const dleft = e => { const m = String(e || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? Math.round((new Date(+m[1], +m[2] - 1, +m[3]).getTime() - today0()) / 864e5) : null; };
@@ -39,7 +39,6 @@
       const ds = c.lines.map(l => l.days).filter(d => d != null); c.days = ds.length ? Math.min(...ds) : null; const top = c.lines.slice().sort((a, b) => b.qty - a.qty)[0]; c.sku = top ? top.sku : ''; const lf = c.lines.filter(l => l.life > 0 && l.days != null).map(l => Math.max(0, Math.min(1, l.days / l.life))); c.shelf = lf.length ? Math.min(...lf) : null;
       const cp = W.capu === 'units' ? c.units : c.pal; c.fillv = c.cap > 0 ? cp / c.cap : null; });
     const arr = [...cells.values()]; arr.forEach(c => { c.slot = c; });
-    const mnb = new Map(); arr.forEach(c => { if (!c.l3) return; const k = c.zone + '|' + c.aisle + '|' + c.lvl; mnb.set(k, Math.min(mnb.has(k) ? mnb.get(k) : 1e9, c.bay)); }); arr.forEach(c => { if (c.l3) c.bay = c.bay - mnb.get(c.zone + '|' + c.aisle + '|' + c.lvl) + 1; });
     /* position rank inside one bay-level, so that Pos numbers like 1,2,3,4,6 sit side by side */
     const g = new Map(); arr.forEach(c => { const k = [c.zone, c.aisle, c.bay, c.lvl].join('|'); if (!g.has(k)) g.set(k, []); g.get(k).push(c); }); g.forEach(L => { L.sort((a, b) => a.pos - b.pos || String(a.code).localeCompare(String(b.code))); L.forEach((c, i) => { c.rank = i + 1; }); });
     W.lanes = lanes; W.slots = arr; W.unmapped = un; const zs = new Map(); arr.forEach(c => { if (!zs.has(c.zone)) zs.set(c.zone, []); zs.get(c.zone).push(c); }); W.zones = zs;
