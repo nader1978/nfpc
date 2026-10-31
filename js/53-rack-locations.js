@@ -12,7 +12,7 @@ async function srkLoad(force) {
       items.forEach(it => { const f = it.fields || {}, kc = srkKey(f, /^rackcode$/); if (!kc) return; const code = String(f[kc] == null ? '' : f[kc]).trim(); if (!code) return;
         const ka = srkKey(f, /^activestat/), act = ka === undefined ? true : !(f[ka] === false || /^(no|false|0|inactive)$/i.test(String(f[ka]))); if (!act) return;
         const g = re => { const k = srkKey(f, re); return k === undefined || f[k] == null ? '' : String(f[k]).trim(); };
-        const r = { code, loc: g(/^locationdesc$/), whs: g(/^whsdesc$/), area: g(/^areadesc$/), cap: g(/^defaultcapacity$/), locId: g(/^locationid$/), aisle: g(/^aisle(no|num|number)?$/), bay: g(/^bay(no|num|number)?$/), level: g(/^(level|lvl)(no|num|number)?$/), pos: g(/^(pos|position)(no|num|number)?$/), rtype: g(/^(racktype|type)$/) };
+        const r = { code, loc: g(/^locationdesc$/), whs: g(/^whsdesc$/), area: g(/^areadesc$/), cap: g(/^defaultcapacity$/), locId: g(/^locationid$/), aisle: g(/^aisle(no|num|number)?$/), bay: g(/^bay(no|num|number)?$/), level: g(/^(level|lvl)(no|num|number)?$/), pos: g(/^(pos|position)(no|num|number)?$/), rtype: g(/^(racktype|type)$/), r3d: g(/^rack3d/) };
         if (mine && r.locId !== '' && !mine.has(String(r.locId).trim()) && !mine.has(String(+r.locId))) return;
         if (!map.has(code.toUpperCase())) { map.set(code.toUpperCase(), r); rows.push(r); } });
       rows.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })); SRK.rows = rows; SRK.map = map; SRK.ok = rows.length > 0; if (!rows.length) SRK.err = 'no active racks found in ' + SRK_LIST; }
