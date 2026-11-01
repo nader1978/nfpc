@@ -237,7 +237,7 @@ function mdpAlloc(ds, pool, pol) {
 function mdpDescOf(code, fb) { const it = mdp.items && mdp.items.get(code), sk = mdp.stock && mdp.stock.get(code); return (it && it.desc) || (sk && sk.desc) || fb || ''; }
 /* ---------- UoM dropdown on trip screens: options come from the "Loading_UoM" dropdown source (Dropdown sources), else its history ---------- */
 /* Default UoM of the quantities IMPORTED in each area (admin, Settings). The system converts from it when a user picks another UoM: qty x factor(imported UoM) / factor(chosen UoM). */
-const UOM_AREAS = [{ k: 'fd', label: 'F&D Plan (trips / trailers)', def: 'PLT' }, { k: 'mdp', label: 'Milco Daily Planning', def: '' }];
+const UOM_AREAS = [{ k: 'fd', label: 'F&D Plan (trips / trailers)', def: '' }, { k: 'mdp', label: 'Milco Daily Planning', def: '' }];
 const UOM_AREA_KEY = LS_BASE + '_uom_area';
 function uomAreaGet(k) { try { const o = JSON.parse(localStorage.getItem(UOM_AREA_KEY) || '{}'); if (o && o[k] != null) return o[k]; } catch (e) {} const a = UOM_AREAS.find(x => x.k === k); return a ? a.def : ''; }
 function uomAreaSet(k, v) { try { const o = JSON.parse(localStorage.getItem(UOM_AREA_KEY) || '{}') || {}; o[k] = v; localStorage.setItem(UOM_AREA_KEY, JSON.stringify(o)); } catch (e) {} }
@@ -278,8 +278,8 @@ function uomListOpts(code, c) {
   try {
     if (!wUomState.table.size) { if (wUomState.listName && !wUomState._ld) { wUomState._ld = 1; wUom_loadFromList().then(() => { try { uomRefreshTrips(); } catch (e) {} }).catch(() => {}); } return null; }
     const e = wUomState.table.get(wUomNorm(code)); if (!e) return null;
-    const ks = ['pc', ...Array.from(e.factors.keys()).filter(k => k !== 'pc')]; if (c && !ks.includes(wUomCanon(c))) ks.push(wUomCanon(c));
-    return ks.map(k => ({ k, t: (e.labels && e.labels.get(k)) || (k === wUomCanon(c) && c) || k.toUpperCase() }));
+    const isN = v => /^[\d.,\s]+$/.test(String(v)), ks = ['pc', ...Array.from(e.factors.keys()).filter(k => k !== 'pc' && !isN(k))]; if (c && !ks.includes(wUomCanon(c))) ks.push(wUomCanon(c));
+    return ks.map(k => ({ k, t: (e.labels && e.labels.get(k) && !isN(e.labels.get(k)) ? e.labels.get(k) : '') || (k === wUomCanon(c) && c) || k.toUpperCase() }));
   } catch (x) { return null; }
 }
 function uomSel(code, cur) {

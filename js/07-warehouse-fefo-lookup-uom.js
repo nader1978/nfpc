@@ -472,7 +472,7 @@ function wUom_rebuild() {
     const sku = wUomNorm(r[m.sku]); if (!sku) continue;
     let e = t.get(sku); if (!e) { e = { factors: new Map(), labels: new Map(), carton: null, pallet: null, cartonUom: '', desc: '' }; t.set(sku, e); }
     if (m.desc && !e.desc) { const dv = String(r[m.desc] ?? '').trim(); if (dv) e.desc = dv; }
-    if (long) { const tx = m.text ? String(r[m.text] ?? '').trim() : '', u = wUomCanon(tx || r[m.uom]), f = u_toNumber(r[m.factor]); if (u && f > 0) { setF(e, u, f); if (tx) e.labels.set(u, tx); } }
+    if (long) { const isN = v => /^[\d.,\s]+$/.test(String(v ?? '').trim()), c1 = m.text ? String(r[m.text] ?? '').trim() : '', c2 = m.uom ? String(r[m.uom] ?? '').trim() : '', tx = (c1 && !isN(c1)) ? c1 : ((c2 && !isN(c2)) ? c2 : ''), u = wUomCanon(tx || c1 || c2), f = u_toNumber(r[m.factor]); if (u && f > 0) { setF(e, u, f); if (tx) e.labels.set(u, tx); } }
     else {
       const c = m.carton ? u_toNumber(r[m.carton]) : null, p = m.pallet ? u_toNumber(r[m.pallet]) : null;
       if (c > 0) setF(e, 'ct', c);
