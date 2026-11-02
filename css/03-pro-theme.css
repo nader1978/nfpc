@@ -101,3 +101,27 @@ body.brand-wide .login-brand h1{display:none}
 body.brand-wide.sb-mini .sidebar-brand .logo{max-width:44px;height:44px!important}
 html[data-accent=nfpc] .hm-ban{background:linear-gradient(120deg,#4a1a63,#702C8C 70%,#8d45ab)!important}
 body.brand-wide .sidebar-brand .logo{height:66px!important;max-width:210px}
+
+/* RAB theme — green & gold (no logo): charcoal #212123 · green #0e7a3a · gold #c9a227 */
+html[data-accent=rab]{--rab-char:#212123;--rab-green:#0e7a3a;--rab-green-d:#0b4d27;--rab-gold:#c9a227;--rab-gold-l:#e6c65a;
+  --acc-1:#0b4d27;--acc-2:#0e7a3a;--acc-3:#2f9e57;--acc-soft:#eaf5ee;--acc-line:#c4e0cd;--acc-grad:linear-gradient(120deg,#1f2321 0%,#0b4d27 42%,#0e7a3a 78%,#1f8f48 100%);
+  --brand:#0e7a3a;--brand-dark:#0b5e2d;--brand-light:#eaf6ee;--sidebar-bg:#212325;--sidebar-hover:#2f3331}
+html[data-accent=rab] body.dark{--brand-light:#12351f;--acc-soft:#1c2a22;--acc-line:#2e4a39}
+html[data-accent=rab] body .sidebar,html[data-accent=rab] html body .sidebar,html[data-accent=rab] body .sidebar{--sidebar-bg:#212325;--sidebar-hover:#2f3331;background:linear-gradient(180deg,#232625 0%,#181a19 100%)!important}
+html[data-accent=rab] .sidebar .sidebar-header{border-bottom:2px solid var(--rab-gold)}
+html[data-accent=rab] .nav-item.active{background:linear-gradient(90deg,var(--rab-green-d),var(--rab-green));box-shadow:inset 3px 0 0 var(--rab-gold),0 2px 8px rgba(0,0,0,.3)}
+html[data-accent=rab] .sidebar .nav-group-head,html[data-accent=rab] .sidebar .nav-group-head .gname,html[data-accent=rab] .sidebar .nav-section-label{color:var(--rab-gold-l)!important}
+html[data-accent=rab] .sidebar .nav-group-head .gcount{background:rgba(201,162,39,.25);color:var(--rab-gold-l)}
+html[data-accent=rab] .sidebar .avatar,html[data-accent=rab] .sidebar .user-avatar{background:var(--rab-gold)!important;color:#1b1b1b!important}
+html[data-accent=rab] .nav-item .badge{background:var(--rab-gold);color:#241c00}
+html[data-accent=rab] body .topbar{border-bottom:2px solid var(--rab-gold)!important}
+html[data-accent=rab] .hm-ban{background:linear-gradient(120deg,#1f2321,#0b4d27 50%,#0e7a3a)!important;border-bottom:3px solid var(--rab-gold)}
+html[data-accent=rab] .login-screen{background:linear-gradient(135deg,#1b1d1c 0%,#0b4d27 60%,#0e7a3a 100%)}
+html[data-accent=rab] .login-card{border-top:4px solid var(--rab-gold)}
+html[data-accent=rab] .login-card button[type=submit],html[data-accent=rab] #loginBtn{background:linear-gradient(120deg,#0b4d27,#0e7a3a)}
+
+/* login page background: follows the colour theme (default) or plain white (administrator's choice) */
+html:not([data-login=white]) .login-screen{background:linear-gradient(135deg,var(--acc-1) 0%,var(--acc-2) 70%,var(--acc-3) 100%)}
+html[data-login=white] .login-screen{background:#fff!important}
+html[data-login=white] body.dark .login-screen{background:#fff!important}
+html[data-login=white] .login-card{box-shadow:0 8px 30px rgba(0,0,0,.12)}

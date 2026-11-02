@@ -10,7 +10,7 @@ const NFPC_LOGO_DARK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYAAAAD0CA
   async function publish() {
     if (!isAdmin()) return say('Only administrators can publish.', 1); const d = brandDraft && brandDraft(); if (!d) return;
     const accent = (() => { try { return localStorage.getItem(LS_BASE + '_accent') || 'blue'; } catch (e) { return 'blue'; } })(), force = !!Q('#brForce').checked;
-    const cfg = { v: 1, name: d.name || '', tag: d.tag || '', logo: d.logo || '', wide: !!d.wide, co: d.co || {}, sb: d.sb || {}, rad: d.rad == null ? '' : d.rad, accent, force, hasImg: !!d.img, hasImgDark: !!d.imgDark, by: getCurrentUserValue(), at: new Date().toISOString() };
+    const cfg = { v: 1, name: d.name || '', tag: d.tag || '', logo: d.logo || '', wide: !!d.wide, co: d.co || {}, sb: d.sb || {}, rad: d.rad == null ? '' : d.rad, accent, force, login: (Q('#brLogin') && Q('#brLogin').value) || 'theme', hasImg: !!d.img, hasImgDark: !!d.imgDark, by: getCurrentUserValue(), at: new Date().toISOString() };
     try { say('Publishing…'); const c = await tpCtx(); if (!c) throw new Error('sign in / Site URL is not ready'); const its = await fetchAllItems(c.siteId, c.listId, c.token);
       await upsert(c, its, IT.a, d.img || ''); await upsert(c, its, IT.b, d.imgDark || ''); await upsert(c, its, IT.j, JSON.stringify(cfg));
       const store = Object.assign({}, cfg, { img: d.img || '', imgDark: d.imgDark || '' }); try { localStorage.setItem(CEN, JSON.stringify(store)); } catch (e) {}
@@ -25,7 +25,7 @@ const NFPC_LOGO_DARK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAYAAAAD0CA
     catch (e) { return false; } }
   function preset() { const d = brandDraft && brandDraft(); if (!d) return; d.img = NFPC_LOGO; d.imgDark = NFPC_LOGO_DARK; d.wide = true; d.tag = d.tag || 'National Food Products Company'; if (Q('#brWide')) Q('#brWide').checked = true; try { localStorage.setItem(LS_BASE + '_accent', 'nfpc'); } catch (e) {} try { accentRefresh(); } catch (e) {} document.body.classList.add('brand-wide'); try { brandPrev(); } catch (e) {} say('NFPC logos and purple theme loaded — press Save (this browser) or Publish (all users).'); }
   window.brandPull = pull;
-  function wire() { const b = Q('#brPublish'); if (!b || b.dataset.w) return; b.dataset.w = 1; b.onclick = publish; Q('#brUnpub').onclick = unpublish; Q('#brNfpc').onclick = preset; Q('#brForce').checked = !!cenGet().force; }
+  function wire() { const b = Q('#brPublish'); if (!b || b.dataset.w) return; b.dataset.w = 1; const ls = Q('#brLogin'); if (ls) { ls.value = (window.loginBgGet && loginBgGet()) || 'theme'; ls.onchange = () => { try { localStorage.setItem(LS_BASE + '_loginbg', ls.value); } catch (e) {} const z = cenGet(); if (z.login) { z.login = ls.value; try { localStorage.setItem(CEN, JSON.stringify(z)); } catch (e) {} } try { accentRefresh(); } catch (e) {} }; } b.onclick = publish; Q('#brUnpub').onclick = unpublish; Q('#brNfpc').onclick = preset; Q('#brForce').checked = !!cenGet().force; }
   document.addEventListener('click', () => setTimeout(wire, 200)); setTimeout(wire, 1200);
   const prev = onLoginComplete; onLoginComplete = function () { const r = prev.apply(this, arguments); setTimeout(() => { pull(true); }, 700); return r; }; setInterval(() => { if (currentUser) pull(true); }, 10 * 60 * 1000);
   /* the built-in NFPC look is also the starting point for a brand-new installation: nothing forced, nothing published */

@@ -7,10 +7,10 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>" />
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=124">
-<link rel="stylesheet" href="css/02-mobile.css?v=124">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=124">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=124">
+<link rel="stylesheet" href="css/01-base.css?v=126">
+<link rel="stylesheet" href="css/02-mobile.css?v=126">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=126">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=126">
 </head>
 <body>
 
@@ -2797,7 +2797,7 @@
           <div class="form-group"><label>About the company</label><textarea id="coAbout" rows="3" maxlength="600" style="width:100%"></textarea></div>
           <div class="btn-row" style="gap:10px;margin:6px 0"><span id="brPrev" style="display:inline-flex;align-items:center;gap:8px;font-weight:700"></span><button class="btn btn-secondary" id="brFile" type="button">🖼 Upload logo picture…</button><button class="btn btn-secondary" id="brNoImg" type="button">✖ Remove picture</button><input type="file" id="brPick" accept="image/*" style="display:none"></div>
           <div class="btn-row" style="gap:10px;margin:6px 0"><button class="btn btn-secondary" id="brFile2" type="button">🖼 Upload logo for the dark side panel…</button><button class="btn btn-secondary" id="brNoImg2" type="button">✖ Remove</button><input type="file" id="brPick2" accept="image/*" style="display:none"><label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="brWide"> Logo already contains the company name (hide the text beside it)</label></div>
-          <div class="btn-row" id="brCentral" style="gap:10px;margin:6px 0;padding:8px 10px;border:1px dashed var(--acc-line);border-radius:10px;flex-wrap:wrap"><button class="btn btn-secondary" id="brNfpc" type="button">🎨 Use the NFPC logos &amp; purple theme</button><button class="btn btn-primary" id="brPublish" type="button">📢 Publish as the default for all users</button><label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="brForce"> Force for everyone (users cannot change the colour theme / name / logo)</label><button class="btn btn-secondary" id="brUnpub" type="button">🗑 Remove the published default</button><span id="brPubMsg" class="hint"></span></div>
+          <div class="btn-row" id="brCentral" style="gap:10px;margin:6px 0;padding:8px 10px;border:1px dashed var(--acc-line);border-radius:10px;flex-wrap:wrap"><button class="btn btn-secondary" id="brNfpc" type="button">🎨 Use the NFPC logos &amp; purple theme</button><button class="btn btn-primary" id="brPublish" type="button">📢 Publish as the default for all users</button><label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="brForce"> Force for everyone (users cannot change the colour theme / name / logo)</label><label style="display:inline-flex;gap:6px;align-items:center">Login page background <select id="brLogin"><option value="theme">Theme colour</option><option value="white">White</option></select></label><button class="btn btn-secondary" id="brUnpub" type="button">🗑 Remove the published default</button><span id="brPubMsg" class="hint"></span></div>
           <div class="btn-row" style="gap:10px"><button class="btn btn-primary" id="brSave" type="button">💾 Save</button><button class="btn btn-secondary" id="brCopy" type="button">📋 Copy default</button><button class="btn btn-secondary" id="brReset" type="button">↺ Reset to original</button><span id="brMsg" class="hint"></span></div>
         </div>
         <div class="card" id="coCard" style="display:none">
@@ -2922,73 +2922,73 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=124"></script>
-<script src="js/01-core-constants-helpers.js?v=124"></script>
-<script src="js/02-users-and-roles-ui.js?v=124"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=124"></script>
-<script src="js/04-confirm-combo-csv.js?v=124"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=124"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=124"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=124"></script>
-<script src="js/08-uom-tracker-attachments.js?v=124"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=124"></script>
-<script src="js/10-refresh-all-good-return.js?v=124"></script>
-<script src="js/11-fefo-filter-engine.js?v=124"></script>
-<script src="js/12-uploader-main-lookup.js?v=124"></script>
-<script src="js/13-uploader-key-computation.js?v=124"></script>
-<script src="js/14-exporter-prefilters.js?v=124"></script>
-<script src="js/15-value-cache-record-editor.js?v=124"></script>
-<script src="js/16-data-editor-download.js?v=124"></script>
-<script src="js/17-mapping-sample-check.js?v=124"></script>
-<script src="js/18-schedules-notifications-settings.js?v=124"></script>
-<script src="js/19-email-results.js?v=124"></script>
-<script src="js/20-prefilters-compose.js?v=124"></script>
-<script src="js/21-planning-filters-charts.js?v=124"></script>
-<script src="js/22-planning-dept.js?v=124"></script>
-<script src="js/23-daily-plan-model-charts.js?v=124"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=124"></script>
-<script src="js/25-fd-plan-trips.js?v=124"></script>
-<script src="js/26-production-vs-distribution.js?v=124"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=124"></script>
-<script src="js/28-oasis-prism-signboards.js?v=124"></script>
-<script src="js/29-staff-roster.js?v=124"></script>
-<script src="js/30-roster-edits-templates.js?v=124"></script>
-<script src="js/31-attendance-leave-planner.js?v=124"></script>
-<script src="js/32-management-daily-report.js?v=124"></script>
-<script src="js/33-logistics-trip-planning.js?v=124"></script>
-<script src="js/34-filter-fields-expand-window.js?v=124"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=124"></script>
-<script src="js/36-attendance-ot-calc.js?v=124"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=124"></script>
-<script src="js/38-mod-switchboard.js?v=124"></script>
-<script src="js/39-mod-tab-hide.js?v=124"></script>
-<script src="js/40-mod-activity-archive.js?v=124"></script>
-<script src="js/40b-create-popup.js?v=124"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=124"></script>
-<script src="js/42-mod-relogin-button.js?v=124"></script>
-<script src="js/43-mod-project-progress.js?v=124"></script>
-<script src="js/44-mod-fleet-management.js?v=124"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=124"></script>
-<script src="js/45a-combobox.js?v=124"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=124"></script>
-<script src="js/46b-rmpm-mobile.js?v=124"></script>
-<script src="js/47-foc-release-voucher.js?v=124"></script>
-<script src="js/48-list-analytics.js?v=124"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=124"></script>
-<script src="js/50-logistics-ready-plan.js?v=124"></script>
-<script src="js/51-location-scope.js?v=124"></script>
-<script src="js/52-title-profiles.js?v=124"></script>
-<script src="js/52a-nav-central.js?v=124"></script>
-<script src="js/52b-brand-central.js?v=124"></script>
-<script src="js/53-rack-locations.js?v=124"></script>
-<script src="js/55-central-config.js?v=124"></script>
-<script src="js/58-session-renew.js?v=124"></script>
-<script src="js/59-mod-warehouse-3d.js?v=124"></script>
-<script src="js/59b-wh3d-rack-setup.js?v=124"></script>
-<script src="js/59c-wh3d-picks-link.js?v=124"></script>
-<script src="js/60-update-check.js?v=124"></script>
-<script src="js/56-mod-equipment-workshop.js?v=124"></script>
-<script src="js/99-boot.js?v=124"></script>
+<script src="js/00-users-data.js?v=126"></script>
+<script src="js/01-core-constants-helpers.js?v=126"></script>
+<script src="js/02-users-and-roles-ui.js?v=126"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=126"></script>
+<script src="js/04-confirm-combo-csv.js?v=126"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=126"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=126"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=126"></script>
+<script src="js/08-uom-tracker-attachments.js?v=126"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=126"></script>
+<script src="js/10-refresh-all-good-return.js?v=126"></script>
+<script src="js/11-fefo-filter-engine.js?v=126"></script>
+<script src="js/12-uploader-main-lookup.js?v=126"></script>
+<script src="js/13-uploader-key-computation.js?v=126"></script>
+<script src="js/14-exporter-prefilters.js?v=126"></script>
+<script src="js/15-value-cache-record-editor.js?v=126"></script>
+<script src="js/16-data-editor-download.js?v=126"></script>
+<script src="js/17-mapping-sample-check.js?v=126"></script>
+<script src="js/18-schedules-notifications-settings.js?v=126"></script>
+<script src="js/19-email-results.js?v=126"></script>
+<script src="js/20-prefilters-compose.js?v=126"></script>
+<script src="js/21-planning-filters-charts.js?v=126"></script>
+<script src="js/22-planning-dept.js?v=126"></script>
+<script src="js/23-daily-plan-model-charts.js?v=126"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=126"></script>
+<script src="js/25-fd-plan-trips.js?v=126"></script>
+<script src="js/26-production-vs-distribution.js?v=126"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=126"></script>
+<script src="js/28-oasis-prism-signboards.js?v=126"></script>
+<script src="js/29-staff-roster.js?v=126"></script>
+<script src="js/30-roster-edits-templates.js?v=126"></script>
+<script src="js/31-attendance-leave-planner.js?v=126"></script>
+<script src="js/32-management-daily-report.js?v=126"></script>
+<script src="js/33-logistics-trip-planning.js?v=126"></script>
+<script src="js/34-filter-fields-expand-window.js?v=126"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=126"></script>
+<script src="js/36-attendance-ot-calc.js?v=126"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=126"></script>
+<script src="js/38-mod-switchboard.js?v=126"></script>
+<script src="js/39-mod-tab-hide.js?v=126"></script>
+<script src="js/40-mod-activity-archive.js?v=126"></script>
+<script src="js/40b-create-popup.js?v=126"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=126"></script>
+<script src="js/42-mod-relogin-button.js?v=126"></script>
+<script src="js/43-mod-project-progress.js?v=126"></script>
+<script src="js/44-mod-fleet-management.js?v=126"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=126"></script>
+<script src="js/45a-combobox.js?v=126"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=126"></script>
+<script src="js/46b-rmpm-mobile.js?v=126"></script>
+<script src="js/47-foc-release-voucher.js?v=126"></script>
+<script src="js/48-list-analytics.js?v=126"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=126"></script>
+<script src="js/50-logistics-ready-plan.js?v=126"></script>
+<script src="js/51-location-scope.js?v=126"></script>
+<script src="js/52-title-profiles.js?v=126"></script>
+<script src="js/52a-nav-central.js?v=126"></script>
+<script src="js/52b-brand-central.js?v=126"></script>
+<script src="js/53-rack-locations.js?v=126"></script>
+<script src="js/55-central-config.js?v=126"></script>
+<script src="js/58-session-renew.js?v=126"></script>
+<script src="js/59-mod-warehouse-3d.js?v=126"></script>
+<script src="js/59b-wh3d-rack-setup.js?v=126"></script>
+<script src="js/59c-wh3d-picks-link.js?v=126"></script>
+<script src="js/60-update-check.js?v=126"></script>
+<script src="js/56-mod-equipment-workshop.js?v=126"></script>
+<script src="js/99-boot.js?v=126"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {
