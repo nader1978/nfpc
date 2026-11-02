@@ -64,13 +64,15 @@ async function roXlB64(wb, name) {   // for e-mail attachments: coloured when po
 })();
 
 (function () {   // colour theme (saved at once, per browser)
-  const T = [['blue', 'Blue', 'linear-gradient(120deg,#12306b,#3b82f6)'], ['green', 'Green', 'linear-gradient(120deg,#14532d,#34b863)'], ['navy', 'Dark blue', 'linear-gradient(120deg,#071433,#1e40af)'], ['gray', 'Gray', 'linear-gradient(120deg,#1f2937,#8795a8)'], ['red', 'Dark red', 'linear-gradient(120deg,#5b0f1b,#d6455a)']], KEY = LS_BASE + '_accent';
-  const get = () => { try { return localStorage.getItem(KEY) || 'blue'; } catch (e) { return 'blue'; } };
+  const T = [['nfpc', 'NFPC purple', 'linear-gradient(120deg,#4a1a63,#8d45ab)'], ['blue', 'Blue', 'linear-gradient(120deg,#12306b,#3b82f6)'], ['green', 'Green', 'linear-gradient(120deg,#14532d,#34b863)'], ['navy', 'Dark blue', 'linear-gradient(120deg,#071433,#1e40af)'], ['gray', 'Gray', 'linear-gradient(120deg,#1f2937,#8795a8)'], ['red', 'Dark red', 'linear-gradient(120deg,#5b0f1b,#d6455a)']], KEY = LS_BASE + '_accent';
+  const cen = () => { try { return JSON.parse(localStorage.getItem(LS_BASE + '_brand_cen') || '{}') || {}; } catch (e) { return {}; } };
+  const get = () => { try { const z = cen(), own = localStorage.getItem(KEY); return (z.force && z.accent) ? z.accent : (own || z.accent || 'blue'); } catch (e) { return 'blue'; } };
+  window.accentRefresh = () => apply(get());
   const apply = v => { if (v === 'blue') document.documentElement.removeAttribute('data-accent'); else document.documentElement.setAttribute('data-accent', v); const box = document.getElementById('setAccent'); if (box) box.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.a === v)); };
   apply(get());
   const box = document.getElementById('setAccent'); if (!box) return;
   box.innerHTML = T.map(t => `<button type="button" data-a="${t[0]}"><i style="background:${t[2]}"></i>${t[1]}</button>`).join(''); apply(get());
-  box.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (!b) return; try { localStorage.setItem(KEY, b.dataset.a); } catch (x) {} apply(b.dataset.a); });
+  box.addEventListener('click', e => { const b = e.target.closest('button[data-a]'); if (!b) return; if (cen().force && cen().accent) { try { sectionToast('The administrator has set the colour theme for everyone.', 'warn'); } catch (x) {} return; } try { localStorage.setItem(KEY, b.dataset.a); } catch (x) {} apply(b.dataset.a); });
 })();
 (function () {   // Excel style settings (saved at once)
   const st = document.getElementById('setXlStyle'), co = document.getElementById('setXlCompany'); if (!st || !co) return; const p = XL_PREF();
