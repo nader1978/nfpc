@@ -341,6 +341,8 @@ $('activityExportBtn').addEventListener('click', () => {
    ============================================================ */
 const VIEW_META = {
   wh3d: { title: '3D Warehouse View', sub: 'Racks and pallet storage visualised in 3D — colour by expiry, fill or SKU' },
+  otr: { title: 'OT Approved vs Recovered', sub: 'Approved OT hours vs the hours given back as days off — by location, in-charge and staff' },
+  rkc: { title: 'Rack Hits & Damages', sub: 'Rack inspections from the mobile app — racks × dates per location, shown on the 3D' },
   eqw: { title: 'Marketing Equipment Workshop', sub: 'Receive equipment from sales, estimate repair vs book value, assign technicians, track KPIs and asset history' },
   rmp: { title: 'RMPM Inventory Control', sub: 'Raw & packaging materials — GRN with QC, FEFO issue to production, alerts, bins, stock count' },
   wmv: { title: 'WHs Movements (FEFO)', sub: 'Inbound / outbound by pallets or bulk with FEFO batch allocation' },

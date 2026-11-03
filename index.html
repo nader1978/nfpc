@@ -97,9 +97,11 @@
       <div class="nav-section-label">Warehouse Locations</div>
       <div class="nav-item" data-view="locsign" data-perm="locsign"><span class="icon">🪧</span><span>Signboards &amp; Rack Labels</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="wh3d" data-perm="locsign"><span class="icon">🧊</span><span>3D Warehouse View</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="rkc" data-perm="locsign"><span class="icon">🛡</span><span>Rack Hits &amp; Damages</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Staff Attendance</div>
       <div class="nav-item" data-view="att" data-perm="att"><span class="icon">🕒</span><span>Attendance Analytics</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="otrules" data-perm="att"><span class="icon">⏱</span><span>Overtime, Slots &amp; Breaks</span></div>
+      <div class="nav-item" data-view="otr" data-perm="att"><span class="icon">⚖</span><span>OT Approved vs Recovered</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">FOC Vouchers</div>
       <div class="nav-item" data-view="foc" data-perm="foc"><span class="icon">🎁</span><span>FOC Release Voucher</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">RMPM Warehouse</div>
@@ -219,6 +221,22 @@
           <div class="pl-tabs" id="ewTabs" style="margin:6px 0 10px"></div>
           <div id="ewStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
           <div id="ewBody"></div>
+        </div>
+      </div>
+      <div class="view" id="view-rkc">
+        <div class="card" id="rkcCard">
+          <div class="card-header"><div class="card-title">🛡 Rack Hits &amp; Damages <span class="text-sm" style="font-weight:400;">— rack inspections from the mobile app (Store_Inspections_RowDtls_tbl) · racks × dates per location · shown on the 3D</span></div>
+            <div class="btn-row"><button class="secondary small" type="button" data-rk="reload" title="Re-read the inspections and racks">🔄 Reload</button></div></div>
+          <div id="rkcStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
+          <div id="rkcBody"></div>
+        </div>
+      </div>
+      <div class="view" id="view-otr">
+        <div class="card" id="otrCard">
+          <div class="card-header"><div class="card-title">⚖ OT Approved vs Recovered <span class="text-sm" style="font-weight:400;">— approved OT hours and the hours the in-charge gave back as days off · by location, in-charge and staff</span></div>
+            <div class="btn-row"><button class="secondary small" type="button" data-or="reload" title="Re-read the four OT lists">🔄 Reload</button></div></div>
+          <div id="otrStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
+          <div id="otrBody"></div>
         </div>
       </div>
       <div class="view" id="view-wh3d">
@@ -2925,7 +2943,7 @@
 <script src="js/00-users-data.js?v=131"></script>
 <script src="js/01-core-constants-helpers.js?v=131"></script>
 <script src="js/02-users-and-roles-ui.js?v=131"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=131"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=131d"></script>
 <script src="js/04-confirm-combo-csv.js?v=131"></script>
 <script src="js/05-dropdown-sources-uploader.js?v=131"></script>
 <script src="js/06-warehouse-fefo-batch-allocation.js?v=131"></script>
@@ -2981,15 +2999,17 @@
 <script src="js/52-title-profiles.js?v=131"></script>
 <script src="js/52a-nav-central.js?v=131"></script>
 <script src="js/52b-brand-central.js?v=131"></script>
-<script src="js/53-rack-locations.js?v=131"></script>
+<script src="js/53-rack-locations.js?v=131c"></script>
 <script src="js/55-central-config.js?v=131"></script>
 <script src="js/58-session-renew.js?v=131"></script>
-<script src="js/59-mod-warehouse-3d.js?v=131c"></script>
+<script src="js/59-mod-warehouse-3d.js?v=131d"></script>
 <script src="js/59b-wh3d-rack-setup.js?v=131c"></script>
 <script src="js/59c-wh3d-picks-link.js?v=131"></script>
 <script src="js/60-update-check.js?v=131"></script>
 <script src="js/56-mod-equipment-workshop.js?v=131"></script>
 <script src="js/61-col-tools.js?v=131b"></script>
+<script src="js/62-mod-rack-condition.js?v=131b"></script>
+<script src="js/63-mod-ot-recovery.js?v=131b"></script>
 <script src="js/99-boot.js?v=131"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
