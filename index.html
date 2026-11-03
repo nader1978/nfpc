@@ -170,6 +170,8 @@
           <div id="smvStatus" class="status-msg smv-hint" style="margin-top:8px"></div>
         </div>
         <div class="card"><div class="card-header"><div class="card-title">🕘 Latest movements in the list</div><button type="button" class="ghost small ct-open" data-ct-for="#smvRecent" title="Show / hide, re-arrange and resize the columns">▦ Columns</button></div><div id="smvRecent"></div></div>
+        <div class="card" id="smvMobCard"><div class="card-header"><div class="card-title">📱 Mobile — picking in transit &amp; received <span class="text-sm" style="font-weight:400">— what was pushed to the pickers, picked / loaded on the mobile, and confirmed</span></div><div class="btn-row"><button type="button" class="secondary small" data-smm="reload" title="Re-read the picking list and the movements">🔄 Reload</button></div></div>
+          <div class="pl-tabs" id="smvMobTabs" style="margin:4px 0 8px"></div><div id="smvMob"></div></div>
       </div>
       <div class="view" id="view-prj">
         <div class="card" id="prjCard">
@@ -2986,8 +2988,8 @@
 <script src="js/42-mod-relogin-button.js?v=131"></script>
 <script src="js/43-mod-project-progress.js?v=131"></script>
 <script src="js/44-mod-fleet-management.js?v=131"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=131"></script>
-<script src="js/45c-pick-transit.js?v=131"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=131c"></script>
+<script src="js/45c-pick-transit.js?v=131d"></script>
 <script src="js/45a-combobox.js?v=131"></script>
 <script src="js/46-mod-rmpm-inventory.js?v=131"></script>
 <script src="js/46b-rmpm-mobile.js?v=131"></script>
@@ -3008,8 +3010,9 @@
 <script src="js/60-update-check.js?v=131"></script>
 <script src="js/56-mod-equipment-workshop.js?v=131"></script>
 <script src="js/61-col-tools.js?v=131b"></script>
-<script src="js/62-mod-rack-condition.js?v=131b"></script>
+<script src="js/62-mod-rack-condition.js?v=131c"></script>
 <script src="js/63-mod-ot-recovery.js?v=131b"></script>
+<script src="js/64-smv-mobile.js?v=131b"></script>
 <script src="js/99-boot.js?v=131"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
