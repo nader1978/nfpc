@@ -270,6 +270,49 @@ function fdWorkbook(m, trips) {
 }
 
 
+
+/* ---------- F&D plan → pickers: one picking list (Transit_No = DSP-<trip>) per trailer in WH_Pick_Transit_tbl ---------- */
+function fdPushDlg(trips) {
+  const st = fd.m.st, esc = escapeHtml; let el = document.getElementById('fdPushDlg'); if (el) el.remove();
+  el = document.createElement('div'); el.id = 'fdPushDlg'; el.style.cssText = 'position:fixed;inset:0;z-index:100020;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  const rows = trips.map(t => { const m = st.meta[t.id] || {}; return `<tr data-t="${esc(t.id)}"><td><b>${esc(t.id)}</b><div class="text-sm">${esc(dpDayLbl(t.day))} · ${t.lines.length} lines · ${fdN(t.pal, 1)} pal</div></td><td><input data-f="dest" value="${esc(m.dest || (t.loc + (t.region ? ' (' + t.region + ')' : '')))}" style="width:100%"></td><td><input data-f="plate" value="${esc(m.plate || '')}" placeholder="Trailer no." style="width:100%"></td><td><input data-f="driver" value="${esc(m.driver || '')}" placeholder="Driver name" style="width:100%"></td></tr>`; }).join('');
+  el.innerHTML = `<div style="background:var(--card,#fff);color:inherit;border-radius:14px;max-width:880px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border,#e2e8f0)"><div style="font-size:17px;font-weight:700">📲 Push to pickers — ${trips.length} trip(s)</div><div class="text-sm" style="margin-top:4px">Confirm the destination, trailer number and driver. Each trip becomes one pick in the mobile app (<b>WMS Mngt → Dispatch Picking</b>) with its FEFO batches and rack locations, as <b>To pick</b>. Nothing is released from stock until the picked lines are confirmed in the picking list.</div></div>
+    <div style="overflow:auto;padding:10px 20px"><table class="fd-tbl" style="width:100%"><thead><tr><th>Trip</th><th>Destination *</th><th>Trailer no. *</th><th>Driver name *</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border,#e2e8f0);display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="fdPushMsg" class="text-sm" style="flex:1"></span><button class="ghost" type="button" data-x="cancel">Cancel</button><button class="success" type="button" data-x="go">📲 Push ${trips.length} trip(s)</button></div></div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', async e => { if (e.target === el || e.target.closest('[data-x=cancel]')) { el.remove(); return; } const go = e.target.closest('[data-x=go]'); if (!go) return;
+    const ent = [...el.querySelectorAll('tr[data-t]')].map(tr => ({ t: fd.m.byId.get(tr.dataset.t), dest: tr.querySelector('[data-f=dest]').value.trim(), plate: tr.querySelector('[data-f=plate]').value.trim(), driver: tr.querySelector('[data-f=driver]').value.trim() }));
+    const miss = ent.filter(x => !x.dest || !x.plate || !x.driver); if (miss.length) { el.querySelector('#fdPushMsg').innerHTML = '<span style="color:#b91c1c">⚠ Fill in destination, trailer and driver for ' + miss.map(x => escapeHtml(x.t.id)).join(', ') + '</span>'; return; }
+    go.disabled = true; try { await fdPushRun(ent, t => { el.querySelector('#fdPushMsg').textContent = t; }); el.remove(); } catch (err) { el.querySelector('#fdPushMsg').innerHTML = '<span style="color:#b91c1c">✘ ' + escapeHtml(err.message) + '</span>'; go.disabled = false; } });
+}
+async function fdPushRun(ent, say) {
+  if (!window.PTR) throw new Error('The picking-list module is not loaded.'); if (!hasPerm('logplan') && !hasPerm('uploader') && !hasPerm('wmv')) throw new Error('Permission denied.');
+  say('⏳ Reading the picking list and the stock locations…'); await PTR.load(true);
+  if (window.WMVX) { const t0 = Date.now(); if (!WMVX.S.hist) WMVX.load(false); while (WMVX.S.loading && Date.now() - t0 < 60000) await new Promise(r => setTimeout(r, 200)); }
+  const H = window.WMVX && WMVX.S.hist, st = fd.m.st; let okT = 0, lines = 0, noLoc = 0; const errs = [];
+  for (const x of ent) {
+    const t = x.t, pid = 'DSP-' + t.id; if (PTR.P.rows.some(r => r.Pick_ID === pid && PTR.OPEN.includes(r.Transit_Status))) { errs.push(t.id + ' is already with the pickers'); continue; }
+    const rows = [];
+    fdOrd(t, st).forEach(l => fdSegs(st, t, l).forEach(b => {
+      let left = +b.q || 0; if (left <= 0) return; const base = { Trans_Date: t.day, Ref_Nr: t.id, Route_Code: t.region || '', Destination: x.dest, Trailer_No: x.plate, Driver_Name: x.driver, SKU_Code: l.code, SKU_Dtls: l.item, Batch_Code: b.b || '', Prod_Date: b.p || '', Expiry_Date: b.e || '', UOM_Desc: l.uom0 || l.uom || '', Pick_Type: 'Dispatch', Remarks: 'F&D plan ' + fd.date + ' · ' + t.loc + ' trailer ' + t.no + '/' + t.n };
+      const sk = H && H.sku && H.sku.get(String(l.code).trim()), bt = sk && b.b ? sk.batches.get(String(b.b).trim()) : null, locs = [];
+      if (bt && bt.pp) bt.pp.forEach((pm, lc) => pm.forEach((e, ps) => { const free = (e.qty || 0) - (PTR.reserved(l.code, b.b, lc, ps) || 0); if (lc && free > 1e-9) locs.push({ lc, ps, free }); }));
+      locs.sort((a, c) => String(a.lc).localeCompare(String(c.lc), undefined, { numeric: true }) || a.ps - c.ps);
+      locs.forEach(o => { if (left <= 1e-9) return; const q = Math.min(left, o.free); rows.push(Object.assign({}, base, { Location_Code: o.lc, PLT_Position: o.ps, Qty_Rlsd: q })); left -= q; });
+      if (left > 1e-9) { rows.push(Object.assign({}, base, { Location_Code: '', PLT_Position: 0, Qty_Rlsd: left })); noLoc++; }
+    }));
+    if (!rows.length) { errs.push(t.id + ' has no picking lines'); continue; }
+    rows.sort((a, c) => String(a.Location_Code || 'zzz').localeCompare(String(c.Location_Code || 'zzz'), undefined, { numeric: true }) || (a.PLT_Position || 0) - (c.PLT_Position || 0));
+    say('Pushing ' + t.id + ' · ' + rows.length + ' line(s)…'); const res = await PTR.push(rows, r => r.SKU_Code + '/' + r.Batch_Code, (n, tot) => say('Pushing ' + t.id + ' ' + n + '/' + tot), 'F&D Plan', pid);
+    if (res.fail) { errs.push(t.id + ': ' + res.fail + ' line(s) failed ' + (res.errors[0] || '')); continue; }
+    okT++; lines += rows.length; st.meta[t.id] = Object.assign({}, st.meta[t.id] || {}, { plate: x.plate, driver: x.driver, dest: x.dest }); st.status[t.id] = 'Picking';
+  }
+  fdStSave(fd.date, st); fdRender();
+  const msg = (okT ? '✔ ' + okT + ' trip(s) · ' + lines + ' line(s) sent to the pickers' : 'Nothing pushed') + (noLoc ? ' · ' + noLoc + ' line(s) without a rack location (the picker sees the batch location)' : '') + (errs.length ? ' · ⚠ ' + errs.join(' | ') : '');
+  sectionToast(msg, errs.length && !okT ? 'error' : errs.length || noLoc ? 'warn' : 'success'); try { addActivity('upload', 'F&D trips pushed to pickers: ' + okT + ' trip(s), ' + lines + ' line(s)'); } catch (e) {}
+}
+
 /* ============================================================
    F&D PLAN — screen
    ============================================================ */
@@ -312,8 +355,8 @@ function fdDispatch(T) {
 function fdTripsTab(T) {
   const st = fd.m.st, body = T.map(t => { const c = fdCheck(t, st);
     return `<tr class="fd-click" title="Double-click to open" data-id="${t.id}"><td><b>${t.id}</b></td><td>${plEsc(dpDayLbl(t.day))}</td><td>${t.loc}</td><td class="n">${t.no}/${t.n}</td><td class="n">${fdN(t.pal, 1)} / ${t.cap}</td><td>${fdFill(t.util)}</td><td class="n">${t.lines.length}</td><td class="n">${fdN(t.units)}</td><td class="n">${fdN(t.lines.reduce((a, l) => a + (l.ltr || 0), 0))}</td><td class="n">${c.done}/${c.lines}</td>
-    <td><select data-st="${t.id}">${FD_STATUS.map(s => `<option ${s === c.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td><td>${fdPill(c.lvl, fdLvlTxt(c.lvl))}</td><td style="white-space:nowrap"><button class="secondary small" data-open="${t.id}" type="button" title="Trip items — add / remove items, change quantities, batches">📋 Items</button> <button class="ghost small" data-pk="${t.id}" type="button">🖨 Pick</button> <button class="ghost small" data-dn="${t.id}" type="button">🖨 DN</button></td></tr>`; }).join('');
-  return `<div class="fd-sub">${fdN(T.length)} trip(s). Open a trip to enter batch / production / expiry dates, trailer details and print its delivery note.</div><div class="fd-wrap"><table class="fd-tbl"><thead><tr>${fdTh('Trip')}${fdTh('Day')}${fdTh('Location')}${fdTh('Trailer', 1)}${fdTh('Pallets / cap.', 1)}${fdTh('Fill')}${fdTh('Lines', 1)}${fdTh('Units', 1)}${fdTh('Litres', 1)}${fdTh('Batch info', 1)}${fdTh('Status')}${fdTh('Result')}${fdTh('Actions')}</tr></thead><tbody>${body || '<tr><td colspan="13" class="pl-empty">No trips for this selection.</td></tr>'}</tbody></table></div>`;
+    <td><select data-st="${t.id}">${FD_STATUS.map(s => `<option ${s === c.status ? 'selected' : ''}>${s}</option>`).join('')}</select></td><td>${fdPill(c.lvl, fdLvlTxt(c.lvl))}</td><td style="white-space:nowrap"><button class="secondary small" data-open="${t.id}" type="button" title="Trip items — add / remove items, change quantities, batches">📋 Items</button> <button class="ghost small" data-pk="${t.id}" type="button">🖨 Pick</button> <button class="success small" data-push="${t.id}" type="button" title="Send this trip's picking lines (FEFO batches and rack locations) to the pickers' mobile app">📲 Push</button> <button class="ghost small" data-dn="${t.id}" type="button">🖨 DN</button></td></tr>`; }).join('');
+  return `<div class="fd-sub" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>${fdN(T.length)} trip(s). Open a trip to enter batch / production / expiry dates, trailer details and print its delivery note. <b>📲 Push</b> sends a trip to the pickers' mobile app (Dispatch Picking).</span><button class="success small" data-pushall="1" type="button">📲 Push the planned trips shown to pickers</button></div><div class="fd-wrap"><table class="fd-tbl"><thead><tr>${fdTh('Trip')}${fdTh('Day')}${fdTh('Location')}${fdTh('Trailer', 1)}${fdTh('Pallets / cap.', 1)}${fdTh('Fill')}${fdTh('Lines', 1)}${fdTh('Units', 1)}${fdTh('Litres', 1)}${fdTh('Batch info', 1)}${fdTh('Status')}${fdTh('Result')}${fdTh('Actions')}</tr></thead><tbody>${body || '<tr><td colspan="13" class="pl-empty">No trips for this selection.</td></tr>'}</tbody></table></div>`;
 }
 function fdPicking(T) {
   const m = fd.m, met = fd.pm, mn = { qty: 'Units', ltr: 'Litres', crt: 'Crates', pal: 'Pallets' }[met], dp_ = met === 'pal' ? 2 : met === 'crt' ? 1 : 0;

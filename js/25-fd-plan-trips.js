@@ -220,6 +220,8 @@ function fdInit() {
     if (e.target.closest('[data-qmore]')) { fd.qshown += 300; fdKeepScroll(fdRender); return; }
     const ab = e.target.closest('[data-addb]'); if (ab) { const pa = fdPoolEdit(fd.m.st, ab.dataset.addb); if (!pa.length) pa.push({ b: '', p: '', e: '', q: '' }); pa.push({ b: '', p: '', e: '', q: '' }); fdKeepScroll(fdRender); return; }
     const db = e.target.closest('[data-delb][data-bk]'); if (db) { const st = fd.m.st, k = db.dataset.bk, a = fdPoolEdit(st, k); a.splice(+db.dataset.delb, 1); if (!a.some(x => !fdBlank(x) || +x.q > 0)) { delete st.bl[k]; delete st.batch[k]; } fd.m.alloc = fdAlloc(fd.m); fdStSave(fd.date, st); fdKeepScroll(fdRender); return; }
+    const pu = e.target.closest('[data-push]'); if (pu) { const t = fd.m.byId.get(pu.dataset.push); if (t) fdPushDlg([t]); return; }
+    if (e.target.closest('[data-pushall]')) { const T = fdVis().filter(t => (fd.m.st.status[t.id] || 'Planned') === 'Planned'); if (!T.length) { sectionToast('No trips with status Planned in this selection.', 'warn'); return; } fdPushDlg(T); return; }
     const op = e.target.closest('[data-open]'); if (op) { fdTripOpen(op.dataset.open); return; }
     const pk = e.target.closest('[data-pk]'), dn = e.target.closest('[data-dn]'); if (pk || dn) { const t = fd.m.byId.get((pk || dn).dataset.pk || (pk || dn).dataset.dn); if (t) fdPrintHtml(fdDocHtml([t], pk ? 'pick' : 'dn', fd.m.st), (pk ? 'Picking list ' : 'Delivery note ') + t.id); return; }
   });
