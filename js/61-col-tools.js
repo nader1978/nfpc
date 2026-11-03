@@ -88,7 +88,7 @@
       const tg = r.target.nodeType === 1 ? r.target : r.target.parentElement; if (tg) { const t = tg.closest('table'); if (t) S.add(t); }
       for (const a of r.addedNodes) if (a.nodeType === 1) { if (a.tagName === 'TABLE') S.add(a); else if (a.firstElementChild) a.querySelectorAll('table').forEach(x => S.add(x)); }
     }
-    S.forEach(t => { try { process(t); } catch (e) {} });
+    S.forEach(t => { try { process(t); } catch (e) {} }); if (S.size) { clearTimeout(window._ctEt); window._ctEt = setTimeout(ensureAll, 60); }
   }).observe(document.body, { childList: true, subtree: true });
   setTimeout(all, 1300);
 
@@ -180,7 +180,26 @@
   // right-click a heading
   document.addEventListener('contextmenu', e => { const th = e.target.closest && e.target.closest('th'); if (!th || e.target.closest('input,select,textarea')) return; const t = th.closest('table'), hr = t && head(t); if (!hr || th.parentElement !== hr || t.closest('[data-nohc],[data-noct]')) return; e.preventDefault(); menu({ getBoundingClientRect: () => ({ left: e.clientX, bottom: e.clientY }) }, t, t.closest('#tblExpandOverlay') ? { key: t.dataset.hc } : null); });
   // fixed "▦ Columns" buttons placed in a screen: <button class="ct-open" data-ct-for="#hostSelector">
-  function ctBtns() { document.querySelectorAll('.ct-open[data-ct-for]').forEach(b => { const h = document.querySelector(b.dataset.ctFor), t = h && h.querySelector('table'), hr = t && head(t); if (!hr) { b.disabled = !t; return; } b.disabled = false; const k = keyOf(t, hr), nh = (hc.map[k] || []).length, P = ct[k]; b.textContent = '▦ Columns' + (nh ? ' (' + nh + ' hidden)' : '') + (P && ((P.o && P.o.length) || (P.w && Object.keys(P.w).length)) ? ' ✎' : ''); }); }
+  function ctBtns() {
+    document.querySelectorAll('.ct-own').forEach(b => { const t = b._t && b._t.isConnected ? b._t : (b._host && b._host.querySelector('table')), hr = t && head(t); if (!hr) return; const k = keyOf(t, hr), nh = (hc.map[k] || []).length, P = ct[k], tx = '▦ Columns' + (nh ? ' (' + nh + ' hidden)' : '') + (P && ((P.o && P.o.length) || (P.w && Object.keys(P.w).length)) ? ' ✎' : ''); if (b.textContent !== tx) b.textContent = tx; }); document.querySelectorAll('.ct-open[data-ct-for]').forEach(b => { const h = document.querySelector(b.dataset.ctFor), t = h && h.querySelector('table'), hr = t && head(t); if (!hr) { b.disabled = !t; return; } b.disabled = false; const k = keyOf(t, hr), nh = (hc.map[k] || []).length, P = ct[k]; b.textContent = '▦ Columns' + (nh ? ' (' + nh + ' hidden)' : '') + (P && ((P.o && P.o.length) || (P.w && Object.keys(P.w).length)) ? ' ✎' : ''); }); }
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ct-open[data-ct-for]'); if (!b) return; e.stopPropagation(); const h = document.querySelector(b.dataset.ctFor); menu(b, h && h.querySelector('table')); });
-  setInterval(ctBtns, 1500);
+  /* every list gets a visible "▦ Columns" button: lists whose own button sits in a hidden header (or that never got one) get a small bar above them */
+  const covered = t => [...document.querySelectorAll('.ct-open[data-ct-for]')].some(b => { const h = document.querySelector(b.dataset.ctFor); return h && h.contains(t); });
+  function ensure(t) {
+    if (!t || !t.isConnected || t.closest(SKIP) || t.closest('#tblExpandOverlay,[data-nohc]')) return; const hr = head(t); if (!hr || ![...hr.cells].some(c => lab(c))) return;
+    const host = t.closest('.table-wrap') || t.parentElement; if (!host || !host.parentElement) return; const own = host._ctBtn && host._ctBtn.isConnected ? host._ctBtn : null;
+    if (own) { own._t = t; return; } if (!t.offsetParent) return;
+    const hb = host._hcBtn; if ((hb && hb.isConnected && hb.offsetParent) || covered(t)) return;
+    const bar = document.createElement('div'); bar.className = 'ct-bar'; bar.style.cssText = 'display:flex;justify-content:flex-end;margin:2px 0 5px';
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost small ct-own'; b.textContent = '▦ Columns'; b.title = 'Show / hide, re-arrange and resize the columns of this list'; b._t = t; b._host = host; host._ctBtn = b; bar.appendChild(b);
+    host.parentElement.insertBefore(bar, host);
+  }
+  function ensureAll() {
+    document.querySelectorAll('.ct-own').forEach(b => { const h = b._host; if (!h || !h.isConnected || (h._hcBtn && h._hcBtn.isConnected && h._hcBtn.offsetParent)) { if (h) h._ctBtn = null; b.parentElement && b.parentElement.classList.contains('ct-bar') ? b.parentElement.remove() : b.remove(); } });
+    document.querySelectorAll('table').forEach(t => { try { ensure(t); } catch (e) {} }); ctBtns();
+  }
+  window.ctEnsure = ensure;
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ct-own'); if (!b) return; e.stopPropagation(); menu(b, b._t && b._t.isConnected ? b._t : (b._host && b._host.querySelector('table'))); });
+  setInterval(ensureAll, 1200); setTimeout(ensureAll, 1500);
+  document.addEventListener('click', () => setTimeout(ensureAll, 250));
 })();
