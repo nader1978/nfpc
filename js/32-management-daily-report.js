@@ -429,7 +429,7 @@ const BRAND_ORIG = { name: 'NFPC SC Mngt Support System', tag: 'Enterprises Secu
   }
   function favApply(c) {
     try { let l = document.querySelector('link[rel~="icon"]#brFav') || document.querySelector('link[rel~="icon"]'); if (!l) { l = document.createElement('link'); l.rel = 'icon'; document.head.appendChild(l); } l.id = 'brFav';
-      if (!l.dataset.orig) l.dataset.orig = l.getAttribute('href') || ''; if (c.img) { l.type = ''; l.href = c.img; return; }
+      if (!l.dataset.orig) l.dataset.orig = l.getAttribute('href') || ''; if (c.img) { if (typeof NFPC_FAV !== 'undefined' && typeof NFPC_LOGO !== 'undefined' && c.img === NFPC_LOGO) { l.type = 'image/png'; l.href = NFPC_FAV; return; } l.type = ''; l.href = c.img; return; }
       if (c.logo) { const cv = document.createElement('canvas'); cv.width = cv.height = 64; const g = cv.getContext('2d'); g.fillStyle = '#1F4E79'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#fff'; g.font = 'bold 34px Segoe UI,Arial,sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(String(c.logo).slice(0, 2), 32, 35); l.type = 'image/png'; l.href = cv.toDataURL('image/png'); return; }
       if (l.dataset.orig) l.href = l.dataset.orig; } catch (e) {}
   }
