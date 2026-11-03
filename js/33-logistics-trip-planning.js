@@ -447,7 +447,7 @@ function hcScan() {
   document.querySelectorAll('table').forEach(t => {
     if (t.closest('#tblExpandOverlay,[data-nohc]')) return; const L = hcLabels(t); if (!L || !L.some(x => x)) return; const host = t.closest('.table-wrap') || t.parentElement; if (!host || !host.parentElement) return;
     if (host._hcBtn && host._hcBtn.isConnected) { host._hcBtn._t = t; return; }
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary small hc-btn'; b.title = 'Show or hide columns of this table'; b._host = host; b._t = t; host._hcBtn = b; b.addEventListener('click', e => { e.stopPropagation(); hcMenu(b); });
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary small hc-btn'; b.title = 'Show / hide, re-arrange and resize the columns of this table'; b._host = host; b._t = t; host._hcBtn = b; b.addEventListener('click', e => { e.stopPropagation(); hcMenu(b); });
     const eb = host._teBtn && host._teBtn.isConnected ? host._teBtn : null; if (eb) eb.after(b); else { const bar = document.createElement('div'); bar.className = 'btn-row tbl-expand-bar hc-bar'; bar.style.margin = '2px 0 6px'; bar.appendChild(b); host.parentElement.insertBefore(bar, host); }
   }); hcAll(); hcRefreshBtns();
 }
