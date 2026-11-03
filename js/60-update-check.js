@@ -1,5 +1,5 @@
 /* ---------- new-version check: the page compares its own build with version.json (never cached) and offers a one-click refresh ---------- */
-const APP_BUILD = '130', APP_SERIAL = '13.11.23.29';   /* shown under the sidebar; the last number goes up with every release */
+const APP_BUILD = '130', APP_SERIAL = '13.11.23.31';   /* shown under the sidebar; the last number goes up with every release */
 (function () { const put = () => { const e = document.getElementById('sbBuild'); if (e) e.textContent = 'Update version: ' + APP_SERIAL; }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put(); })();
 (function () {
   if (location.protocol === 'file:') return; let shown = false;
