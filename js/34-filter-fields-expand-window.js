@@ -368,7 +368,7 @@ document.querySelectorAll('.nav-item[data-view="mgt"]').forEach(n => n.addEventL
 const MW_KEY = LS_BASE + '_mgw_cfg1';
 const MW_DEFAULT = null;   // fixed by the administrator: use "Copy fixed settings" in Lists & mapping and paste it over this line
 const mwSetupOk = () => featOk('mgsetup');
-const mw = { cfg: { list: { daily: 'Mngmnt_Daily_Data_tbl', whs: '', trgt: 'Trgt_tbl', util: 'Daily_Meeting_Report_Data_tbl' }, map: { daily: {}, whs: {}, trgt: {}, util: {} }, opt: { out: true, inb: false, ret: true, hrs: 'reg', otFmt: 'auto', tAgg: 'avg' }, by: 'areareg', src: 'sp' }, cols: { daily: [], whs: [], trgt: [], util: [] }, pick: {}, rows: [], whs: [], trg: [], util: [], f: { from: '', to: '', area: [], region: [], wh: [] }, tab: 'setup', loaded: 0, inited: false, ctx: { groups: [], all: null } };
+const mw = { cfg: { list: { daily: 'Mngmnt_Daily_Data_tbl', whs: '', trgt: 'Trgt_tbl', util: '' }, map: { daily: {}, whs: {}, trgt: {}, util: {} }, opt: { out: true, inb: false, ret: true, hrs: 'reg', otFmt: 'auto', tAgg: 'avg' }, by: 'areareg', src: 'sp' }, cols: { daily: [], whs: [], trgt: [], util: [] }, pick: {}, rows: [], whs: [], trg: [], util: [], f: { from: '', to: '', area: [], region: [], wh: [] }, tab: 'setup', loaded: 0, inited: false, ctx: { groups: [], all: null } };
 const MW_FIELDS = {
   daily: [
     { key: 'date', label: 'Entry_Date', req: 1, al: ['entrydate', 'recorddate', 'reportdate', 'date', 'day'] },
@@ -411,6 +411,7 @@ const mwN = v => mwNull(v) || 0;
 const mwAvg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 const mwMapOk = (w) => MW_FIELDS[w].filter(f => f.req).every(f => mw.cfg.map[w][f.key] && mw.cfg.map[w][f.key] !== SKIP_VALUE);
 function mwLoadCfg() { try { const c = JSON.parse(localStorage.getItem(MW_KEY) || 'null'); if (c) { Object.assign(mw.cfg.list, c.list || {}); ['daily', 'whs', 'trgt', 'util'].forEach(w => (mw.cfg.map[w] = mw.cfg.map[w] || {}, Object.assign(mw.cfg.map[w], (c.map || {})[w] || {}))); Object.assign(mw.cfg.opt, c.opt || {}); if (c.by) mw.cfg.by = c.by; } } catch (e) {}
+  mw.cfg.list.util = '';   /* WHs utilization moved to its own page (WHs Utilization) */
   if (!mwSetupOk() && MW_DEFAULT) { try { Object.assign(mw.cfg.list, MW_DEFAULT.list || {}); ['daily', 'whs', 'trgt', 'util'].forEach(w => { mw.cfg.map[w] = Object.assign({}, (MW_DEFAULT.map || {})[w] || {}); }); Object.assign(mw.cfg.opt, MW_DEFAULT.opt || {}); } catch (e) {} } }
 function mwSaveCfg() { try { localStorage.setItem(MW_KEY, JSON.stringify(mw.cfg)); } catch (e) {} }
 

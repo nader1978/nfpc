@@ -291,6 +291,7 @@
   const css = document.createElement('style');
   css.textContent = `table.rn-on{counter-reset:rn;} table.rn-on tbody tr{counter-increment:rn;}
     table.rn-on tbody tr::before{content:counter(rn);display:table-cell;box-sizing:border-box;min-width:38px;padding:4px 8px;text-align:center;font-size:12px;color:var(--gray-500);border-bottom:1px solid var(--border);vertical-align:middle;font-variant-numeric:tabular-nums;}
+    table.rn-on tfoot tr::before{content:"";display:table-cell;box-sizing:border-box;min-width:38px;border-top:inherit;}
     table.rn-on thead tr::before{content:"#";display:table-cell;box-sizing:border-box;min-width:38px;padding:8px 8px;text-align:center;font-weight:700;font-size:11px;position:sticky;top:0;z-index:6;background:var(--rn-bg,var(--gray-100));color:var(--rn-fg,var(--gray-700));border-bottom:1px solid var(--gray-300);}
     table.rn-on tbody tr.rn-skip::before{content:"";} table.rn-on thead tr.te-filters::before{content:"";background:var(--gray-50);top:34px;} #tblExpandOverlay .te-filters .mcombo{min-width:110px;} #tblExpandOverlay .te-filters .mc-input{font-size:12px;} #dtrkDetailModal,#attModal,#wMailModal,#expEmailModal,#dtrkEmailModal,#userFormModal{z-index:100003 !important;} #gdModal{z-index:100005 !important;}
     @media print{table.rn-on tbody tr::before{color:#555;}}`;
