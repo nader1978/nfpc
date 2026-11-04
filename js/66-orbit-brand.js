@@ -10,7 +10,16 @@ body.sb-mini .sidebar .orbit-mark small{display:none}
 .sidebar-brand:has(.logo img)>span[data-brand=name]{display:none!important}
 body:not(.sb-mini) .sidebar-brand:has(.logo img) .logo{width:auto!important;max-width:210px;height:66px!important;background:transparent!important;box-shadow:none!important;padding:0!important;justify-content:flex-start}
 body:not(.sb-mini) .sidebar-brand:has(.logo img) .logo img{width:auto!important;height:100%!important;max-width:210px;object-fit:contain}
-.login-brand:has(.logo img) h1{display:none!important}.login-brand:has(.logo img) .logo{width:auto!important;max-width:190px;height:70px!important;background:transparent!important}.login-brand:has(.logo img) .logo img{width:auto!important;height:100%!important}`; document.head.appendChild(css);
+.login-brand:has(.logo img) h1{display:none!important}.login-brand:has(.logo img) .logo{width:auto!important;max-width:190px;height:70px!important;background:transparent!important}.login-brand:has(.logo img) .logo img{width:auto!important;height:100%!important}
+/* login card (option C): the company leads — big NFPC logo + name on top, ORBIT as a small mark at the bottom of the card */
+.login-card{display:flex;flex-direction:column}
+.login-card .login-brand{flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:10px!important;margin-bottom:18px!important}
+.login-card .login-brand>div{display:flex;flex-direction:column;align-items:center}
+.login-card .login-brand:has(.logo img) .logo{height:110px!important;max-width:300px!important;width:auto!important;margin:0 auto!important;padding:0!important;background:transparent!important;box-shadow:none!important}
+.login-card .login-brand .logo img{height:100%!important;width:auto!important;max-width:300px!important;object-fit:contain}
+.login-card .login-brand .tagline{font-size:16px!important;font-weight:700!important;letter-spacing:.09em!important;color:var(--gray-800,#1f2937)!important;margin-top:0!important;text-transform:uppercase}
+.login-card .orbit-mark{order:99;border:0!important;font-size:12px!important;letter-spacing:.2em!important;margin:14px 0 0!important;padding:0!important;color:var(--gray-500,#64748b)!important;gap:6px!important}
+.login-card .orbit-mark i{width:16px!important;height:16px!important;font-size:9px!important}.login-card .orbit-mark small{display:none!important}`; document.head.appendChild(css);
   const mk = (sub) => { const d = document.createElement('div'); d.className = 'orbit-mark'; d.title = NAME + ' — ' + FULL; d.innerHTML = '<i>◎</i><span>' + NAME + '</span>' + (sub ? '<small>' + FULL + '</small>' : ''); return d; };
   function put() {
     const isOrbit = n => !!n && n.offsetParent !== null && getComputedStyle(n).visibility !== 'hidden' && String(n.textContent || '').trim().toUpperCase() === NAME;
