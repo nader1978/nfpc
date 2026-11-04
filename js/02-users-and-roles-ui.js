@@ -558,7 +558,7 @@ function renderUsersView() {
 $('addUserBtn').addEventListener('click', () => userForm_open({ mode: 'add' }));
 
 $('exportUsersBtn').addEventListener('click', () => {
-  const includePasswords = confirm(
+  const includePasswords = (window.nativeConfirm || confirm)(
     'Include password hashes in the export?\n\n' +
     '✅ OK  → Include passwords (users can sign in with their ORIGINAL passwords after import)\n' +
     '❌ Cancel → Strip passwords (users must reset password after import)'

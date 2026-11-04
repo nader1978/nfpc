@@ -64,7 +64,7 @@ $('addScheduleBtn').addEventListener('click', () => {
   const name = prompt('Schedule name:', listName); if (!name) return;
   const intervalMin = parseInt(prompt('Interval in minutes:', '30'), 10); if (!intervalMin) return;
   const format = (prompt('Format (xlsx / csv):', 'xlsx') || 'xlsx').toLowerCase() === 'csv' ? 'csv' : 'xlsx';
-  const notifyOnFailure = confirm('Send email on failure?');
+  const notifyOnFailure = (window.nativeConfirm || confirm)('Send email on failure?');
   const s = { id: uid(), name, listName, intervalMin, filterState: expState.filters.map(f => ({ ...f })), columns: expState.selectedColumns.slice(), format, enabled: true, notifyOnFailure, timer: null, nextRun: null, lastRun: null };
   schedules.push(s); startSchedule(s); persistSchedules(); renderSchedules();
 });
@@ -74,7 +74,7 @@ $('expScheduleBtn').addEventListener('click', () => {
   const name = prompt('Schedule name:', expState.lastConfig.listName); if (!name) return;
   const intervalMin = parseInt(prompt('Interval in minutes:', '30'), 10); if (!intervalMin) return;
   const format = (prompt('Format (xlsx / csv):', 'xlsx') || 'xlsx').toLowerCase() === 'csv' ? 'csv' : 'xlsx';
-  const notifyOnFailure = confirm('Send email on failure?');
+  const notifyOnFailure = (window.nativeConfirm || confirm)('Send email on failure?');
   const s = { id: uid(), name, listName: expState.lastConfig.listName, intervalMin, filterState: expState.filters.map(f => ({ ...f })), columns: expState.selectedColumns.slice(), format, enabled: true, notifyOnFailure, timer: null, nextRun: null, lastRun: null };
   schedules.push(s); startSchedule(s); persistSchedules(); renderSchedules();
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -138,7 +138,7 @@ $('scheduleUploadBtn').addEventListener('click', async () => {
   if (!hasPerm('scheduler-upload')) { alert('Permission denied.'); return; }
   const name = prompt('Schedule name:', 'Scheduled Upload'); if (!name) return;
   const intervalMin = parseInt(prompt('Interval in minutes:', '60'), 10); if (!intervalMin) return;
-  const notifyOnFailure = confirm('Send email on failure?');
+  const notifyOnFailure = (window.nativeConfirm || confirm)('Send email on failure?');
   const src = prompt('Data source:\n1 = URL\n2 = Same file currently loaded\n3 = Fixed file', '2'); if (!src) return;
   let dataSource = 'same', sourceUrl = null, sourceFileName = null, sourceFileContent = null;
   if (src === '1') { sourceUrl = prompt('URL:'); if (!sourceUrl) return; dataSource = 'url'; }

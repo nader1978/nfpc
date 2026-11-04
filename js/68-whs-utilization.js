@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   const LIST = 'Daily_Meeting_Report_Data_tbl', Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const nz = x => String(x || '').toLowerCase().replace(/_x0020_/g, '').replace(/[^a-z0-9]/g, '');
+  const nz = x => String(x || '').toLowerCase().replace(/_x[0-9a-f]{4}_/g, '').replace(/[^a-z0-9]/g, '');
   const pad = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   const dt = v => { if (!v) return ''; if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return String(v); const d = new Date(v); return isNaN(d) ? '' : ymd(d); };
   const shift = (iso, n) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return ymd(d); };
@@ -26,12 +26,22 @@
     catch (e) { say('⚠ SharePoint would not filter by ' + C.date + ' (' + e.message.slice(0, 90) + ') — reading the whole list…', 1);
       const it = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading the whole ' + LIST + '… ' + (n && n.length != null ? n.length : n))); S.how = 'whole list read — index the Record_Date column for faster loading'; return it; }
   }
+  /* WHs_Dtls: a text column, or a lookup (Graph then sends only WHs_DtlsLookupId) → read the looked-up list once for the names */
+  const findKey = (K, base) => { const b = nz(base); if (K[b] != null && K[b] !== '') return b; return Object.keys(K).find(k => k !== b + 'lookupid' && k.startsWith(b) && !/lookupid$/.test(k) && K[k] != null && K[k] !== ''); };
+  S.lk = new Map(); S.whKey = '';
+  async function whNames(site, token, items) {
+    S.lk = new Map(); const F = items.slice(0, 300).map(x => { const f = x.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); return K; });
+    if (F.some(K => findKey(K, C.wh))) return; if (!F.some(K => K[nz(C.wh) + 'lookupid'] != null)) return;
+    try { const ids = await resolveIds(site, LIST, token), r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${ids.siteId}/lists/${ids.listId}/columns`, { headers: { Authorization: `Bearer ${token}` } }, 'columns'), d = await r.json();
+      const col = (d.value || []).find(c => nz(c.name) === nz(C.wh) || nz(c.displayName) === nz(C.wh)); if (!col || !col.lookup || !col.lookup.listId) return;
+      const its = await fetchAllItems(ids.siteId, col.lookup.listId, token), cn = nz(col.lookup.columnName || 'Title');
+      its.forEach(x => { const f = x.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); S.lk.set(String(x.id), sv(K[cn] != null ? K[cn] : K.title)); }); } catch (e) { console.warn('WHs_Dtls lookup', e); } }
   function build(items) {
-    const best = new Map();
+    const best = new Map(); S.whKey = '';
     items.forEach(x => { const f = x.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; });
       const main = sv(K[nz(C.main)]); if (main && !/capacity/i.test(main)) return;
       const date = dt(K[nz(C.date)]); if (!date || date < S.per.from || date > S.per.to) return;
-      const whid = sv(K[nz(C.whid)]).replace(/\.0+$/, ''), wh = sv(K[nz(C.wh)]) || (whid ? 'WHs ' + whid : ''), sec = sv(K[nz(C.sec)]) || wh, kind = sv(K[nz(C.kind)]).toLowerCase(), v = nn(K[nz(C.val)]);
+      const whid = sv(K[nz(C.whid)]).replace(/\.0+$/, ''), wk = findKey(K, C.wh), wl = K[nz(C.wh) + 'lookupid'], wh = (wk ? sv(K[wk]) : '') || (wl != null ? S.lk.get(String(wl)) || '' : '') || (whid ? 'WHs ' + whid : ''); if (wk) S.whKey = wk; const sec = sv(K[findKey(K, C.sec) || nz(C.sec)]) || wh, kind = sv(K[nz(C.kind)]).toLowerCase(), v = nn(K[nz(C.val)]);
       if (!wh || v == null) return; const m = /capac/.test(kind) ? 'cap' : /actual|used|occup/.test(kind) ? 'used' : /free|empty/.test(kind) ? 'free' : ''; if (!m) return;
       const key = [date, whid || wh, sec, m].join('|'), h = nn(K[nz(C.hdr)]) || 0, id = +x.id || 0, o = best.get(key);
       if (!o || h > o.h || (h === o.h && id > o.id)) best.set(key, { date, whid, wh, sec, m, v, h, id }); });
@@ -43,9 +53,9 @@
   async function load() {
     if (S.loading) return; S.loading = true; S.err = ''; render();
     try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
-      if (S.per.from > S.per.to) throw new Error('the period From is after To'); const t0 = Date.now(), it = await fetchPeriod(site, token, S.per.from, S.per.to); build(it); S.loaded = true;
+      if (S.per.from > S.per.to) throw new Error('the period From is after To'); const t0 = Date.now(), it = await fetchPeriod(site, token, S.per.from, S.per.to); await whNames(site, token, it); build(it); S.loaded = true;
       const n = new Set(S.rows.map(r => r.wh)).size;
-      say(S.rows.length ? '✔ ' + plF(S.rows.length) + ' storage-area day(s) · ' + n + ' warehouse(s) · ' + S.how + ' · ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' : '⚠ No WHs capacity data between ' + S.per.from + ' and ' + S.per.to + ' — choose an earlier period and press ⬇ Load', !S.rows.length);
+      say(S.rows.length ? '✔ ' + plF(S.rows.length) + ' storage-area day(s) · ' + n + ' warehouse(s) · ' + S.how + ' · ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' + (!S.whKey && !S.lk.size ? ' · ⚠ the WHs_Dtls column came back empty — names shown as WHs_ID' : '') : '⚠ No WHs capacity data between ' + S.per.from + ' and ' + S.per.to + ' — choose an earlier period and press ⬇ Load', !S.rows.length);
     } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
   }
 

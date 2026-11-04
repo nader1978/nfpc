@@ -34,8 +34,8 @@
     e.stopImmediatePropagation(); e.preventDefault();
     if (!activityLog.length) return; const pend = activityLog.filter(x => !x.arch).length; let go = true;
     if (pend) { msg('☁ Saving ' + pend + ' entries to SharePoint before clearing…'); const r = await archive(false);
-      if (!r.ok) go = confirm('The activity could NOT be saved to SharePoint (' + r.why + ').\n\nClear the log anyway? The ' + pend + ' unsaved entries will be lost.'); else { msg('☁ ' + r.n + ' entries saved to SharePoint.'); go = confirm('Saved to SharePoint. Clear the log now?'); } }
-    else go = confirm('All entries are already saved to SharePoint. Clear the log?');
+      if (!r.ok) go = (window.nativeConfirm || confirm)('The activity could NOT be saved to SharePoint (' + r.why + ').\n\nClear the log anyway? The ' + pend + ' unsaved entries will be lost.'); else { msg('☁ ' + r.n + ' entries saved to SharePoint.'); go = (window.nativeConfirm || confirm)('Saved to SharePoint. Clear the log now?'); } }
+    else go = (window.nativeConfirm || confirm)('All entries are already saved to SharePoint. Clear the log?');
     if (go) { activityLog = []; saveActivity(); renderActivity(); status(); }
   }, true);
   const tg = Q('#activityToggle'); if (tg) tg.addEventListener('click', () => { status(); flush(); });

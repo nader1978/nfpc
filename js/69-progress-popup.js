@@ -53,8 +53,8 @@
   /* ---------- the job ---------- */
   function begin() {
     clearTimeout(hideT); if (J && !J.fin) return J;
-    J = { t0: Date.now(), user: Date.now() - lastUser < 2500, live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
-    exp = null; stopReq = false; clearTimeout(showT); showT = setTimeout(() => { if (J && !J.fin && J.user) { J.shown = true; draw(); } }, SHOW_AFTER);
+    J = { t0: Date.now(), user: Date.now() - lastUser < 5000, live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
+    exp = null; stopReq = false; clearTimeout(showT); showT = setTimeout(() => { if (J && !J.fin && J.user && !asking) { J.shown = true; draw(); } }, SHOW_AFTER);
     return J;
   }
   const bsz = j => j.total > 0 ? Math.max(5, Math.ceil(j.total / 48)) : B0;
@@ -110,14 +110,91 @@
     if (a === 'stop') { stopReq = true; if (paused) { const r = paused.r; paused = null; r(); } J.log.push({ c: '#fca5a5', t: '■ stopped by the user — the rest is not saved', bad: true }); return draw(); } }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && el && J && J.fin) close(); });
 
+  /* ---------- confirm before writing (only for work the user started; asked once per action) ---------- */
+  let asking = null, okAt = 0, noAt = 0;
+  const cssC = document.createElement('style'); cssC.textContent = `#opAsk{position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;animation:opIn .12s ease-out}
+#opAsk .op-c{width:min(440px,100%)}#opAsk .op-qh{display:flex;gap:14px;align-items:flex-start}#opAsk .op-qi{width:44px;height:44px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#1d4ed8}
+#opAsk .op-qi.del{background:#fee2e2;color:#b91c1c}#opAsk .op-q{font-size:13px;color:var(--gray-600,#475569);margin-top:6px;line-height:1.45}#opAsk .op-q b{color:var(--text,#0f172a)}#opAsk .op-f button.dl{background:#b91c1c;color:#fff;border-color:transparent}`; document.head.appendChild(cssC);
+  const ICO = { up: '<path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.8A6 6 0 0 0 4.5 13.5 4 4 0 0 0 7 19z"/><path d="M12 12v6"/><path d="m9 14 3-3 3 3"/>', del: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/>', mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>', q: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/>' };
+  function ask(c, j) {
+    if (asking) return asking;
+    const L = [...j.lists, c.list].map(listName).filter(Boolean), on = [...new Set(L)].join(', ') || 'SharePoint', del = !!c.del, mail = c.k === 'mail', file = !!c.file;
+    const loc = (typeof currentUser !== 'undefined' && currentUser && (currentUser.locationName || currentUser.location || '')) || '';
+    const o = mail ? { title: 'Send the email?', label: 'Send email', html: 'The email will be sent from your Microsoft 365 account.', yes: 'Yes, send', icon: 'mail' }
+      : del ? { title: 'Delete ' + (j.total ? fmt(j.total) + ' record' + (j.total > 1 ? 's' : '') : 'the selected record(s)') + '?', label: 'Delete from SharePoint', rows: [['List', on]], yes: 'Yes, delete', kind: 'del' }
+      : file ? { title: 'Upload the file(s)?', label: 'Upload to SharePoint', rows: [['List', on]], yes: 'Yes, upload', icon: 'up' }
+      : { title: j.label ? j.label + '?' : 'Save ' + (j.total ? fmt(j.total) + ' row' + (j.total > 1 ? 's' : '') : 'the changes') + '?', label: 'Save to SharePoint', rows: [['List', on], ['Rows', j.total ? fmt(j.total) : ''], ['Location', String(loc)]], yes: 'Yes, save', icon: 'up' };
+    asking = box(o).then(v => { const t = Date.now() + 400; if (v) okAt = t; else noAt = t; asking = null; return v; });
+    return asking; }
+  /* ---------- every confirm() of the system in the same ORBIT dialog ----------
+     confirm() must answer at once, so the first call answers "no", shows this dialog, and on "Yes" repeats the click
+     that asked — the repeated question is then answered "yes" straight away (and the SharePoint save does not ask again). */
+  const nativeConfirm = window.confirm.bind(window); window.nativeConfirm = nativeConfirm;
+  let lastAct = null, okMsgs = new Map(), boxOpen = false;
+  document.addEventListener('click', e => { if (!(e.target.closest && e.target.closest('#opAsk'))) lastAct = { el: e.target, t: Date.now() }; }, true);
+  /* design A: colour header band + summary rows · deletes need press-and-hold */
+  const cssA = document.createElement('style'); cssA.textContent = `
+#opAsk .oa{width:min(430px,100%);background:var(--card,#fff);color:var(--text,#0f172a);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,.45);font-size:13.5px;animation:oaIn .16s ease-out}
+@keyframes oaIn{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
+#opAsk .oa-h{background:#1e3a8a;color:#fff;padding:20px 22px;display:flex;align-items:center;gap:14px}#opAsk .oa.del .oa-h{background:#991b1b}
+#opAsk .oa-i{width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex:none}
+#opAsk .oa-l{font-size:11.5px;opacity:.85;letter-spacing:.07em;text-transform:uppercase}#opAsk .oa-t{font-size:18px;font-weight:700;line-height:1.25;word-break:break-word}
+#opAsk .oa-b{padding:16px 22px 4px;display:flex;flex-direction:column;gap:9px}#opAsk .oa-r{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid var(--border,#eef2f7);padding-bottom:8px}
+#opAsk .oa-r span{color:var(--gray-500,#64748b)}#opAsk .oa-r b{text-align:right;word-break:break-word}#opAsk .oa-p{color:var(--gray-600,#475569);line-height:1.45}#opAsk .oa-w{color:#991b1b;font-weight:600}
+#opAsk .oa-f{padding:14px 22px 20px;display:flex;justify-content:flex-end;align-items:center;gap:10px}#opAsk .oa-f .h{margin-right:auto;font-size:11.5px;color:var(--gray-500,#64748b)}
+#opAsk .oa-f button{height:42px;padding:0 18px;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;width:auto;margin:0}
+#opAsk .oa-n{border:1px solid var(--border,#cbd5e1);background:var(--card,#fff);color:var(--text,#0f172a)}#opAsk .oa-y{border:none;background:#1d4ed8;color:#fff;font-weight:700!important}
+#opAsk .oa-hold{position:relative;overflow:hidden;border:none;background:#fecaca;color:#fff;font-weight:700!important;min-width:170px;user-select:none;-webkit-user-select:none;touch-action:none}
+#opAsk .oa-hold i{position:absolute;left:0;top:0;bottom:0;width:0;background:#b91c1c}#opAsk .oa-hold span{position:relative;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+#opAsk .oa-y:focus-visible,#opAsk .oa-n:focus-visible,#opAsk .oa-hold:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}`; document.head.appendChild(cssA);
+  const HOLD_MS = 1200;
+  function box(o) {
+    return new Promise(res => { boxOpen = true; const del = o.kind === 'del', d = document.createElement('div'); d.id = 'opAsk'; d.dataset.nohc = '1'; d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
+      const rows = (o.rows || []).filter(r => r && r[1] !== '' && r[1] != null).map(r => `<div class="oa-r"><span>${esc(r[0])}</span><b>${esc(r[1])}</b></div>`).join('');
+      const label = o.label || (del ? 'Delete' : o.icon === 'up' ? 'Save to SharePoint' : o.icon === 'mail' ? 'Send email' : 'Please confirm');
+      d.innerHTML = `<div class="oa${del ? ' del' : ''}"><div class="oa-h"><div class="oa-i"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICO[o.icon || (del ? 'del' : 'q')]}</svg></div><div style="min-width:0"><div class="oa-l">${esc(label)}</div><div class="oa-t">${esc(o.title)}</div></div></div>
+        <div class="oa-b">${rows}${o.html ? `<div class="oa-p">${o.html}</div>` : ''}${del && !/cannot be undone/i.test(o.html || '') ? '<div class="oa-w">This cannot be undone.</div>' : ''}</div>
+        <div class="oa-f">${del ? '<span class="h">Press and hold to delete</span>' : ''}<button type="button" class="oa-n" data-q="0">${esc(o.no || 'Cancel')}</button>${del ? `<button type="button" class="oa-hold" data-hold="1" aria-label="Press and hold to ${esc((o.yes || 'Yes, delete').replace(/^Yes, /, ''))}"><i></i><span>Hold to ${esc((o.yes || 'Yes, delete').replace(/^Yes, /, ''))}</span></button>` : `<button type="button" class="oa-y" data-q="1">${esc(o.yes || 'Yes')}</button>`}</div></div>`;
+      document.body.appendChild(d); setTimeout(() => { const b = d.querySelector(del ? '[data-q="0"]' : '[data-q="1"]'); if (b) b.focus(); }, 30);
+      let done = false; const fin = v => { if (done) return; done = true; stopH(); d.remove(); boxOpen = false; document.removeEventListener('keydown', key, true); document.removeEventListener('keyup', kup, true); res(v); };
+      /* hold to delete */
+      const hb = d.querySelector('[data-hold]'), bar = hb && hb.querySelector('i'), txt = hb && hb.querySelector('span'); let h0 = 0, raf = 0;
+      const step = () => { const f = Math.min(1, (Date.now() - h0) / HOLD_MS); bar.style.width = (f * 100) + '%'; txt.textContent = f >= 1 ? '✓ ' + (o.yes || 'Yes, delete').replace(/^Yes, /, '') : 'Keep holding…'; if (f >= 1) { setTimeout(() => fin(true), 180); return; } raf = requestAnimationFrame(step); };
+      const startH = e => { if (!hb || h0) return; if (e) e.preventDefault(); h0 = Date.now(); raf = requestAnimationFrame(step); };
+      function stopH() { if (!hb || !h0) return; cancelAnimationFrame(raf); if (Date.now() - h0 < HOLD_MS) { h0 = 0; bar.style.transition = 'width .25s'; bar.style.width = '0'; txt.textContent = 'Hold to ' + (o.yes || 'Yes, delete').replace(/^Yes, /, ''); setTimeout(() => { if (bar) bar.style.transition = ''; }, 260); } }
+      if (hb) { hb.addEventListener('pointerdown', startH); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => hb.addEventListener(ev, stopH)); hb.addEventListener('contextmenu', e => e.preventDefault()); }
+      const key = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fin(false); }
+        else if ((e.key === 'Enter' || e.key === ' ') && del) { if (document.activeElement === hb) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) startH(); } else if (e.key === 'Enter' && document.activeElement && document.activeElement.dataset.q === '0') { e.preventDefault(); fin(false); } }
+        else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const a = document.activeElement; fin(!(a && a.dataset && a.dataset.q === '0')); } };
+      const kup = e => { if (del && (e.key === 'Enter' || e.key === ' ')) stopH(); };
+      document.addEventListener('keydown', key, true); document.addEventListener('keyup', kup, true);
+      d.addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) fin(b.dataset.q === '1'); else if (e.target === d) fin(false); }); }); }
+  window.orbAsk = box;
+  window.confirm = function (msg) {
+    msg = String(msg == null ? '' : msg); const now = Date.now(); okMsgs.forEach((t, k) => { if (now - t > 12000) okMsgs.delete(k); });
+    if (okMsgs.has(msg)) { okMsgs.delete(msg); okAt = now + 4000; return true; }
+    const a = lastAct; if (boxOpen || !a || now - a.t > 4000 || !a.el || !a.el.isConnected) return nativeConfirm(msg);
+    const lines = msg.split('\n').filter(x => x.trim() !== ''), first = lines[0] || 'Please confirm', rest = lines.slice(1);
+    const del = /\b(delete|remove|clear|discard|erase|wipe|reset|cancel the|danger)\b/i.test(msg), up = /\b(upload|save|post|push|send|import|register|approve|issue|apply)\b/i.test(first);
+    box({ title: first.length <= 90 ? first.replace(/^[⚠✔✖ ]+/, '') : 'Please confirm', label: del ? 'Delete' : up ? 'Save' : 'Please confirm', html: (first.length > 90 ? [first].concat(rest) : rest).map(l => esc(l)).join('<br>') || (del ? '' : 'Do you want to continue?'), kind: del ? 'del' : '', icon: del ? 'del' : up ? 'up' : 'q', yes: del ? 'Yes, ' + (/clear/i.test(msg) ? 'clear' : /remove/i.test(msg) ? 'remove' : /discard/i.test(msg) ? 'discard' : /reset/i.test(msg) ? 'reset' : 'delete') : 'Yes, continue' })
+      .then(ok => { if (!ok) return; okMsgs.set(msg, Date.now()); okAt = Date.now() + 4000; const el = a.el; lastAct = { el, t: Date.now() }; try { el.click(); } catch (e) {} });
+    return false; };
+
+  async function gate(c, j) {
+    if (!j.user) return true;                       /* background work: no question */
+    if (noAt && lastUser <= noAt) return false;      /* already cancelled for this action */
+    if (okAt && lastUser <= okAt) return true;       /* already confirmed for this action */
+    const ok = await ask(c, j); if (ok && !j.fin) { j.t0 = Date.now(); j.shown = true; draw(); } return ok; }
+
   /* ---------- the watcher ---------- */
   const F0 = window.fetch.bind(window);
   window.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : input && input.url, method = (init && init.method) || (input && input.method) || 'GET', c = classify(url, method);
     if (!c) return F0(input, init);
     const j = begin(); if (c.k === 'meta') { j.meta++; } else if (c.list) j.lists.add(c.list);
+    if ((c.k === 'w' || c.k === 'mail') && !(await gate(c, j))) { j.cancel = true; tick(); return new Response(JSON.stringify({ error: { code: 'cancelled', message: 'Cancelled by the user — nothing was saved' } }), { status: 400, statusText: 'Cancelled', headers: { 'Content-Type': 'application/json' } }); }
     if (c.k === 'w' && paused) await paused.p;
-    if (c.k === 'w' && stopReq) { tick(); throw new Error('Stopped by the user'); }
+    if (c.k === 'w' && stopReq) { tick(); return new Response(JSON.stringify({ error: { code: 'stopped', message: 'Stopped by the user — not saved' } }), { status: 400, statusText: 'Stopped', headers: { 'Content-Type': 'application/json' } }); }
     let nb = 1; if (c.batch) { try { nb = (JSON.parse(init.body).requests || []).length || 1; } catch (x) {} }
     j.live++; let res;
     try { res = await F0(input, init); }

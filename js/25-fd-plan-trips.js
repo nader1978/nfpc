@@ -56,7 +56,7 @@ function fdTripLineRow(t, l, ix) {
 }
 function fdTripClose() {
   const el = document.querySelector('#fdTripModal'), t = fd.m && fd.open ? fd.m.byId.get(fd.open) : null;
-  if (t) { const st = fd.m.st, und = fdExtraLines(fd.m, t).filter(x => !st.bal[x.l.key]); if (und.length) { const yes = confirm(`${und.length} item(s) in ${t.id} were added or are above the plan (${und.slice(0, 4).map(x => x.l.code + ' +' + fdQnum(x.ex)).join(', ')}${und.length > 4 ? ' …' : ''}).\n\nApply them to the Balance Plan?\n\nOK = Yes — the upload page adds them with a NEGATIVE quantity.\nCancel = No — nothing is added (you can change this later in the trip).`); und.forEach(x => { st.bal[x.l.key] = yes ? 'yes' : 'no'; }); fdStSave(fd.date, st); } }
+  if (t) { const st = fd.m.st, und = fdExtraLines(fd.m, t).filter(x => !st.bal[x.l.key]); if (und.length) { const yes = (window.nativeConfirm || confirm)(`${und.length} item(s) in ${t.id} were added or are above the plan (${und.slice(0, 4).map(x => x.l.code + ' +' + fdQnum(x.ex)).join(', ')}${und.length > 4 ? ' …' : ''}).\n\nApply them to the Balance Plan?\n\nOK = Yes — the upload page adds them with a NEGATIVE quantity.\nCancel = No — nothing is added (you can change this later in the trip).`); und.forEach(x => { st.bal[x.l.key] = yes ? 'yes' : 'no'; }); fdStSave(fd.date, st); } }
   if (el) el.style.display = 'none'; fd.open = null; fdRender();
   const ov = document.querySelector('#tblExpandOverlay'); if (ov && ov.style.display === 'flex' && fd.expOn && fd.tab === 'trips') fdExpandTables(document.querySelector('#fdBody'), fd.expTitle || 'F&D Plan · Trips / trailers');
 }
