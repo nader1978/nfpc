@@ -33,7 +33,7 @@
     try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
       try { await srkLoad(force); } catch (e) {}
       const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
-      const mine = SRK.ok && SRK.map.size ? SRK.map : null; S.rows = items.map(parse).filter(r => r && (!mine || mine.has(r.rk) || (SRK.mineStores && SRK.mineStores.has(r.loc.toUpperCase()))));
+      const scoped = typeof locScoped === 'function' && locScoped(), mine = scoped || (SRK.ok && SRK.map.size) ? SRK.map : null; S.rows = items.map(parse).filter(r => r && (!mine || mine.has(r.rk) || (!!SRK.mineStores && SRK.mineStores.has(r.loc.toUpperCase()))));
       S.rows.forEach(r => { const k = srkFind(r.rack); if (k) { if (!r.loc) r.loc = k.loc; if (!r.whs) r.whs = k.whs; if (!r.area) r.area = k.area; } });
       S.loaded = true; if (!S.f.loc) { const L = locs(); S.f.loc = L[0] || ''; } say('✔ ' + S.rows.length + ' rack inspection line(s) read · ' + new Date().toLocaleTimeString());
     } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } upd3d(); render();
@@ -107,12 +107,15 @@
       <input type="search" data-f="q" value="${esc(S.f.q)}" placeholder="Rack code…" style="min-width:140px">
       <label class="rkc-ck"><input type="checkbox" data-f="onlyHit"${S.f.onlyHit ? ' checked' : ''}> damaged racks only</label>${S.tab === 'mx' || S.tab === 'mxT' ? `<label class="rkc-ck"><input type="checkbox" data-f="allRacks"${S.f.allRacks ? ' checked' : ''}> all racks of the location</label>` : ''}
       <span style="flex:1"></span><button class="secondary small" type="button" data-rk="per" data-d="7">7 d</button><button class="secondary small" type="button" data-rk="per" data-d="30">30 d</button><button class="secondary small" type="button" data-rk="per" data-d="90">90 d</button>
-      <button class="success small" type="button" data-rk="3d">🧊 Show in 3D</button></div>
+      <button class="success small" type="button" data-rk="3d">🧊 Show in 3D</button><button class="secondary small" type="button" data-rk="print" title="Print the table shown">🖨 Print</button><button class="secondary small" type="button" data-rk="excel" title="Excel file of the table shown">📊 Excel</button><button class="secondary small" type="button" data-rk="mail" title="E-mail the table shown">✉ Email</button></div>
       ${S.f.loc ? (i => `<div class="rkc-loc">📍 <b>${esc(S.f.loc)}</b>${i.area.length ? ` <span>Location: <b>${esc(i.area.join(' / '))}</b></span>` : ''}${i.whs.length ? ` <span>🏭 Warehouse: <b>${esc(i.whs.join(' / '))}</b></span>` : ''}</div>`)(locInfo(S.f.loc)) : S.f.whs ? `<div class="rkc-loc">🏭 Warehouse: <b>${esc(S.f.whs)}</b> · ${L.length} location(s)</div>` : ''}
       ${S.loaded ? kpis(sel(S.f.loc)) : ''}
       <div class="pl-tabs" style="margin:6px 0 8px">${[['mx', '📊 Dates × racks'], ['mxT', '📊 Racks × dates'], ['sum', '📋 Summary by rack'], ['log', '🧾 Inspection log']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join('')}</div>
       ${S.loading && !S.loaded ? '<div class="rkc-hint">Reading…</div>' : !S.loaded ? `<div class="rkc-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the inspections.'}</div>` : S.tab === 'mx' ? matrix() : S.tab === 'mxT' ? matrixT() : S.tab === 'sum' ? summary() : log()}`;
   }
+  function rep() { const T = { mx: 'Rack hits — dates × racks', mxT: 'Rack hits — racks × dates', sum: 'Rack condition — summary by rack', log: 'Rack inspection log' }[S.tab] || 'Rack hits', i = S.f.loc ? locInfo(S.f.loc) : null;
+    const note = [S.f.loc ? 'Location ' + S.f.loc + (i && i.area.length ? ' (' + i.area.join(' / ') + ')' : '') : 'All locations', (i && i.whs.length ? 'Warehouse ' + i.whs.join(' / ') : S.f.whs ? 'Warehouse ' + S.f.whs : ''), dmy(S.f.from) + ' – ' + dmy(S.f.to), S.f.shift && 'Shift ' + S.f.shift, S.f.onlyHit && 'damaged racks only', 'Printed ' + new Date().toLocaleString()].filter(Boolean).join(' · ');
+    return tblReport(Q('#rkcBody table.rkc-t'), T, note, T.replace(/^Rack /, '')); }
   function hitBtn() {
     const bar = Q('#w3Body .w3bar'); if (!bar) return; let b = Q('#w3HitBtn'); if (!b) { b = document.createElement('button'); b.id = 'w3HitBtn'; b.type = 'button'; b.className = 'secondary small'; b.title = 'Show the rack hits & damages (Store_Inspections_RowDtls_tbl) on the 3D — same selection as the Rack Hits & Damages screen'; bar.appendChild(b); }
     const t = W3H.on ? `🛡 Hits: ON (${[...W3H.map.values()].filter(h => h.n).length} rack(s) hit · ${esc(dmy(S.f.from))}–${esc(dmy(S.f.to))})` : '🛡 Rack hits'; if (b.innerHTML !== t) b.innerHTML = t; b.classList.toggle('on', W3H.on);
@@ -124,6 +127,7 @@
   function init() {
     const v = Q('#view-rkc'); if (!v || v._i) return; v._i = 1;
     v.addEventListener('click', e => { const t = e.target.closest('[data-t],[data-rk]'); if (!t) return; if (t.dataset.t) { S.tab = t.dataset.t; return render(); } const a = t.dataset.rk;
+      if (a === 'print' || a === 'excel' || a === 'mail') { const d = rep(); if (a === 'print') a2Print(d); else if (a === 'excel') a2Export(d); else a2Mail(rep); return; }
       if (a === 'reload') load(true); else if (a === 'per') { S.f.to = ymd(new Date()); S.f.from = ymd(dShift(new Date(), -+t.dataset.d)); upd3d(); render(); }
       else if (a === '3d') { W3H.on = true; upd3d(); const n = Q('.nav-item[data-view="wh3d"]'); if (n) n.click(); setTimeout(() => { try { w3Api.redraw(); } catch (x) {} hitBtn(); }, 900); } });
     v.addEventListener('change', e => { const el = e.target, k = el.dataset.f; if (!k) return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; if (k === 'whs') S.f.loc = locs()[0] || ''; upd3d(); render(); });

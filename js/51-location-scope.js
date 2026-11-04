@@ -6,12 +6,12 @@
    unless "hide rows without Location_ID" is ticked (Users page).
    ============================================================ */
 const LOC_CFG = LS_BASE + '_loc_cfg';
-const locCfg = () => { try { return Object.assign({ hideBlank: false }, JSON.parse(localStorage.getItem(LOC_CFG) || '{}')); } catch (e) { return { hideBlank: false }; } };
+const locCfg = () => { try { return Object.assign({ hideBlank: true }, JSON.parse(localStorage.getItem(LOC_CFG) || '{}')); } catch (e) { return { hideBlank: true }; } };
 const locNorm = v => String(v == null ? '' : v).trim().replace(/\.0+$/, '').toLowerCase();
 const locIds = u => String(u && u.locationId != null ? u.locationId : '').split(/[,;\/\s]+/).map(locNorm).filter(x => x && x !== '0');
-const locScoped = () => !!currentUser && !(typeof isAdmin === 'function' && isAdmin()) && locIds(currentUser).length > 0;
+const locScoped = () => !!currentUser && !currentUser.builtin && !(typeof isAdmin === 'function' && isAdmin());   /* every non-admin is limited to his Location ID(s) — no Location ID = no location data; only admins see all */
 const locColOf = (listId, fields) => {
-  const T = (window.SP_COLT || {})[listId], isLoc = k => { const n = normalize(String(k).replace(/_x0020_/gi, '')); return n === 'locationid' || n === 'locid' || n === 'whlocationid' || n === 'warehouselocationid'; };
+  const T = (window.SP_COLT || {})[listId], isLoc = k => { const n = normalize(String(k).replace(/_x0020_/gi, '')); return n === 'locationid' || n === 'locid' || n === 'whlocationid' || n === 'warehouselocationid' || n === 'locationlink'; };
   if (T) { const k = Object.keys(T).find(x => isLoc(x) || isLoc(T[x].displayName || '')); if (k) return k; }
   return fields ? Object.keys(fields).find(isLoc) || null : null;
 };
@@ -28,16 +28,16 @@ function locApplyRow(f) {   /* refresh the signed-in user's profile from SharePo
 }
 const locNameMap = () => { try { return (JSON.parse(localStorage.getItem(LS_BASE + '_tprof') || '{}').names) || {}; } catch (e) { return {}; } };
 function locWhName(u) { u = u || currentUser; if (!u) return ''; if (u.whName) return String(u.whName); const m = locNameMap(), ids = locIds(u); return ids.map(i => m[i] || m[String(+i)] || '').filter(Boolean).join(' / '); }
-function locText(u) { u = u || currentUser; const ids = locIds(u), n = locWhName(u); return ids.length ? '📍 ' + (n ? n + ' · ' : '') + 'Location ' + ids.join(', ') : '📍 All locations'; }
+function locText(u) { u = u || currentUser; const ids = locIds(u), n = locWhName(u); return ids.length ? '📍 ' + (n ? n + ' · ' : '') + 'Location ' + ids.join(', ') : (u === currentUser && locScoped() ? '📍 No Location ID — ask the admin' : '📍 All locations'); }
 function locBadge() {
   const set = (el, t, ti) => { if (el.textContent !== t) el.textContent = t; if (el.title !== ti) el.title = ti; };
-  const ids = currentUser ? locIds(currentUser) : [], ti = ids.length ? (locScoped() ? 'You see and upload data of this location only' : 'Your uploads are stamped with this Location ID') : 'No Location ID set — all locations are shown';
+  const ids = currentUser ? locIds(currentUser) : [], ti = ids.length ? (locScoped() ? 'You see and upload data of this location only' : 'Admin — you see all locations; your uploads are stamped with this Location ID') : (locScoped() ? 'No Location ID is set for your user — location data is hidden until the admin sets it on the Users page' : 'Admin — all locations are shown');
   const r = document.querySelector('#userRole'); if (r) { let b = document.querySelector('#locBadge'); if (!b) { b = document.createElement('div'); b.id = 'locBadge'; b.style.cssText = 'font-size:11px;font-weight:700;margin-top:3px;opacity:.9;white-space:normal'; r.insertAdjacentElement('afterend', b); } set(b, locText(), ti); }
   const a = document.querySelector('.topbar-actions'); if (a) { let c = document.querySelector('#locChip'); if (!c) { c = document.createElement('span'); c.id = 'locChip'; c.style.cssText = 'font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;background:var(--brand-light,#eef3ff);color:var(--brand-dark,#12306b);border:1px solid var(--border);white-space:nowrap;margin-right:8px'; a.insertBefore(c, a.firstChild); } set(c, locText(), ti); c.style.display = currentUser ? '' : 'none'; }
 }
 function locHomeStrip(host) {   /* switchboard: who / where */
   if (!host || !currentUser) return; const z = host.querySelector('.hm-zoom') || host, old = host.querySelector('.hm-loc'); if (old) old.remove();
-  if (!locIds(currentUser).length) return;   /* all locations: no strip */
+  if (!locIds(currentUser).length && !locScoped()) return;   /* admin with all locations: no strip */
   const bits = [locText(), currentUser.jobTitle && '👤 ' + currentUser.jobTitle, currentUser.bu && 'BU ' + currentUser.bu, currentUser.region && 'Region ' + currentUser.region, currentUser.lineMngr && 'Line manager ' + currentUser.lineMngr].filter(Boolean);
   const d = document.createElement('div'); d.className = 'hm-loc'; d.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 10px;padding:9px 16px;font-size:13px;font-weight:600;background:var(--hm-c,#fff);border:1px solid var(--hm-l,#e3e8f2);border-radius:12px;color:var(--hm-t,#16223b)';
   d.innerHTML = bits.map((x, i) => '<span' + (i ? ' style="font-weight:500;color:var(--hm-m,#51607f)"' : ' style="font-size:15px"') + '>' + escapeHtml(x) + '</span>').join(''); z.insertBefore(d, z.firstChild);
@@ -82,7 +82,7 @@ function locMapRow(body, t) {   /* Data Upload mapping table: a read-only row th
 (function () {
   const card = () => document.querySelector('#usersTableBody') && document.querySelector('#usersTableBody').closest('.card'); let done = false;
   function bar() { const c = card(); if (!c || done || c.querySelector('#locBar')) return; done = true; const d = document.createElement('div'); d.id = 'locBar'; d.className = 'card-desc'; d.style.cssText = 'border:1px dashed var(--border);border-radius:10px;padding:8px 12px;margin:8px 0';
-    d.innerHTML = '📍 <b>Location ID</b> — each user sees and uploads data of his own warehouse location only (admins and users with empty / 0 see all). Uploads get the user\'s Location ID in the list column <code>Location_ID</code>. <label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px"><input type="checkbox" id="locHide" style="width:auto"> hide rows that have no Location_ID</label>';
+    d.innerHTML = '📍 <b>Location ID</b> — each user sees and uploads data of his own warehouse location only — <b>only admins see all locations</b>; a user with an empty / 0 Location ID sees no location data until it is set. Uploads get the user\'s Location ID in the list column <code>Location_ID</code>. <label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px"><input type="checkbox" id="locHide" style="width:auto"> hide rows that have no Location_ID</label>';
     const t = c.querySelector('.table-wrap'); if (t) t.parentNode.insertBefore(d, t); const cb = d.querySelector('#locHide'); cb.checked = locCfg().hideBlank; cb.addEventListener('change', () => { try { localStorage.setItem(LOC_CFG, JSON.stringify({ hideBlank: cb.checked })); } catch (e) {} sectionToast('Saved — reload the Warehouse page to apply.', 'success'); }); }
   const ob = new MutationObserver(() => { bar(); if (currentUser) locBadge(); }); ob.observe(document.body, { childList: true, subtree: true }); setTimeout(() => { bar(); locBadge(); }, 600);
 })();

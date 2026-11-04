@@ -202,4 +202,13 @@
   document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.ct-own'); if (!b) return; e.stopPropagation(); menu(b, b._t && b._t.isConnected ? b._t : (b._host && b._host.querySelector('table'))); });
   setInterval(ensureAll, 1200); setTimeout(ensureAll, 1500);
   document.addEventListener('click', () => setTimeout(ensureAll, 250));
+  /* report data (print / Excel / e-mail) from a table as it is shown: visible columns, current order, body + footer rows */
+  window.tblReport = function (t, title, note, sheet) {
+    if (!t || !t.tHead) return { title, sheet: sheet || title, note, headers: [], rows: [], totals: null };
+    const vis = c => c.style.display !== 'none', txt = c => String(c.innerText || c.textContent || '').replace(/\s+/g, ' ').trim(), hr = t.tHead.rows[0], idx = [...hr.cells].map((c, i) => vis(c) && lab(c) ? i : -1).filter(i => i >= 0);
+    const val = v => { const n = v.replace(/,/g, ''); return v !== '' && /^-?\d+(\.\d+)?%?$/.test(n) && !/%$/.test(n) && !/^0\d/.test(n) ? +n : v; };
+    const rowOf = r => { if (r.cells.length === 1 && r.cells[0].colSpan > 1) return [txt(r.cells[0])]; if (r.cells.length !== hr.cells.length) { const out = []; let k = 0; [...r.cells].forEach(c => { for (let j = 0; j < (c.colSpan || 1); j++) { if (idx.includes(k)) out.push(j ? '' : val(txt(c))); k++; } }); return out; } return idx.map(i => val(txt(r.cells[i]))); };
+    const rows = [...t.tBodies].flatMap(b => [...b.rows]).filter(r => r.style.display !== 'none').map(rowOf).filter(r => r.some(v => v !== '')), foot = t.tFoot ? [...t.tFoot.rows].map(rowOf) : [];
+    return { title, sheet: (sheet || title).replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31), note: note || ('Printed ' + new Date().toLocaleString()), headers: idx.map(i => lab(hr.cells[i])), rows: rows.concat(foot.slice(0, -1)), totals: foot.length ? foot[foot.length - 1] : null };
+  };
 })();
