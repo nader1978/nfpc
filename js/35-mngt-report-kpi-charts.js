@@ -39,8 +39,67 @@ const MW_DEFS = [
   { gf: 1, id: 'hrs', title: 'Working Hrs / OT', sub: 'regular and overtime hours', span: 's6', draw: (h, c) => mwCols(h, c.rows, ['Working Hrs', 'Working OT Hrs'], a => [a.hrs, a.ot], v => plF(v, 1), { tickFmt: v => plF(v) }) },
   { gf: 1, id: 'orders', title: '# Orders', sub: 'orders processed', span: 's6', draw: (h, c) => mwCols(h, c.rows, ['Orders'], a => [a.orders], v => plF(v)) },
   { gf: 1, id: 'vol', title: 'Working Volume Ltrs / Kgs', sub: 'outbound + returns (inbound excluded)', span: 's4', draw: (h, c) => mwCols(h, c.rows, ['Working volume'], a => [a.vol], v => plF(v)) },
-  { gf: 1, id: 'io', title: 'Volume Ltrs / Kgs In / Out', sub: 'working volume, outbound, inbound and returns', span: 's8', draw: (h, c) => mwCols(h, c.rows, ['Working volume', 'Outbound', 'Inbound', 'Returns'], a => [a.vol, a.out, a.inb, a.ret], v => plF(v)) }
+  { gf: 1, id: 'io', title: 'Volume Ltrs / Kgs In / Out', sub: 'working volume, outbound, inbound and returns', span: 's8', draw: (h, c) => mwCols(h, c.rows, ['Working volume', 'Outbound', 'Inbound', 'Returns'], a => [a.vol, a.out, a.inb, a.ret], v => plF(v)) },
+  { id: 'utilAvg', title: 'WHs Utilization vs capacity — average', sub: 'average used and free pallets against the WHs capacity over the date filter · Daily_Meeting_Report_Data_tbl linked by WHs_ID', span: 's6', draw: h => mwUtilChart(h, 'avg') },
+  { id: 'utilTo', title: 'WHs Utilization vs capacity — To date', sub: 'used and free pallets against the WHs capacity on the “To” date (latest entry on or before it)', span: 's6', draw: h => mwUtilChart(h, 'to') }
 ];
+
+/* ---------- WHs utilization (Daily_Meeting_Report_Data_tbl, linked to the daily data by WHs_ID) ---------- */
+function mwUtilRows(items) {
+  const M = mw.cfg.map.util, g = k => M[k] && M[k] !== SKIP_VALUE ? M[k] : null, out = [];
+  items.forEach(it => { const f = it.fields || {}, date = mdpDate(f[g('date')] instanceof Object ? '' : f[g('date')]), id = mwS(f[g('whid')]).replace(/\.0+$/, ''); if (!date || !id) return;
+    let u = g('util') ? mwNull(f[g('util')]) : null; const cap = g('cap') ? mwNull(f[g('cap')]) : null, used = g('used') ? mwNull(f[g('used')]) : null;
+    if (u == null && cap > 0 && used != null) u = used / cap * 100; if (u == null) return; out.push({ date, id, u, cap, used, wh: g('wh') ? mwS(f[g('wh')]) : '', frac: g('util') && mwNull(f[g('util')]) != null }); });
+  /* utilization kept as a fraction (0.82) → percent */
+  const fr = out.filter(r => r.frac); if (fr.length && fr.every(r => Math.abs(r.u) <= 1.5)) fr.forEach(r => { r.u *= 100; });
+  return out;
+}
+function mwUtilView() {
+  const f = mw.f, link = new Map(); mw.rows.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(r => { if (r.whid) link.set(r.whid, r); });
+  const anyF = f.area.length || f.region.length || f.wh.length;
+  return mw.util.map(u => { const L = link.get(u.id); return Object.assign({}, u, { wh: L ? L.wh : (u.wh || 'WHs_ID ' + u.id), area: L ? L.area : '', region: L ? L.region : '', linked: !!L }); })
+    .filter(u => (!anyF || u.linked) && (!f.area.length || f.area.includes(u.area)) && (!f.region.length || f.region.includes(u.region)) && (!f.wh.length || f.wh.includes(u.wh)));
+}
+function mwUtilChart(host, mode) {
+  if (!mw.cfg.list.util) return plEmpty(host, 'Pick the WHs utilization list (Daily_Meeting_Report_Data_tbl) in Lists & mapping.');
+  if (mw.utilErr) return plEmpty(host, '⚠ Utilization list: ' + mw.utilErr);
+  if (!mw.util.length) return plEmpty(host, 'No utilization rows were read — check the WHs_ID, date and utilization columns in Lists & mapping.');
+  if (!mw.rows.some(r => r.whid)) return plEmpty(host, 'Map WHs_ID in the daily data columns (Lists & mapping) to link the utilization.');
+  const f = mw.f, U = mwUtilView(), to = f.to || U.reduce((m, r) => r.date > m ? r.date : m, '');
+  /* WHs capacity: the capacity column of the utilization list, otherwise the capacity of the WHs list (by WHs_Desc) */
+  const capW = new Map(); (mw.whs || []).forEach(h => { if (h.cap > 0) capW.set(h.wh, (capW.get(h.wh) || 0) + h.cap); });
+  const byWh = new Map(); U.forEach(r => { if (!byWh.has(r.wh)) byWh.set(r.wh, []); byWh.get(r.wh).push(r); });
+  const W = []; byWh.forEach((L, wh) => { const r0 = L[0]; let R, dt = '';
+    if (mode === 'avg') { R = L.filter(r => (!f.from || r.date >= f.from) && (!f.to || r.date <= f.to)); const ds = R.map(r => r.date).sort(); dt = ds.length ? ds[0] + ' → ' + ds[ds.length - 1] : ''; }
+    else { const B = L.filter(r => r.date <= to); dt = B.reduce((m, r) => r.date > m ? r.date : m, ''); R = B.filter(r => r.date === dt); }
+    if (!R.length) return;
+    const cs = R.map(r => r.cap).filter(v => v > 0), cap = cs.length ? mwAvg(cs) : (capW.get(wh) || null);
+    const us = R.map(r => r.used != null ? r.used : (r.u != null && cap ? r.u / 100 * cap : null)).filter(v => v != null), used = us.length ? mwAvg(us) : null;
+    const u = cap && used != null ? used / cap * 100 : mwAvg(R.map(r => r.u).filter(v => v != null));
+    W.push({ wh, area: r0.area, region: r0.region, id: r0.id, cap, used, u, dt, n: R.length, capSrc: cs.length ? 'utilization list' : capW.has(wh) ? 'WHs list' : '' }); });
+  if (!W.length) return plEmpty(host, mode === 'avg' ? 'No utilization in the date filter.' : 'No utilization on or before ' + to + '.');
+  const by = mw.cfg.by, kf = by === 'area' ? w => w.area || '—' : by === 'region' ? w => w.region || '—' : by === 'areareg' ? w => (w.area || '—') + ' › ' + (w.region || '—') : w => w.wh;
+  const G = new Map(); W.forEach(w => { const k = kf(w); if (!G.has(k)) G.set(k, []); G.get(k).push(w); });
+  const cats = [...G.entries()].sort((a, b) => mdpNat(a[0], b[0])).map(([k, L]) => { const C = L.filter(w => w.cap > 0 && w.used != null), cap = C.reduce((a, w) => a + w.cap, 0), used = C.reduce((a, w) => a + w.used, 0);
+    return { k, L, cap: C.length ? cap : null, used: C.length ? used : null, u: C.length && cap ? used / cap * 100 : mwAvg(L.map(w => w.u).filter(v => v != null)) }; });
+  const T = plT(), hasCap = cats.some(c => c.cap != null), pct = v => v == null ? '—' : plF(v, 1) + '%', lbl = mode === 'avg' ? 'Average ' + (f.from || '…') + ' → ' + (f.to || '…') : 'On ' + to;
+  const C2 = cats.slice(0, 40), late = mode === 'to' ? W.filter(w => w.dt !== to).length : 0, noCap = W.filter(w => !(w.cap > 0)).length;
+  const tc = W.filter(w => w.cap > 0 && w.used != null), tCap = tc.reduce((a, w) => a + w.cap, 0), tUsed = tc.reduce((a, w) => a + w.used, 0), tU = tCap ? tUsed / tCap * 100 : mwAvg(W.map(w => w.u).filter(v => v != null));
+  let legend;
+  if (hasCap) {
+    const sr = [{ name: mode === 'avg' ? 'Used pallets (average)' : 'Used pallets ' + to, color: mode === 'avg' ? T.series[0] : T.series[1] }, { name: 'Free pallets', color: T.good || '#16a34a' }];
+    plcCols(host, { stacked: true, cats: C2.map(c => ({ label: c.k, vals: [c.used, c.cap != null && c.used != null ? Math.max(0, c.cap - c.used) : null], u: c.u, cap: c.cap, free: c.cap != null && c.used != null ? c.cap - c.used : null })), series: sr,
+      fmt: v => v == null ? '—' : plF(v), tickFmt: v => plF(v), height: 290,
+      labelFn: c => c.cap == null ? (c.u != null ? pct(c.u) : '') : plF(Math.round(c.free)) + ' free · ' + plF(c.u, 0) + '%' });
+    legend = sr.map(s => ({ name: s.name, c: s.color })).concat([{ name: lbl + ' · capacity ' + plF(tCap) + ' · used ' + plF(Math.round(tUsed)) + ' · free ' + plF(Math.round(tCap - tUsed)) + ' pallets · ' + pct(tU) + (late ? ' · ' + late + ' WHs from an earlier date' : '') + (noCap ? ' · ' + noCap + ' WHs without capacity' : ''), c: 'transparent' }]);
+  } else {
+    const col = mode === 'avg' ? T.series[0] : T.series[1];
+    plcCols(host, { cats: C2.map(c => ({ label: c.k, vals: [c.u] })), series: [{ name: 'Utilization', color: col }], fmt: pct, tickFmt: v => plF(v, 0) + '%', height: 260, labelFn: (c, v) => v == null ? '' : pct(v) });
+    legend = [{ name: lbl + ' · overall ' + pct(tU) + ' · map a capacity column (utilization list or WHs list) to compare with the WHs capacity', c: col }];
+  }
+  const rows = W.sort((a, b) => mdpNat(kf(a), kf(b)) || mdpNat(a.wh, b.wh)).map(w => [kf(w), w.wh, w.id, w.cap == null ? '' : Math.round(w.cap), w.used == null ? '' : Math.round(w.used * 100) / 100, w.cap && w.used != null ? Math.round((w.cap - w.used) * 100) / 100 : '', w.u == null ? '' : Math.round(w.u * 100) / 100, w.dt, w.capSrc]);
+  return { legend, table: { headers: ['Group', 'WHs', 'WHs_ID', 'WHs capacity', mode === 'avg' ? 'Average used' : 'Used', 'Free pallets', 'Utilization %', mode === 'avg' ? 'Dates' : 'Date used', 'Capacity from'], rows } };
+}
 /* ---------- table ---------- */
 const MW_HEAD = ['Group', 'Records', 'Orders', 'Outbound', 'Inbound', 'Returns', 'Working volume', 'Working hrs', 'OT hrs', 'OT %', 'OT target %', 'OT diff (pp)', 'Productivity /hr', 'Target value', 'Productivity %', 'Budget HC', 'Actual HC'];
 function mwTableData() {
@@ -140,13 +199,13 @@ function mwQuick(q) {
 function mwInit() {
   if (mw.inited) return; mw.inited = true; mwLoadCfg(); try { visInit({ pre: 'mw', view: 'mgw', grid: '#mwGrid', kpis: '#mwKpis', redraw: () => mwRenderReport() }); } catch (e) { console.error(e); } const q = PLQ; mw.tab = !mwSetupOk() || (mw.cfg.list.daily && getGlobalAccessToken()) ? 'rep' : 'setup';
   q('#mwTabs').addEventListener('click', e => { const b = e.target.closest('button[data-t]'); if (!b) return; mw.tab = b.dataset.t; mwRefresh(); });
-  ['daily', 'whs', 'trgt'].forEach(w => { mw.pick[w] = createListPicker(document.querySelector(`[data-list-picker="mw-${w}"]`), { getSiteUrl: () => getGlobalSiteUrl(), getToken: () => getGlobalAccessToken(), onChange: () => { mw.cols[w] = []; mwMapRender(w); } }); try { if (mw.cfg.list[w] && mw.pick[w].setValue) mw.pick[w].setValue(mw.cfg.list[w]); } catch (e) {} mwMapRender(w); });
+  ['daily', 'whs', 'trgt', 'util'].forEach(w => { mw.pick[w] = createListPicker(document.querySelector(`[data-list-picker="mw-${w}"]`), { getSiteUrl: () => getGlobalSiteUrl(), getToken: () => getGlobalAccessToken(), onChange: () => { mw.cols[w] = []; mwMapRender(w); } }); try { if (mw.cfg.list[w] && mw.pick[w].setValue) mw.pick[w].setValue(mw.cfg.list[w]); } catch (e) {} mwMapRender(w); });
   q('#mwColsBtn').addEventListener('click', async () => {
     const st = q('#mwColsStatus'), token = getGlobalAccessToken(), siteUrl = getGlobalSiteUrl(); if (!token || !siteUrl) { st.textContent = '⚠ Configure the global Site URL and sign-in first.'; return; }
-    try { st.textContent = 'Loading…'; for (const w of ['daily', 'whs', 'trgt']) { const nm = mw.pick[w].getValue(); mw.cfg.list[w] = nm; if (!nm) { mw.cols[w] = []; continue; } const { siteId, listId } = await resolveIds(siteUrl, nm, token); mw.cols[w] = (await fetchColumns(siteId, listId, token)).filter(c => !READ_ONLY_COLUMNS.has(c.name.toLowerCase())); if (!Object.keys(mw.cfg.map[w]).length) mw.cfg.map[w] = mdpAuto(MW_FIELDS[w], mw.cols[w]); mwMapRender(w); }
-      st.textContent = `✓ ${mw.cols.daily.length} daily · ${mw.cols.whs.length} headcount · ${mw.cols.trgt.length} target columns`; mwSaveCfg(); } catch (e) { st.textContent = '✘ ' + e.message; }
+    try { st.textContent = 'Loading…'; for (const w of ['daily', 'whs', 'trgt', 'util']) { const nm = mw.pick[w].getValue(); mw.cfg.list[w] = nm; if (!nm) { mw.cols[w] = []; continue; } const { siteId, listId } = await resolveIds(siteUrl, nm, token); mw.cols[w] = (await fetchColumns(siteId, listId, token)).filter(c => !READ_ONLY_COLUMNS.has(c.name.toLowerCase())); if (!Object.keys(mw.cfg.map[w]).length) mw.cfg.map[w] = mdpAuto(MW_FIELDS[w], mw.cols[w]); mwMapRender(w); }
+      st.textContent = `✓ ${mw.cols.daily.length} daily · ${mw.cols.whs.length} headcount · ${mw.cols.trgt.length} target · ${mw.cols.util.length} utilization columns`; mwSaveCfg(); } catch (e) { st.textContent = '✘ ' + e.message; }
   });
-  q('#mwAutoBtn').addEventListener('click', () => { let any = false; ['daily', 'whs', 'trgt'].forEach(w => { if (mw.cols[w].length) { mw.cfg.map[w] = mdpAuto(MW_FIELDS[w], mw.cols[w]); mwMapRender(w); any = true; } }); if (!any) q('#mwColsStatus').textContent = '⚠ Load columns first.'; mwSaveCfg(); });
+  q('#mwAutoBtn').addEventListener('click', () => { let any = false; ['daily', 'whs', 'trgt', 'util'].forEach(w => { if (mw.cols[w].length) { mw.cfg.map[w] = mdpAuto(MW_FIELDS[w], mw.cols[w]); mwMapRender(w); any = true; } }); if (!any) q('#mwColsStatus').textContent = '⚠ Load columns first.'; mwSaveCfg(); });
   q('#mwCopyDef').addEventListener('click', async () => { if (!mwSetupOk()) return; const t = 'const MW_DEFAULT = ' + JSON.stringify({ list: mw.cfg.list, map: mw.cfg.map, opt: mw.cfg.opt }) + ';'; try { await navigator.clipboard.writeText(t); q('#mwLoadStatus').textContent = '✔ Copied — paste it over the MW_DEFAULT line in the HTML file; everyone then uses these lists.'; } catch (e) { prompt('Copy this line:', t); } });
   q('#mwLoadBtn').addEventListener('click', () => mwLoad(false)); q('#mwRefresh').addEventListener('click', () => mwLoad(false));
   const opt = () => { const o = mw.cfg.opt; o.out = q('#mwIncOut').checked; o.inb = q('#mwIncIn').checked; o.ret = q('#mwIncRet').checked; o.hrs = q('#mwHrsBasis').value; o.otFmt = q('#mwOtFmt').value; o.tAgg = q('#mwTAgg').value; mwSaveCfg(); mwDefsRender(); }; ['#mwIncOut', '#mwIncIn', '#mwIncRet', '#mwHrsBasis', '#mwOtFmt', '#mwTAgg'].forEach(s => q(s).addEventListener('change', opt));

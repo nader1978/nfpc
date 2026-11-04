@@ -405,6 +405,50 @@ function visInit(cfg) {   // cfg: {pre:'pl'|'dp', grid:'#plGrid', kpis:'#plKpis'
   new MutationObserver(() => apply()).observe(root, { childList: true });
   load(); apply();
   const nav = document.querySelector(`.nav-item[data-view="${cfg.view}"]`); if (nav) nav.addEventListener('click', () => { load(); setTimeout(() => apply(true), 60); });
+  try { lyInit(cfg, root, bar); } catch (e) { console.error(e); }
+}
+/* ---------- 📐 Layout: every user can re-order the charts (drag or ◀ ▶) and set their width — saved per user, per report ---------- */
+const LY_W = [[3, '¼'], [4, '⅓'], [6, '½'], [8, '⅔'], [12, 'Full']];
+(function () { const c = document.createElement('style'); c.textContent = `
+.pl-grid>.pl-card.ly3{grid-column:span 3}.pl-grid>.pl-card.ly4{grid-column:span 4}.pl-grid>.pl-card.ly6{grid-column:span 6}.pl-grid>.pl-card.ly8{grid-column:span 8}.pl-grid>.pl-card.ly12{grid-column:span 12}
+@media(max-width:1300px){.pl-grid>.pl-card.ly3,.pl-grid>.pl-card.ly4{grid-column:span 6}.pl-grid>.pl-card.ly8{grid-column:span 12}}
+@media(max-width:860px){.pl-grid>.pl-card[class*=" ly"]{grid-column:span 12!important}}
+.ly-on>.pl-card{outline:2px dashed var(--brand,#2563eb);outline-offset:-2px;cursor:grab}.ly-on>.pl-card.ly-drag{opacity:.4}.ly-on>.pl-card.ly-over{outline:3px solid #f59e0b}
+.ly-tb{display:none;align-items:center;gap:4px;flex-wrap:wrap;margin:-2px 0 8px;padding:5px 8px;border-radius:9px;background:var(--brand-light,#dbeafe);font-size:12px}
+.ly-on>.pl-card .ly-tb{display:flex}.ly-tb b{margin-right:4px}.ly-tb button{padding:2px 8px;border-radius:7px;border:1px solid var(--border,#cbd5e1);background:var(--card,#fff);color:inherit;cursor:pointer;font-size:12px;line-height:1.5}
+.ly-tb button.on{background:var(--brand,#1e3a8a);color:#fff;border-color:transparent}.ly-tb .sp{flex:1}.vis-bar .ly-btn.on{background:var(--brand,#1e3a8a);color:#fff}
+.ly-note{display:none;font-size:12px;color:var(--gray-600,#475569);margin:0 6px}.vis-bar.ly-act .ly-note{display:inline}`; document.head.appendChild(c); })();
+function lyInit(cfg, root, bar) {
+  const key = () => LS_BASE + '_ly_' + cfg.pre + '_' + ((typeof currentUser !== 'undefined' && currentUser && currentUser.id) || 'u');
+  const get = () => { try { return Object.assign({ order: [], w: {} }, JSON.parse(localStorage.getItem(key()) || '{}')); } catch (e) { return { order: [], w: {} }; } };
+  const put = o => { try { localStorage.setItem(key(), JSON.stringify(o)); } catch (e) {} };
+  const cards = () => [...root.querySelectorAll(':scope > .pl-card')];
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'ghost small ly-btn'; btn.textContent = '📐 Layout'; btn.title = 'Re-order the charts and change their width — saved for you';
+  const rs = document.createElement('button'); rs.type = 'button'; rs.className = 'ghost small'; rs.textContent = '↺ Reset layout'; rs.style.display = 'none';
+  const note = document.createElement('span'); note.className = 'ly-note'; note.textContent = 'Drag a chart onto another, or use ◀ ▶ and the width buttons — saved for you on this computer';
+  bar.appendChild(btn); bar.appendChild(rs); bar.appendChild(note);
+  let on = false, busy = false, dragId = null, tm = 0;
+  const redraw = () => { clearTimeout(tm); tm = setTimeout(() => { if (cfg.redraw) cfg.redraw(); else window.dispatchEvent(new Event('resize')); }, 60); };
+  function apply() { const o = get(), C = cards(), ids = C.map(c => c.dataset.id), want = o.order.filter(i => ids.includes(i)).concat(ids.filter(i => !o.order.includes(i)));
+      if (want.join('|') !== ids.join('|')) want.forEach(i => { const c = C.find(x => x.dataset.id === i); if (c) root.appendChild(c); });
+      cards().forEach(c => { const w = o.w[c.dataset.id]; LY_W.forEach(([n]) => c.classList.toggle('ly' + n, w === n)); tb(c, w); if (c.draggable !== on) c.draggable = on; }); }
+  function tb(c, w) { let t = c.querySelector(':scope > .ly-tb'); if (!t) { t = document.createElement('div'); t.className = 'ly-tb'; c.insertBefore(t, c.firstChild); c.draggable = on; }
+    const h = `<b>⠿</b><button type="button" data-ly="l" title="Move left / up">◀</button><button type="button" data-ly="r" title="Move right / down">▶</button><span class="sp"></span>Width ${LY_W.map(([n, l]) => `<button type="button" data-ly="w${n}" class="${w === n ? 'on' : ''}">${l}</button>`).join('')}<button type="button" data-ly="w0" title="Back to the standard width" class="${w ? '' : 'on'}">Std</button>`;
+    if (t.innerHTML !== h) t.innerHTML = h; }
+  const save = () => { const o = get(); o.order = cards().map(c => c.dataset.id); put(o); };
+  root.addEventListener('click', e => { const b = e.target.closest('[data-ly]'); if (!b || !on) return; e.stopPropagation(); const c = b.closest('.pl-card'), a = b.dataset.ly, C = cards(), i = C.indexOf(c);
+    if (a === 'l' && i > 0) { root.insertBefore(c, C[i - 1]); save(); redraw(); } else if (a === 'r' && i < C.length - 1) { root.insertBefore(C[i + 1], c); save(); redraw(); }
+    else if (a[0] === 'w') { const o = get(), n = +a.slice(1); if (n) o.w[c.dataset.id] = n; else delete o.w[c.dataset.id]; put(o); apply(); redraw(); } }, true);
+  root.addEventListener('dragstart', e => { const c = e.target.closest && e.target.closest('.pl-card'); if (!on || !c || c.parentElement !== root) return; dragId = c.dataset.id; c.classList.add('ly-drag'); try { e.dataTransfer.setData('text/plain', dragId); e.dataTransfer.effectAllowed = 'move'; } catch (x) {} });
+  root.addEventListener('dragover', e => { if (!dragId) return; const c = e.target.closest('.pl-card'); if (!c || c.parentElement !== root) return; e.preventDefault(); cards().forEach(x => x.classList.toggle('ly-over', x === c && x.dataset.id !== dragId)); });
+  root.addEventListener('drop', e => { if (!dragId) return; e.preventDefault(); const c = e.target.closest('.pl-card'), d = cards().find(x => x.dataset.id === dragId); if (c && d && c !== d && c.parentElement === root) { const C = cards(); root.insertBefore(d, C.indexOf(d) < C.indexOf(c) ? c.nextSibling : c); save(); redraw(); } });
+  root.addEventListener('dragend', () => { dragId = null; cards().forEach(x => x.classList.remove('ly-drag', 'ly-over')); });
+  const setOn = v => { on = v; root.classList.toggle('ly-on', on); bar.classList.toggle('ly-act', on); btn.classList.toggle('on', on); btn.textContent = on ? '✓ Done' : '📐 Layout'; rs.style.display = on ? '' : 'none'; cards().forEach(c => { c.draggable = on; }); };
+  btn.addEventListener('click', () => setOn(!on));
+  rs.addEventListener('click', () => { put({ order: [], w: {} }); const C = cards(); C.sort((a, b) => (+a.dataset.ly0 || 0) - (+b.dataset.ly0 || 0)).forEach(c => root.appendChild(c)); apply(); redraw(); try { sectionToast('↺ Standard chart layout restored.', 'success'); } catch (x) {} });
+  new MutationObserver(() => { cards().forEach(c => { if (c.dataset.ly0 == null) c.dataset.ly0 = String(lyInit.n = (lyInit.n || 0) + 1); }); if (!busy) { busy = true; setTimeout(() => { busy = false; apply(); }, 0); } }).observe(root, { childList: true });
+  cards().forEach(c => { if (c.dataset.ly0 == null) c.dataset.ly0 = String(lyInit.n = (lyInit.n || 0) + 1); }); apply();
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && on) setOn(false); });
 }
 
 

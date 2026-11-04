@@ -368,7 +368,7 @@ document.querySelectorAll('.nav-item[data-view="mgt"]').forEach(n => n.addEventL
 const MW_KEY = LS_BASE + '_mgw_cfg1';
 const MW_DEFAULT = null;   // fixed by the administrator: use "Copy fixed settings" in Lists & mapping and paste it over this line
 const mwSetupOk = () => featOk('mgsetup');
-const mw = { cfg: { list: { daily: 'Mngmnt_Daily_Data_tbl', whs: '', trgt: 'Trgt_tbl' }, map: { daily: {}, whs: {}, trgt: {} }, opt: { out: true, inb: false, ret: true, hrs: 'reg', otFmt: 'auto', tAgg: 'avg' }, by: 'areareg', src: 'sp' }, cols: { daily: [], whs: [], trgt: [] }, pick: {}, rows: [], whs: [], trg: [], f: { from: '', to: '', area: [], region: [], wh: [] }, tab: 'setup', loaded: 0, inited: false, ctx: { groups: [], all: null } };
+const mw = { cfg: { list: { daily: 'Mngmnt_Daily_Data_tbl', whs: '', trgt: 'Trgt_tbl', util: 'Daily_Meeting_Report_Data_tbl' }, map: { daily: {}, whs: {}, trgt: {}, util: {} }, opt: { out: true, inb: false, ret: true, hrs: 'reg', otFmt: 'auto', tAgg: 'avg' }, by: 'areareg', src: 'sp' }, cols: { daily: [], whs: [], trgt: [], util: [] }, pick: {}, rows: [], whs: [], trg: [], util: [], f: { from: '', to: '', area: [], region: [], wh: [] }, tab: 'setup', loaded: 0, inited: false, ctx: { groups: [], all: null } };
 const MW_FIELDS = {
   daily: [
     { key: 'date', label: 'Entry_Date', req: 1, al: ['entrydate', 'recorddate', 'reportdate', 'date', 'day'] },
@@ -383,17 +383,26 @@ const MW_FIELDS = {
     { key: 'not', label: 'Normal Overtime Hours', al: ['normalovertimehours', 'normalovertimehrs', 'normalothours', 'normalothrs', 'normalot', 'overtimehours'] },
     { key: 'wo', label: 'Week-Off OT', al: ['weekoffot', 'weekoffovertime', 'weekoffothours', 'weekoff'] },
     { key: 'po', label: 'Public_OT', al: ['publicot', 'publicotthours', 'publicholidayot', 'publicovertime', 'public'] },
-    { key: 'vol', label: 'Working Volume (only if a ready column exists)', al: ['workingvolume', 'totalvolume'] }],
+    { key: 'vol', label: 'Working Volume (only if a ready column exists)', al: ['workingvolume', 'totalvolume'] },
+    { key: 'whid', label: 'WHs_ID (links the WHs utilization list)', al: ['whsid', 'whid', 'warehouseid', 'whsno', 'whno'] }],
   whs: [
     { key: 'wh', label: 'WHs_Desc (warehouse)', req: 1, al: ['whsdesc', 'whdesc', 'whs', 'warehouse', 'whname', 'wh'] },
     { key: 'bud', label: 'Budget_HC', req: 1, al: ['budgethc', 'budgetheadcount', 'budget', 'bdgt'] },
-    { key: 'act', label: 'Nr_TACCS_HC (actual headcount)', req: 1, al: ['nrtaccshc', 'taccshc', 'actualhc', 'actualheadcount', 'headcount', 'actual', 'hc'] }],
+    { key: 'act', label: 'Nr_TACCS_HC (actual headcount)', req: 1, al: ['nrtaccshc', 'taccshc', 'actualhc', 'actualheadcount', 'headcount', 'actual', 'hc'] },
+    { key: 'cap', label: 'WHs capacity (pallet positions) — optional, for the utilization charts', al: ['whscapacity', 'palletcapacity', 'totalcapacity', 'totalpositions', 'capacity'] }],
   trgt: [
     { key: 'area', label: 'Area_Desc (matches Area / Region_Desc) — optional', al: ['areadesc', 'locationdesc', 'area', 'regiondesc'] },
     { key: 'region', label: 'Region_Code (matches Regions / BU_Decs) — optional', al: ['regioncode', 'budecs', 'bucode', 'region'] },
     { key: 'code', label: 'WHs_Code (matches WHs Desc, or the Region at region level)', req: 1, al: ['whscode', 'whcode', 'linkcode', 'warehousecode', 'code'] },
     { key: 'prod', label: 'Target Value (productivity target)', req: 1, al: ['targetvalue', 'targetprod', 'productivitytarget', 'prodtarget', 'target'] },
-    { key: 'tot', label: 'TargetOT (overtime target)', al: ['targetot', 'ottarget', 'overtimetarget', 'otpercent'] }]
+    { key: 'tot', label: 'TargetOT (overtime target)', al: ['targetot', 'ottarget', 'overtimetarget', 'otpercent'] }],
+  util: [
+    { key: 'whid', label: 'WHs_ID (link to the daily data)', req: 1, al: ['whsid', 'whid', 'warehouseid', 'whsno', 'whno'] },
+    { key: 'date', label: 'Date (Entry / report / meeting date)', req: 1, al: ['entrydate', 'reportdate', 'meetingdate', 'recorddate', 'utilizationdate', 'date', 'day'] },
+    { key: 'util', label: 'WHs utilization % (or map capacity + used below)', al: ['whsutilization', 'whutilization', 'whsutilisation', 'whutilisation', 'utilizationpct', 'utilisationpct', 'utilization', 'utilisation', 'util', 'occupancy'] },
+    { key: 'cap', label: 'Capacity (pallet positions) — optional', al: ['whscapacity', 'totalcapacity', 'palletcapacity', 'totalpositions', 'capacity'] },
+    { key: 'used', label: 'Used / occupied — optional', al: ['occupiedpositions', 'occupiedpallets', 'usedpositions', 'usedcapacity', 'palletsstored', 'occupied', 'used'] },
+    { key: 'wh', label: 'WHs_Desc — optional (name if the ID is not in the daily data)', al: ['whsdesc', 'whdesc', 'warehouse', 'whname'] }]
 };
 const MW_TABS = [['rep', '📊 Report'], ['setup', '🔌 Lists & mapping'], ['measures', 'ƒ Measures']];
 const mwS = v => v == null ? '' : typeof v === 'object' ? String(v.Value ?? v.LookupValue ?? v.Title ?? v.DisplayName ?? '').trim() : String(v).trim();
@@ -401,13 +410,13 @@ const mwNull = v => { if (v == null || v === '') return null; if (typeof v === '
 const mwN = v => mwNull(v) || 0;
 const mwAvg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 const mwMapOk = (w) => MW_FIELDS[w].filter(f => f.req).every(f => mw.cfg.map[w][f.key] && mw.cfg.map[w][f.key] !== SKIP_VALUE);
-function mwLoadCfg() { try { const c = JSON.parse(localStorage.getItem(MW_KEY) || 'null'); if (c) { Object.assign(mw.cfg.list, c.list || {}); ['daily', 'whs', 'trgt'].forEach(w => Object.assign(mw.cfg.map[w], (c.map || {})[w] || {})); Object.assign(mw.cfg.opt, c.opt || {}); if (c.by) mw.cfg.by = c.by; } } catch (e) {}
-  if (!mwSetupOk() && MW_DEFAULT) { try { Object.assign(mw.cfg.list, MW_DEFAULT.list || {}); ['daily', 'whs', 'trgt'].forEach(w => { mw.cfg.map[w] = Object.assign({}, (MW_DEFAULT.map || {})[w] || {}); }); Object.assign(mw.cfg.opt, MW_DEFAULT.opt || {}); } catch (e) {} } }
+function mwLoadCfg() { try { const c = JSON.parse(localStorage.getItem(MW_KEY) || 'null'); if (c) { Object.assign(mw.cfg.list, c.list || {}); ['daily', 'whs', 'trgt', 'util'].forEach(w => (mw.cfg.map[w] = mw.cfg.map[w] || {}, Object.assign(mw.cfg.map[w], (c.map || {})[w] || {}))); Object.assign(mw.cfg.opt, c.opt || {}); if (c.by) mw.cfg.by = c.by; } } catch (e) {}
+  if (!mwSetupOk() && MW_DEFAULT) { try { Object.assign(mw.cfg.list, MW_DEFAULT.list || {}); ['daily', 'whs', 'trgt', 'util'].forEach(w => { mw.cfg.map[w] = Object.assign({}, (MW_DEFAULT.map || {})[w] || {}); }); Object.assign(mw.cfg.opt, MW_DEFAULT.opt || {}); } catch (e) {} } }
 function mwSaveCfg() { try { localStorage.setItem(MW_KEY, JSON.stringify(mw.cfg)); } catch (e) {} }
 
 /* ---------- mapping UI ---------- */
 function mwMapRender(w) {
-  const host = PLQ({ daily: '#mwMapDaily', whs: '#mwMapWhs', trgt: '#mwMapTrgt' }[w]), cols = mw.cols[w]; host.innerHTML = '';
+  const host = PLQ({ daily: '#mwMapDaily', whs: '#mwMapWhs', trgt: '#mwMapTrgt', util: '#mwMapUtil' }[w]), cols = mw.cols[w]; if (!host) return; host.innerHTML = '';
   if (!cols.length) { host.innerHTML = '<tr><td colspan="2" style="padding:14px;text-align:center;color:var(--gray-400);font-style:italic;">Pick the list and click 🔄 Load Columns.</td></tr>'; return; }
   MW_FIELDS[w].forEach(f => { const tr = document.createElement('tr'); tr.innerHTML = `<td><strong>${plEsc(f.label)}</strong>${f.req ? ' <span style="color:#c0392b">*</span>' : ''}</td><td class="combo-cell"></td>`; tr.querySelector('.combo-cell').appendChild(buildCombo(mw.cfg.map[w][f.key] || SKIP_VALUE, cols, nv => { mw.cfg.map[w][f.key] = nv; mwSaveCfg(); })); host.appendChild(tr); });
 }
@@ -420,10 +429,10 @@ async function mwReadList(w, say) {
 }
 async function mwLoad(silent) {
   const st = PLQ('#mwLoadStatus'), say = (t, c) => { st.className = 'text-sm'; st.textContent = t; st.style.color = c === 'e' ? '#c0392b' : ''; }, prog = PLQ('#mwProg'), token = getGlobalAccessToken(), siteUrl = getGlobalSiteUrl();
-  if (mwSetupOk()) { mw.cfg.list.daily = mw.pick.daily.getValue(); mw.cfg.list.whs = mw.pick.whs.getValue(); mw.cfg.list.trgt = mw.pick.trgt.getValue(); mwSaveCfg(); }
+  if (mwSetupOk()) { mw.cfg.list.daily = mw.pick.daily.getValue(); mw.cfg.list.whs = mw.pick.whs.getValue(); mw.cfg.list.trgt = mw.pick.trgt.getValue(); if (mw.pick.util) mw.cfg.list.util = mw.pick.util.getValue(); mwSaveCfg(); }
   if (!token || !siteUrl) { if (!silent) say('⚠ Configure the global Site URL and sign-in first.', 'e'); return; }
   if (!mw.cfg.list.daily) { say('⚠ Pick the daily data list.', 'e'); return; }
-  for (const w of ['daily', 'whs', 'trgt']) { if (mw.cfg.list[w] && !mwMapOk(w)) { try { say('Finding the columns of "' + mw.cfg.list[w] + '"…'); const ids = await resolveIds(siteUrl, mw.cfg.list[w], token), cols = (await fetchColumns(ids.siteId, ids.listId, token)).filter(c => !READ_ONLY_COLUMNS.has(c.name.toLowerCase())), keep = Object.fromEntries(Object.entries(mw.cfg.map[w]).filter(([k, v]) => v && v !== SKIP_VALUE)); mw.cols[w] = cols; mw.cfg.map[w] = Object.assign(mdpAuto(MW_FIELDS[w], cols), keep); mwMapRender(w); } catch (e) { say('✘ ' + e.message, 'e'); return; } } } mwSaveCfg();
+  mw.utilErr0 = ''; for (const w of ['daily', 'whs', 'trgt', 'util']) { if (mw.cfg.list[w] && !mwMapOk(w)) { try { say('Finding the columns of "' + mw.cfg.list[w] + '"…'); const ids = await resolveIds(siteUrl, mw.cfg.list[w], token), cols = (await fetchColumns(ids.siteId, ids.listId, token)).filter(c => !READ_ONLY_COLUMNS.has(c.name.toLowerCase())), keep = Object.fromEntries(Object.entries(mw.cfg.map[w]).filter(([k, v]) => v && v !== SKIP_VALUE)); mw.cols[w] = cols; mw.cfg.map[w] = Object.assign(mdpAuto(MW_FIELDS[w], cols), keep); mwMapRender(w); } catch (e) { if (w === 'util') { mw.utilErr0 = e.message; continue; } say('✘ ' + e.message, 'e'); return; } } } mwSaveCfg();
   if (!mwMapOk('daily')) { say('⚠ Map at least Entry_Date and WHs_Desc of the daily data list.', 'e'); return; }
   if (mw.cfg.list.trgt && !mwMapOk('trgt')) { say('⚠ Map WHs_Code and Target Value of the targets list.', 'e'); return; }
   if (mw.cfg.list.whs && !mwMapOk('whs')) { say('⚠ Map WHs_Desc, Budget_HC and Nr_TACCS_HC of the headcount list (or clear that list).', 'e'); return; }
@@ -432,14 +441,15 @@ async function mwLoad(silent) {
     const g = (w, k) => { const c = mw.cfg.map[w][k]; return c && c !== SKIP_VALUE ? c : null; };
     const dItems = await mwReadList('daily', say), M = mw.cfg.map.daily, gd = k => g('daily', k); let bad = 0; const rows = [];
     dItems.forEach(it => { const f = it.fields || {}, date = mdpDate(f[gd('date')] instanceof Object ? '' : f[gd('date')]); if (!date) { bad++; return; }
-      rows.push({ date, wh: mwS(f[gd('wh')]), area: gd('area') ? mwS(f[gd('area')]) : '', region: gd('region') ? mwS(f[gd('region')]) : '', out: gd('out') ? mwN(f[gd('out')]) : 0, inb: gd('inb') ? mwN(f[gd('inb')]) : 0, ret: gd('ret') ? mwN(f[gd('ret')]) : 0, orders: gd('orders') ? mwN(f[gd('orders')]) : 0, nh: gd('nh') ? mwN(f[gd('nh')]) : 0, not: gd('not') ? mwN(f[gd('not')]) : 0, wo: gd('wo') ? mwN(f[gd('wo')]) : 0, po: gd('po') ? mwN(f[gd('po')]) : 0, vol: gd('vol') ? mwN(f[gd('vol')]) : 0 }); });
+      rows.push({ date, wh: mwS(f[gd('wh')]), area: gd('area') ? mwS(f[gd('area')]) : '', region: gd('region') ? mwS(f[gd('region')]) : '', out: gd('out') ? mwN(f[gd('out')]) : 0, inb: gd('inb') ? mwN(f[gd('inb')]) : 0, ret: gd('ret') ? mwN(f[gd('ret')]) : 0, orders: gd('orders') ? mwN(f[gd('orders')]) : 0, nh: gd('nh') ? mwN(f[gd('nh')]) : 0, not: gd('not') ? mwN(f[gd('not')]) : 0, wo: gd('wo') ? mwN(f[gd('wo')]) : 0, po: gd('po') ? mwN(f[gd('po')]) : 0, vol: gd('vol') ? mwN(f[gd('vol')]) : 0, whid: gd('whid') ? mwS(f[gd('whid')]).replace(/\.0+$/, '') : '' }); });
     rows.forEach(r => { r.ot = r.not + r.wo + r.po; r.hrs = r.nh + r.ot; }); mw.rows = rows; mw.whs = []; mw.trg = [];
-    if (mw.cfg.list.whs) { const items = await mwReadList('whs', say); items.forEach(it => { const f = it.fields || {}, wh = mwS(f[g('whs', 'wh')]); if (wh) mw.whs.push({ wh, bud: mwN(f[g('whs', 'bud')]), act: mwN(f[g('whs', 'act')]) }); }); }
+    if (mw.cfg.list.whs) { const items = await mwReadList('whs', say); items.forEach(it => { const f = it.fields || {}, wh = mwS(f[g('whs', 'wh')]); if (wh) mw.whs.push({ wh, bud: mwN(f[g('whs', 'bud')]), act: mwN(f[g('whs', 'act')]), cap: g('whs', 'cap') ? mwNull(f[g('whs', 'cap')]) : null }); }); }
     if (mw.cfg.list.trgt) { const items = await mwReadList('trgt', say); items.forEach(it => { const f = it.fields || {}, o = { area: mwS(f[g('trgt', 'area')]), region: mwS(f[g('trgt', 'region')]), code: mwS(f[g('trgt', 'code')]), prod: g('trgt', 'prod') ? mwNull(f[g('trgt', 'prod')]) : null, tot: g('trgt', 'tot') ? mwNull(f[g('trgt', 'tot')]) : null }; if (o.prod != null || o.tot != null) mw.trg.push(o); }); }
+    mw.util = []; mw.utilErr = mw.utilErr0 || ''; mw.utilErr0 = ''; if (mw.cfg.list.util && !mw.utilErr) { if (!mwMapOk('util')) mw.utilErr = 'map WHs_ID and the date of “' + mw.cfg.list.util + '”'; else try { mw.util = mwUtilRows(await mwReadList('util', say)); } catch (e) { mw.utilErr = e.message; } }
     mw.sp = { rows, whs: mw.whs, trg: mw.trg };
     mw.loaded = Date.now(); mw.f.area = []; mw.f.region = []; mw.f.wh = []; document.querySelector('#mwFHost').dataset.sig = '';
     const ds = mw.rows.map(r => r.date).sort(); mw.f.from = ds[0] || ''; mw.f.to = ds[ds.length - 1] || '';
-    say(`✅ ${plF(rows.length)} daily rows (${ds[0] || '—'} → ${ds[ds.length - 1] || '—'})${mw.cfg.list.whs ? ` · ${plF(mw.whs.length)} headcount rows` : ''}${mw.cfg.list.trgt ? ` · ${plF(mw.trg.length)} target rows` : ''}${bad ? ` · ${bad} rows without a valid date skipped` : ''}`);
+    say(`✅ ${plF(rows.length)} daily rows (${ds[0] || '—'} → ${ds[ds.length - 1] || '—'})${mw.cfg.list.whs ? ` · ${plF(mw.whs.length)} headcount rows` : ''}${mw.cfg.list.trgt ? ` · ${plF(mw.trg.length)} target rows` : ''}${mw.cfg.list.util ? (mw.utilErr ? ` · ⚠ utilization: ${mw.utilErr}` : ` · ${plF(mw.util.length)} utilization rows`) : ''}${bad ? ` · ${bad} rows without a valid date skipped` : ''}`);
     addActivity('download', `Management daily report loaded from "${mw.cfg.list.daily}"`);
     if (rows.length) { mw.tab = 'rep'; } mwRefresh();
   } catch (e) { say('✘ ' + e.message, 'e'); } finally { prog.style.display = 'none'; PLQ('#mwLoadBtn').disabled = false; }
