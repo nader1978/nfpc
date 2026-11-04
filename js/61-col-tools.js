@@ -211,4 +211,15 @@
     const rows = [...t.tBodies].flatMap(b => [...b.rows]).filter(r => r.style.display !== 'none').map(rowOf).filter(r => r.some(v => v !== '')), foot = t.tFoot ? [...t.tFoot.rows].map(rowOf) : [];
     return { title, sheet: (sheet || title).replace(/[\\\/?*\[\]:]/g, ' ').slice(0, 31), note: note || ('Printed ' + new Date().toLocaleString()), headers: idx.map(i => lab(hr.cells[i])), rows: rows.concat(foot.slice(0, -1)), totals: foot.length ? foot[foot.length - 1] : null };
   };
+  /* ---------- shared layout for the report pages (filters with labels · period group · tabs bar with Print / Excel / Email / Columns / Expand) ---------- */
+  const rpCss = document.createElement('style'); rpCss.textContent = '.rp-f{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin:8px 0 6px}.rp-fi{display:flex;flex-direction:column;gap:3px}.rp-fi>span{font-size:11px;font-weight:600;color:var(--gray-600)}.rp-fi select,.rp-fi input{width:auto;min-width:120px;margin:0}'
+    + '.rp-ck{display:flex;gap:6px;align-items:center;font-size:13px;padding-bottom:9px;white-space:nowrap}.rp-ck input{width:auto;margin:0}.rp-sp{flex:1}'
+    + '.rp-grp{display:inline-flex;border:1px solid var(--brand,#1e3a8a);border-radius:8px;overflow:hidden;margin-bottom:2px}.rp-grp button{border:0!important;border-radius:0!important;border-left:1px solid var(--border)!important;margin:0!important}.rp-grp button:first-child{border-left:0!important}'
+    + '.rp-tabbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 8px}.rp-tabbar .pl-tabs{margin:0!important}.rp-sep{width:1px;height:22px;background:var(--border);margin:0 2px}';
+  document.head.appendChild(rpCss);
+  window.rpUI = {
+    fi: (label, html) => `<label class="rp-fi"><span>${label}</span>${html}</label>`,
+    grp: btns => `<div class="rp-grp">${btns}</div>`,
+    tabbar: (tabsHtml, attr, host, extra) => `<div class="rp-tabbar"><div class="pl-tabs">${tabsHtml}</div><span class="rp-sp"></span>${extra || ''}<button class="secondary small" type="button" ${attr}="print" title="Print the table shown">🖨 Print</button><button class="secondary small" type="button" ${attr}="excel" title="Excel file of the table shown">📊 Excel</button><button class="secondary small" type="button" ${attr}="mail" title="E-mail the table shown">✉ Email</button><span class="rp-sep"></span><button class="secondary small ct-open" type="button" data-ct-for="${host}" title="Show / hide, re-arrange and resize the columns">▦ Columns</button><button class="secondary small" type="button" ${attr}="expand" title="Open the table in the expanded window">⤢ Expand</button></div>`
+  };
 })();
