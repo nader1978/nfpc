@@ -38,12 +38,17 @@
       its.forEach(it => { const f = it.fields || {}, g = k => col(k) ? f[col(k)] : ''; const pl = String(g('Plan_Link') == null ? '' : g('Plan_Link')).trim(); if (pl) have.add(pl); hs.add(sigOf({ Plan_Date: lpDate(g('Trans_Date') || g('Plan_Date')), Unit_Nr: g('Unit_Nr'), User_Name: g('User_Name'), Distn_From: g('Distn_From'), Distn_To: g('Distn_To') })); });
       ST.rows.forEach(r => { const d = r.rec.Plan_Link ? have.has(String(r.rec.Plan_Link)) : hs.has(sigOf(r.rec)); if (d && !r.dup) r.sel = false; r.dup = d; }); ST.chk = 'checked against "' + name + '" · ' + new Date().toLocaleTimeString(); ST.unm = TF.map(x => x[0]).filter(k => !col(k) && k !== 'Title'); }
     catch (e) { ST.chk = 'could not check "' + name + '": ' + e.message; } }
+  /* delete / replace question (not the upload dialog) */
+  function askDel(title, text, okLbl) { return new Promise(res => { const o = document.createElement('div'); o.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px'; o.dataset.nohc = '1';
+    o.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:var(--text,#222);border-radius:12px;max-width:500px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${lpEsc(title)}</div><div style="font-size:13px;line-height:1.55;margin-bottom:14px">${text}</div><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="ghost" data-v="0">Cancel</button><button type="button" data-v="1" style="background:#b91c1c;border-color:#b91c1c;color:#fff">${lpEsc(okLbl || 'Delete')}</button></div></div>`;
+    const done = v => { o.remove(); document.removeEventListener('keydown', kd, true); res(v); }, kd = e => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } };
+    o.addEventListener('click', e => { const b = e.target.closest('button[data-v]'); if (b) done(b.dataset.v === '1'); else if (e.target === o) done(false); }); document.addEventListener('keydown', kd, true); document.body.appendChild(o); }); }
   async function run(f) {
     try {
       if (!hasPerm('logplan') && !hasPerm('uploader')) return alert('Permission denied.');
       const region = /\bSE\b|_SE|SE_/i.test(f.name) ? 'SE' : 'NE', wb = XLSX.read(await f.arrayBuffer(), { type: 'array' }), P = parse(wb, region);
       if (!P) return sectionToast('No ready plan found — the sheet needs a header row with Plan_Date, Driver_Name, Unit_Nr …', 'warn');
-      if (ST.rows.length && !(await spAsk('There are ' + ST.rows.length + ' ready-plan row(s) still in transit (not uploaded).\nReplace them with "' + f.name + '"?'))) return;
+      if (ST.rows.length && !(await askDel('🔁 Replace the trips in transit?', 'There are <b>' + ST.rows.length + '</b> ready-plan trip(s) still in transit (not uploaded).<br>They will be <b>deleted</b> and replaced by the trips of <b>' + lpEsc(f.name) + '</b>. Nothing is uploaded to SharePoint.', 'Replace'))) return;
       const todo = P.rows.filter(r => !yes(gv(r.raw, 'uploaded')));   /* WHERE Uploaded = No */
       ST.file = f.name; ST.region = region; ST.at = new Date().toLocaleString(); ST.skipU = P.rows.length - todo.length; ST.chk = ''; ST.unm = [];
       ST.rows = todo.map(r => { const o = r.raw, pd = lpDate(gv(o, 'plandate')), np = gv(o, 'nrofplts'); return { id: lpId(), sel: true, dup: false, shift: lpS(gv(o, 'triptimming')), rec: { Plan_Date: pd, User_Name: lpS(gv(o, 'drivername')), Driver_FileNr: lpS(gv(o, 'driverfilenr')), Unit_Nr: lpS(gv(o, 'unitnr')), Trailer_Nr: lpS(gv(o, 'trailernr')),
@@ -83,7 +88,7 @@
     if (a === 'up') return upload(); if (a === 'all') ST.rows.forEach(r => { r.sel = !r.dup; }); else if (a === 'none') ST.rows.forEach(r => { r.sel = false; }); else if (a === 'tog') { const on = b.checked; ST.rows.forEach(r => { r.sel = on; }); }
     else if (a === 'chk') { const m = document.querySelector('#lpStgMsg'); if (m) m.textContent = 'Checking…'; await dupCheck(); }
     else if (a === 'del' && row) { ST.rows = ST.rows.filter(r => r !== row); }
-    else if (a === 'clr') { if (!(await spAsk('Clear all ' + ST.rows.length + ' ready-plan row(s) in transit? Nothing is uploaded.'))) return; ST.rows = []; sectionToast('Ready plan cleared — nothing was uploaded.', 'success'); }
+    else if (a === 'clr') { if (!(await askDel('🗑 Clear the ready plan?', 'All <b>' + ST.rows.length + '</b> trip(s) in transit will be <b>deleted</b> from this screen.<br><b>Nothing is uploaded to SharePoint</b> — read the Excel file again if you need them later.', '🗑 Delete all'))) return; ST.rows = []; sectionToast('Ready plan cleared — nothing was uploaded.', 'success'); }
     stSave(); stRender(); });
   document.addEventListener('change', e => { const t = e.target; if (!t.closest || !t.closest('#lpStage')) return; const tr = t.closest('tr[data-sid]'), row = tr && ST.rows.find(r => r.id === tr.dataset.sid); if (!row) return;
     if (t.hasAttribute('data-sel')) { row.sel = t.checked; stSave(); stRender(); return; } const k = t.dataset.k; if (!k) return; row.rec[k] = k === 'Nr_of_Plts' ? (t.value.trim() === '' ? '' : lpNum(t.value)) : t.value.trim(); stSave(); });
