@@ -404,7 +404,7 @@ function tcfRowOk(id, vals) { const st = TCF[id]; if (!st) return true; return O
 document.addEventListener('scroll', e => { const a = document.activeElement; if (a && a.classList && a.classList.contains('mc-input') && e.target.closest && e.target.closest('.fd-wrap,.table-wrap') && e.target.contains(a)) a.blur(); }, true);
 /* ---- system name & logo (admin) ---- */
 const BRAND_DEFAULT = { name: '', tag: '', logo: '', img: '', co: {}, sb: {} };
-const BRAND_ORIG = { name: 'NFPC SC Mngt Support System', tag: 'Enterprises Secure Edition', logoLogin: '🔐', logoSide: '📊' };
+const BRAND_ORIG = { name: 'ORBIT', tag: 'Operations · Racks · Batches · Inventory · Trips', logoLogin: '🪐', logoSide: '🪐' };
 (function () {
   const KEY = LS_BASE + '_brand', Q = s => document.querySelector(s);
   const CEN = LS_BASE + '_brand_cen';   // the default the administrator published for all users (SharePoint App_Config_tbl, row "Branding")
@@ -418,7 +418,7 @@ const BRAND_ORIG = { name: 'NFPC SC Mngt Support System', tag: 'Enterprises Secu
     document.querySelectorAll('[data-brand="tag"]').forEach(e => e.textContent = c.tag || BRAND_ORIG.tag);
     document.body.classList.toggle('brand-wide', !!(c.wide && (c.img || c.imgDark)));
     document.querySelectorAll('[data-brand="logo"]').forEach((e, i) => { const lg = !!e.closest('.login-brand'), orig = lg ? BRAND_ORIG.logoLogin : BRAND_ORIG.logoSide, pic = lg ? c.img : (c.imgDark || c.img); if (pic) { e.innerHTML = '<img alt="" src="' + esc(pic) + '" style="width:100%;height:100%;object-fit:contain;border-radius:inherit">'; e.style.background = 'transparent'; e.style.padding = '0'; e.style.boxShadow = 'none'; } else { e.textContent = c.logo || orig; e.style.background = ''; e.style.padding = ''; } });
-    document.title = name + ' — Secure'; coShow(c); sbApply(c.sb); favApply(c); radApply(c.rad);
+    document.title = name === 'ORBIT' ? 'ORBIT — NFPC Operations Platform' : 'ORBIT · ' + name; coShow(c); sbApply(c.sb); favApply(c); radApply(c.rad);
   }
   function radApply(v) {
     let st = document.querySelector('#radCss'); if (!st) { st = document.createElement('style'); st.id = 'radCss'; document.head.appendChild(st); }
