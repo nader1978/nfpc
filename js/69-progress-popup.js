@@ -53,7 +53,7 @@
   /* ---------- the job ---------- */
   function begin() {
     clearTimeout(hideT); if (J && !J.fin) return J;
-    J = { t0: Date.now(), user: Date.now() - lastUser < 5000, live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
+    shownRows = 0; J = { t0: Date.now(), user: Date.now() - lastUser < 5000, live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
     exp = null; stopReq = false; clearTimeout(showT); showT = setTimeout(() => { if (J && !J.fin && J.user && !asking) { J.shown = true; draw(); } }, SHOW_AFTER);
     return J;
   }
@@ -77,32 +77,49 @@
 
   /* ---------- drawing ---------- */
   const ring = (p, ind) => { const C = 2 * Math.PI * 52, d = ind ? C * 0.28 : C * Math.max(0, Math.min(1, p)); return `<div class="op-ring${ind ? ' ind' : ''}"><svg width="124" height="124" viewBox="0 0 124 124" role="img" aria-label="progress"><circle cx="62" cy="62" r="52" fill="none" stroke="var(--gray-200,#e2e8f0)" stroke-width="11"></circle><circle class="ar" cx="62" cy="62" r="52" fill="none" stroke="${J.bad ? '#dc2626' : J.fin ? '#15803d' : 'var(--brand,#2563eb)'}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${d.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 62 62)"></circle></svg>`; };
+  /* update the popup in place (keeps the spinning ring / pulsing cells running smoothly instead of rebuilding them) */
+  function morph(host, html) { const t = document.createElement('template'); t.innerHTML = html.trim(); sync(host, t.content); }
+  function sync(a, b) {
+    const A = [...a.childNodes], B = [...b.childNodes];
+    B.forEach((nb, i) => { const na = A[i];
+      if (!na) { a.appendChild(nb.cloneNode(true)); return; }
+      if (na.nodeType !== nb.nodeType || na.nodeName !== nb.nodeName) { a.replaceChild(nb.cloneNode(true), na); return; }
+      if (nb.nodeType === 3) { if (na.nodeValue !== nb.nodeValue) na.nodeValue = nb.nodeValue; return; }
+      if (nb.nodeType !== 1) return;
+      [...na.attributes].forEach(x => { if (!nb.hasAttribute(x.name)) na.removeAttribute(x.name); });
+      [...nb.attributes].forEach(x => { if (na.getAttribute(x.name) !== x.value) na.setAttribute(x.name, x.value); });
+      sync(na, nb); });
+    for (let i = A.length - 1; i >= B.length; i--) a.removeChild(A[i]); }
+  /* the row counter glides to its value */
+  let shownRows = 0, rowRaf = 0;
+  function glide() { cancelAnimationFrame(rowRaf); const step = () => { if (!J) return; const tgt = J.rows; if (Math.abs(tgt - shownRows) < 1) shownRows = tgt; else shownRows += (tgt - shownRows) * 0.18; const b = el && el.querySelector('.op-rc b[data-rows]'); if (b) b.textContent = fmt(shownRows); if (shownRows !== tgt) rowRaf = requestAnimationFrame(step); }; rowRaf = requestAnimationFrame(step); }
   function draw() {
     if (!J) return; if (!el) { el = document.createElement('div'); el.id = 'opBack'; el.dataset.nohc = '1'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-live', 'polite'); document.body.appendChild(el); el.addEventListener('click', onClick); }
     const [t, sub] = title(), wr = J.w + J.del, writing = wr > 0, tot = J.total, pc = tot ? Math.min(1, wr / tot) : null, dur = ((Date.now() - J.t0) / 1000).toFixed(0);
     el.classList.toggle('min', J.min && !J.fin);
-    if (J.min && !J.fin) { el.innerHTML = `<div class="op-mini" data-op="max" title="Show the progress"><span>${esc(t)}</span><span class="bar"><i style="width:${pc != null ? Math.round(pc * 100) : 40}%"></i></span><b>${writing ? fmt(wr) + (tot ? '/' + fmt(tot) : '') : fmt(J.rows)}</b></div>`; return; }
+    if (J.min && !J.fin) { morph(el, `<div class="op-mini" data-op="max" title="Show the progress"><span>${esc(t)}</span><span class="bar"><i style="width:${pc != null ? Math.round(pc * 100) : 40}%"></i></span><b>${writing ? fmt(wr) + (tot ? '/' + fmt(tot) : '') : fmt(J.rows)}</b></div>`); return; }
     const foot = (h, b) => `<div class="op-f"><span class="h">${h}</span><span class="bt">${b}</span></div>`;
     if (mode() === 'D') {
       const BATCH = bsz(J), n = tot || wr, nb = Math.max(1, Math.ceil(n / BATCH)), cells = [];
       for (let i = 0; i < nb; i++) { const b = J.batches[i]; cells.push(`<u class="${b ? (b.bad ? 'bad' : b.n >= BATCH || J.fin || (tot && i === nb - 1 && b.n >= tot - i * BATCH) ? 'ok' : 'on') : (i === J.batches.length && !J.fin ? 'on' : '')}"></u>`); }
       const pct = pc != null ? Math.round(pc * 100) + '%' : fmt(wr) + ' rows';
-      el.innerHTML = `<div class="op-c d"><div class="op-dh"><div><div class="op-t">${esc(J.fin ? (J.bad ? 'Finished with errors' : 'Saved') + ' — ' + t.toLowerCase() : t)}</div><div class="op-s">${esc(sub)}${paused ? ' · paused' : ''}</div></div><b>${J.fin && !J.bad ? '✓ ' : ''}${pct}</b></div>
+      morph(el, `<div class="op-c d"><div class="op-dh"><div><div class="op-t">${esc(J.fin ? (J.bad ? 'Finished with errors' : 'Saved') + ' — ' + t.toLowerCase() : t)}</div><div class="op-s">${esc(sub)}${paused ? ' · paused' : ''}</div></div><b>${J.fin && !J.bad ? '✓ ' : ''}${pct}</b></div>
         <div class="op-g">${cells.join('')}</div>
         <div class="op-cnt"><span style="--c:#15803d">Saved <b>${fmt(J.ok)}</b></span><span style="--c:#dc2626">Failed <b>${fmt(J.bad)}</b></span>${tot ? `<span style="--c:#cbd5e1">Waiting <b>${fmt(Math.max(0, tot - wr))}</b></span>` : ''}<span style="--c:transparent">${dur} s</span></div>
         <div class="op-log">${J.log.slice(-40).map(l => `<div style="color:${l.c}">${esc(l.t)}</div>`).join('')}</div>
         ${J.fin ? foot(J.bad ? 'Failed rows were not saved — fix the reason above and save them again' : 'All rows saved', `<button type="button" class="p" data-op="close">Close</button>`)
-          : foot('Failed rows can be saved again at the end', `<button type="button" data-op="min">Run in background</button><button type="button" data-op="pause">${paused ? 'Resume' : 'Pause'}</button><button type="button" class="r" data-op="stop">Stop</button>`)}</div>`;
+          : foot('Failed rows can be saved again at the end', `<button type="button" data-op="min">Run in background</button><button type="button" data-op="pause">${paused ? 'Resume' : 'Pause'}</button><button type="button" class="r" data-op="stop">Stop</button>`)}</div>`);
       const lg = el.querySelector('.op-log'); if (lg) lg.scrollTop = lg.scrollHeight; return;
     }
     const steps = writing ? [['Connecting to SharePoint', J.meta + wr > 0], [(J.del && !J.w ? 'Deleting' : 'Writing') + ' ' + (tot ? fmt(wr) + ' of ' + fmt(tot) : fmt(wr)) + ' row' + (wr === 1 ? '' : 's'), J.fin], ['Confirming', J.fin], ['Done', J.fin]]
       : [['Connecting to SharePoint', J.r > 0 || J.fin], ['Reading rows' + (J.rows ? ' — ' + fmt(J.rows) : ''), J.fin], ['Done', J.fin]];
     let on = steps.findIndex(s => !s[1]); const ind = !J.fin && pc == null;
-    el.innerHTML = `<div class="op-c"><div class="op-b">${ring(J.fin ? 1 : pc || 0, ind)}<div class="op-rc"><b>${J.fin ? (J.bad ? '!' : '✓') : pc != null ? Math.round(pc * 100) + '%' : writing ? fmt(wr) : fmt(J.rows)}</b><small>${J.fin ? dur + ' s' : pc != null ? fmt(wr) + ' / ' + fmt(tot) : writing ? 'rows saved' : 'rows read'}</small></div></div>
+    morph(el, `<div class="op-c"><div class="op-b">${ring(J.fin ? 1 : pc || 0, ind)}<div class="op-rc"><b${!J.fin && pc == null && !writing ? ' data-rows="1"' : ''}>${J.fin ? (J.bad ? '!' : '✓') : pc != null ? Math.round(pc * 100) + '%' : writing ? fmt(wr) : fmt(shownRows)}</b><small>${J.fin ? dur + ' s' : pc != null ? fmt(wr) + ' / ' + fmt(tot) : writing ? 'rows saved' : 'rows read'}</small></div></div>
       <div class="op-m"><div><div class="op-t">${esc(J.fin ? (J.bad ? 'Finished with errors' : writing ? 'Saved' : 'Loaded') : t)}</div><div class="op-s">${esc(sub)}</div></div>
       ${steps.map((s, i) => `<div class="op-st ${s[1] ? 'ok' : i === on ? 'on' : ''}${J.fin && J.bad && i === 1 ? ' bad' : ''}"><i>${s[1] ? '✓' : i + 1}</i><span>${esc(s[0])}</span></div>`).join('')}
       ${J.bad ? `<div class="op-s" style="color:#b91c1c">${fmt(J.bad)} request(s) failed — ${esc((J.log.filter(l => l.bad).slice(-1)[0] || {}).t || '')}</div>` : ''}</div></div>
-      ${J.fin ? (J.bad ? foot('', '<button type="button" class="p" data-op="close">Close</button>') : '') : foot('', '<button type="button" data-op="min">Run in background</button>')}</div>`;
+      ${J.fin ? (J.bad ? foot('', '<button type="button" class="p" data-op="close">Close</button>') : '') : foot('', '<button type="button" data-op="min">Run in background</button>')}</div>`);
+    if (!writing && !J.fin && pc == null) glide();
   }
   function onClick(e) { const b = e.target.closest('[data-op]'); if (!b) return; const a = b.dataset.op;
     if (a === 'close') return close(); if (a === 'min') { J.min = true; return draw(); } if (a === 'max') { J.min = false; return draw(); }
