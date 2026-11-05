@@ -37,6 +37,7 @@ function locBadge() {
 }
 function locHomeStrip(host) {   /* switchboard: who / where */
   if (!host || !currentUser) return; const z = host.querySelector('.hm-zoom') || host, old = host.querySelector('.hm-loc'); if (old) old.remove();
+  return;   /* removed for everybody (location / job title / BU / region / line manager strip) — the 📍 location chip in the top bar stays */
   if (typeof isAdmin === 'function' && isAdmin()) return;   /* admins see every location: no who / where / line-manager strip */
   if (!locIds(currentUser).length && !locScoped()) return;
   const bits = [locText(), currentUser.jobTitle && '👤 ' + currentUser.jobTitle, currentUser.bu && 'BU ' + currentUser.bu, currentUser.region && 'Region ' + currentUser.region, currentUser.lineMngr && 'Line manager ' + currentUser.lineMngr].filter(Boolean);
