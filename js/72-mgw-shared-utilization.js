@@ -27,8 +27,39 @@
     if (ex) return updateItem(c.siteId, c.listId, ex.id, spCoerceFields(c.listId, { Config_Value: val }), c.token); return createItem(c.siteId, c.listId, { Title: t, Config_Value: val }, c.token); }
   function readUtil(its) { U.days = new Map(); U.map = {};
     its.forEach(x => { const t = title(x); if (!/^WHU:/.test(t)) return; let v = null; try { v = JSON.parse(String(x.fields.Config_Value || '')); } catch (e) {} if (!v) return;
-      if (t === UMAP) U.map = v.map || {}; else if (/^WHU:\d{4}-\d\d-\d\d$/.test(t) && Array.isArray(v.rows)) U.days.set(t.slice(4), v); });
+      if (t === UMAP) { U.map = v.map || {}; if (v.list) U.list = v.list; } else if (/^WHU:\d{4}-\d\d-\d\d$/.test(t) && Array.isArray(v.rows)) U.days.set(t.slice(4), v); });   /* older uploads kept in App_Config_tbl */
     U.read = true; }
+
+  /* ---------- the utilization list in SharePoint: one row per LOC per day ---------- */
+  const ULIST0 = 'WHs_Utilization_Daily_tbl';
+  const UCOLS = [['Util_Date', { dateTime: { format: 'dateOnly' } }], ['Category', { text: {} }], ['LOC', { text: {} }], ['WHs_Desc', { text: {} }], ['Capacity_Pallets', { number: {} }], ['Used_Pallets', { number: {} }], ['Utilization_Pct', { number: {} }], ['InTransit_Pallets', { number: {} }], ['Free_Pallets', { number: {} }], ['Uploaded_By', { text: {} }], ['Source_File', { text: {} }]];
+  const uName = () => U.list || ULIST0;
+  let UL = null;
+  async function uL(create) { if (UL && UL.name === uName()) return UL; const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no Microsoft session)');
+    let ids; try { ids = await resolveIds(site, uName(), token); }
+    catch (e) { if (!/not found/i.test(e.message) || !create) throw e;
+      const c = await tpCtx(), r = await fetch(`https://graph.microsoft.com/v1.0/sites/${c.siteId}/lists`, { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ displayName: uName(), columns: UCOLS.map(([name, t]) => Object.assign({ name }, t)), list: { template: 'genericList' } }) });
+      if (!r.ok) { let t = ''; try { t = await r.text(); } catch (x) {} throw new Error('the list "' + uName() + '" does not exist and could not be created (HTTP ' + r.status + (r.status === 403 ? ' — no permission to create lists' : '') + ')' + (t && r.status !== 403 ? ': ' + t.slice(0, 160) : '')); }
+      await new Promise(res => setTimeout(res, 1500)); ids = await resolveIds(site, uName(), token); toast('📋 SharePoint list ' + uName() + ' created'); }
+    const cols = await fetchColumns(ids.siteId, ids.listId, token), m = new Map(); cols.forEach(c => { m.set(nz(c.name), c.name); if (!m.has(nz(c.displayName))) m.set(nz(c.displayName), c.name); });
+    UL = Object.assign({ name: uName(), token, m }, ids); return UL; }
+  const ucol = k => UL && UL.m.get(nz(k));
+  const ufields = o => { const f = {}; Object.entries(o).forEach(([k, v]) => { const n = k === 'Title' ? 'Title' : ucol(k); if (n && v !== undefined) f[n] = v; }); return f; };
+  async function readList() { let L; try { L = await uL(false); } catch (e) { U.noList = /not found/i.test(e.message); if (!U.noList) U.err = e.message; return; } U.noList = false;
+    const since = new Date(Date.now() - 400 * 864e5).toISOString().slice(0, 10), dc = ucol('Util_Date'); let its;
+    try { its = await exp_fetchFilteredItems(L.siteId, L.listId, L.token, `fields/${dc} ge '${since}T00:00:00Z'`); } catch (e) { its = await fetchAllItems(L.siteId, L.listId, L.token); }
+    const g = (f, k) => { const n = ucol(k); return n ? f[n] : undefined; }, days = new Map();
+    its.forEach(it => { const f = it.fields || {}, dv = g(f, 'Util_Date'); if (!dv) return; const d = ymdU(new Date(dv)), loc = String(g(f, 'LOC') || f.Title || '').trim(); if (!loc) return;
+      const o = days.get(d) || { date: d, rows: [], src: 'list' }; o.rows.push({ id: it.id, cat: String(g(f, 'Category') || ''), loc, wh: String(g(f, 'WHs_Desc') || ''), cap: num(g(f, 'Capacity_Pallets')), used: num(g(f, 'Used_Pallets')), tr: num(g(f, 'InTransit_Pallets')), free: num(g(f, 'Free_Pallets')) }); days.set(d, o); });
+    days.forEach((v, d) => U.days.set(d, v)); U.listRows = its.length; }
+  async function saveDay(date, rows, file, map) { const L = await uL(true), ex = new Map(((U.days.get(date) || {}).src === 'list' ? U.days.get(date).rows : []).map(x => [x.loc, x]));
+    try { if (window.orbProg && orbProg.expect) orbProg.expect(rows.length, 'WHs utilization ' + dmy(date) + ' → ' + L.name); } catch (e) {}
+    let n = 0; for (const x of rows) { const f = ufields({ Title: x.loc, Util_Date: date + 'T12:00:00Z', Category: x.cat, LOC: x.loc, WHs_Desc: map[x.loc] || '', Capacity_Pallets: x.cap, Used_Pallets: x.used, Utilization_Pct: x.cap ? Math.round(x.used / x.cap * 10000) / 100 : 0, InTransit_Pallets: x.tr, Free_Pallets: x.free, Uploaded_By: me(), Source_File: file || '' }), e = ex.get(x.loc);
+      if (e && e.id) await updateItem(L.siteId, L.listId, e.id, spCoerceFields(L.listId, f), L.token); else await createItem(L.siteId, L.listId, f, L.token); n++; }
+    return n; }
+  async function saveLinks(date, map) { const day = U.days.get(date); if (!day || day.src !== 'list') return 0; const L = await uL(false), ch = day.rows.filter(x => x.id && (map[x.loc] || '') !== (x.wh || '')); if (!ch.length) return 0;
+    try { if (window.orbProg && orbProg.expect) orbProg.expect(ch.length, 'WHs links ' + dmy(date)); } catch (e) {}
+    for (const x of ch) { await updateItem(L.siteId, L.listId, x.id, spCoerceFields(L.listId, ufields({ WHs_Desc: map[x.loc] || '' })), L.token); x.wh = map[x.loc] || ''; } return ch.length; }
 
   /* ---------- 1) shared settings ---------- */
   function applyShared(v) {
@@ -39,7 +70,7 @@
     mw.shared = { by: v.by || '', at: v.at || '' }; try { mwSaveCfg(); } catch (e) {}
   }
   async function pull(force) { if (pulled && !force && Date.now() - pulled < 5 * 60 * 1000) return; pulled = Date.now();
-    try { const { its } = await cfgRows(), it = its.find(x => title(x) === CEN); if (it) { try { applyShared(JSON.parse(String(it.fields.Config_Value || '{}'))); } catch (e) {} } readUtil(its); U.err = ''; }
+    try { const { its } = await cfgRows(), it = its.find(x => title(x) === CEN); if (it) { try { applyShared(JSON.parse(String(it.fields.Config_Value || '{}'))); } catch (e) {} } readUtil(its); U.err = ''; await readList(); }
     catch (e) { U.err = e.message; } }
   if (typeof mwLoad === 'function') { const _load = mwLoad; mwLoad = async function () { await pull(false); return _load.apply(this, arguments); }; }
   async function publish() { const st = Q('#mwLoadStatus'), say = (t, bad) => { if (st) { st.textContent = t; st.style.color = bad ? '#c0392b' : ''; } };
@@ -69,19 +100,26 @@
   const whList = () => [...new Set((mw.rows || []).map(r => r.wh).filter(Boolean))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
   /* ---------- the KPI card ---------- */
-  function pick() { const to = (mw.f && mw.f.to) || '9999-12-31', ds = [...U.days.keys()].sort(), d = ds.filter(x => x <= to).pop() || '';
-    if (!d) return { none: ds.length ? 'no upload on or before ' + dmy(to) : 'no file uploaded yet' };
-    const day = U.days.get(d), f = mw.f || {}, filt = (f.area && f.area.length) || (f.region && f.region.length) || (f.wh && f.wh.length), whs = filt ? new Set(mwView().map(r => r.wh)) : null;
-    const rows = day.rows.filter(x => !whs || whs.has(U.map[x.loc])), s = rows.reduce((a, x) => (a.cap += x.cap, a.used += x.used, a.tr += x.tr, a.free += x.free, a), { cap: 0, used: 0, tr: 0, free: 0 });
-    return Object.assign(s, { date: d, rows, n: rows.length, all: day.rows.length, filt, unl: day.rows.filter(x => !U.map[x.loc]).length, pct: s.cap ? s.used / s.cap * 100 : null }); }
-  function card() { if (!U.read && !can()) return ''; const p = pick(), T = typeof plT === 'function' ? plT() : { good: '#16a34a', warn: '#d97706', crit: '#dc2626' };
-    if (p.none) return can() || U.days.size ? `<div class="pl-kpi" data-whu="1" style="cursor:pointer;border-left:4px solid #94a3b8" title="Open the WHs utilization details / upload"><div class="lbl">WHs utilization</div><div class="val">—</div><div class="sub">${esc(p.none)}${can() ? ' · <b>⬆ upload</b>' : ''}</div></div>` : '';
-    const c = p.pct == null ? null : p.pct > 100 ? T.crit : p.pct >= 90 ? T.warn : T.good;
-    return `<div class="pl-kpi" data-whu="1" style="cursor:pointer${c ? ';border-left:4px solid ' + c : ''}" title="Click for the utilization by warehouse"><div class="lbl">WHs utilization</div><div class="val">${p.pct == null ? '—' : fmt(p.pct, 0) + '%'}</div><div class="sub">${fmt(p.used)} / ${fmt(p.cap)} pallets · ${fmt(p.free)} free${p.tr ? ' · ' + fmt(p.tr) + ' in transit' : ''}<br>${p.filt ? p.n + ' of ' + p.all + ' WHs (filtered)' : p.n + ' WHs'} · ${dmy(p.date)}</div></div>`; }
+  /* the selected warehouses (Area / Regions / WHs Desc filters) applied to one uploaded day */
+  function daySel(d) { const day = U.days.get(d), f = mw.f || {}, filt = (f.area && f.area.length) || (f.region && f.region.length) || (f.wh && f.wh.length), whs = filt ? new Set(mwView().map(r => r.wh)) : null;
+    const rows = day.rows.filter(x => !whs || whs.has(U.map[x.loc] || x.wh)), s = rows.reduce((a, x) => (a.cap += x.cap, a.used += x.used, a.tr += x.tr, a.free += x.free, a), { cap: 0, used: 0, tr: 0, free: 0 });
+    return Object.assign(s, { date: d, rows, n: rows.length, all: day.rows.length, filt, pct: s.cap ? s.used / s.cap * 100 : null }); }
+  /* last date = the latest upload inside From–To · average = every upload day inside From–To (each day's % averaged) */
+  function pick() { const f = mw.f || {}, from = f.from || '0000-00-00', to = f.to || '9999-12-31', ds = [...U.days.keys()].sort().filter(x => x >= from && x <= to);
+    if (!ds.length) return { none: U.days.size ? 'no upload between ' + dmy(f.from || '…') + ' and ' + dmy(f.to || '…') : 'no file uploaded yet' };
+    const L = ds.map(daySel).filter(x => x.cap > 0), last = daySel(ds[ds.length - 1]), avg = k => L.length ? L.reduce((a, x) => a + x[k], 0) / L.length : 0;
+    return Object.assign(last, { avg: { days: L.length, pct: L.length ? avg('pct') : null, used: avg('used'), cap: avg('cap'), free: avg('free'), tr: avg('tr'), from: ds[0], to: ds[ds.length - 1] } }); }
+  function card() { if (!U.read && !can()) return ''; const p = pick(), T = typeof plT === 'function' ? plT() : { good: '#16a34a', warn: '#d97706', crit: '#dc2626' }, col = v => v == null ? '#94a3b8' : v > 100 ? T.crit : v >= 90 ? T.warn : T.good;
+    const K = (lbl, val, sub, c) => `<div class="pl-kpi" data-whu="1" style="cursor:pointer;border-left:4px solid ${c}" title="Click for the utilization by warehouse${can() ? ' / upload' : ''}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub}</div></div>`;
+    if (p.none) return can() || U.days.size ? K('WHs utilization', '—', esc(p.none) + (can() ? ' · <b>⬆ upload</b>' : ''), '#94a3b8') : '';
+    const a = p.avg, whsTxt = p.filt ? p.n + ' of ' + p.all + ' WHs (filtered)' : p.n + ' WHs';
+    return K('WHs utilization · average', a.pct == null ? '—' : fmt(a.pct, 0) + '%', `avg ${fmt(a.used)} / ${fmt(a.cap)} pallets · ${fmt(a.free)} free<br>${a.days} day(s) · ${dmy(a.from)}${a.from !== a.to ? ' – ' + dmy(a.to) : ''} · ${whsTxt}`, col(a.pct))
+      + K('WHs utilization · last date', p.pct == null ? '—' : fmt(p.pct, 0) + '%', `${fmt(p.used)} / ${fmt(p.cap)} pallets · ${fmt(p.free)} free${p.tr ? ' · ' + fmt(p.tr) + ' in transit' : ''}<br>${dmy(p.date)} · ${whsTxt}`, col(p.pct)); }
   if (typeof mwKpis === 'function') { const _k = mwKpis; mwKpis = function () { const r = _k.apply(this, arguments); try { const h = Q('#mwKpis'), html = card(); if (h && html) { const last = h.lastElementChild; if (last) last.insertAdjacentHTML('beforebegin', html); else h.insertAdjacentHTML('beforeend', html); } } catch (e) { console.error(e); } return r; }; }
 
   /* ---------- details / upload dialog ---------- */
   function box(up) { const old = Q('#whuBox'); if (old) old.remove(); const all = [...U.days.keys()].sort(), cur = pick(); let date = up ? up.date : (cur.date || all[all.length - 1] || ''), rows = up ? up.rows : ((U.days.get(date) || {}).rows || []), map = Object.assign({}, U.map), dirty = false;
+    all.forEach(dd => (U.days.get(dd).rows || []).forEach(x => { if (x.wh && !map[x.loc]) map[x.loc] = x.wh; }));
     const W = whList(); if (up) rows.forEach(x => { if (!map[x.loc]) { const g = guess(x.loc, x.cat, W); if (g) { map[x.loc] = g; dirty = true; } } });
     const d = document.createElement('div'); d.id = 'whuBox'; d.dataset.nohc = '1'; d.style.cssText = 'position:fixed;inset:0;z-index:9400;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:12px';
     const draw = () => { const tot = rows.reduce((a, x) => (a.cap += x.cap, a.used += x.used, a.tr += x.tr, a.free += x.free, a), { cap: 0, used: 0, tr: 0, free: 0 }), ed = can();
@@ -89,7 +127,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:16px;flex:1;min-width:200px">🏭 WHs utilization ${up ? '— new upload' : ''}</b>
           ${up ? `<label class="text-sm">Date <input type="date" id="whuDate" value="${esc(date)}" style="width:auto;margin:0"></label>` : all.length ? `<select id="whuDay" style="width:auto;margin:0">${all.slice().reverse().map(x => `<option value="${x}" ${x === date ? 'selected' : ''}>${dmy(x)}</option>`).join('')}</select>` : ''}
           ${ed ? `<button type="button" class="secondary small" data-u="file">⬆ Upload file</button><input type="file" id="whuFile" accept=".xlsx,.xls,.xlsm" style="display:none">` : ''}<button type="button" class="ghost small" data-u="xl">⬇ Excel</button><button type="button" class="ghost small" data-u="x">✕</button></div>
-        <div style="padding:8px 16px;font-size:12.5px;color:var(--gray-600,#64748b)">${rows.length ? `<b>${fmt(tot.cap ? tot.used / tot.cap * 100 : 0, 1)}%</b> utilized · ${fmt(tot.used)} of ${fmt(tot.cap)} pallets · ${fmt(tot.free)} free · ${fmt(tot.tr)} in transit · ${rows.length} locations` : 'No data for this date.'}${ed ? ' — link each LOC to its <b>WHs Desc</b> once; the report filters use these links.' : ''}</div>
+        <div style="padding:8px 16px;font-size:12.5px;color:var(--gray-600,#64748b)">${rows.length ? `<b>${fmt(tot.cap ? tot.used / tot.cap * 100 : 0, 1)}%</b> utilized · ${fmt(tot.used)} of ${fmt(tot.cap)} pallets · ${fmt(tot.free)} free · ${fmt(tot.tr)} in transit · ${rows.length} locations` : 'No data for this date.'}${ed ? ' — link each LOC to its <b>WHs Desc</b> once; the report filters use these links.' : ''}<br>📋 SharePoint list <b>${esc(uName())}</b>${U.noList ? ' (not created yet — it is created with the first upload)' : U.listRows != null ? ' · ' + fmt(U.listRows) + ' rows' : ''}${(U.days.get(date) || {}).src === 'list' || !rows.length || up ? '' : ' · ⚠ this date is still in App_Config_tbl — upload the file again to move it to the list'}</div>
         <div style="overflow:auto;padding:0 16px 8px"><table class="data-table" style="width:100%;font-size:12.5px"><thead><tr><th>Category</th><th>LOC</th><th>WHs Desc (link)</th><th style="text-align:right">Capacity</th><th style="text-align:right">Used</th><th style="text-align:right">Util %</th><th style="text-align:right">In transit</th><th style="text-align:right">Free</th></tr></thead><tbody>
           ${rows.map((x, i) => { const p = x.cap ? x.used / x.cap * 100 : 0; return `<tr><td>${esc(x.cat)}</td><td><b>${esc(x.loc)}</b></td><td>${ed ? `<select data-m="${i}" style="margin:0;min-width:170px;${map[x.loc] ? '' : 'border-color:#f59e0b'}"><option value="">— not linked —</option>${W.map(w => `<option ${map[x.loc] === w ? 'selected' : ''}>${esc(w)}</option>`).join('')}${map[x.loc] && !W.includes(map[x.loc]) ? `<option selected>${esc(map[x.loc])}</option>` : ''}</select>` : esc(map[x.loc] || '—')}</td><td style="text-align:right">${fmt(x.cap)}</td><td style="text-align:right">${fmt(x.used)}</td><td style="text-align:right;font-weight:700;color:${p > 100 ? '#dc2626' : p >= 90 ? '#d97706' : 'inherit'}">${fmt(p, 1)}%</td><td style="text-align:right">${fmt(x.tr)}</td><td style="text-align:right">${fmt(x.free)}</td></tr>`; }).join('')}
         </tbody></table></div>
@@ -107,9 +145,12 @@
       if (a === 'xl') { if (!rows.length) return; const ws = XLSX.utils.aoa_to_sheet([['Date', 'Category', 'LOC', 'WHs Desc', 'Capacity', 'Used', 'Util %', 'In transit', 'Free'], ...rows.map(x => [date, x.cat, x.loc, map[x.loc] || '', x.cap, x.used, x.cap ? Math.round(x.used / x.cap * 1000) / 10 : 0, x.tr, x.free])]), wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'WHs utilization'); XLSX.writeFile(wb, 'WHs_Utilization_' + date + '.xlsx'); return; }
       if (a === 'save') { if (up && !/^\d{4}-\d\d-\d\d$/.test(date)) return msg('⚠ Set the date of this file.', 1);
         try { b.disabled = true; msg('Saving…');
-          if (up) { await upsert('WHU:' + date, JSON.stringify({ date, rows, file: up.file || '', by: me(), at: new Date().toISOString() })); U.days.set(date, { date, rows }); }
-          if (dirty || up) { await upsert(UMAP, JSON.stringify({ map, by: me(), at: new Date().toISOString() })); U.map = map; dirty = false; }
-          msg('✔ Saved — the utilization card now uses ' + dmy(date) + '.'); up = null; draw(); try { mwRenderReport(); } catch (x) {} toast('🏭 WHs utilization ' + dmy(date) + ' saved'); }
+          let where = uName();
+          if (dirty || up) { await upsert(UMAP, JSON.stringify({ map, list: uName(), by: me(), at: new Date().toISOString() })); U.map = map; }
+          if (up) { try { await saveDay(date, rows, up.file, map); } catch (x) { if (/Cancelled/.test(x.message)) throw x; where = 'App_Config_tbl (⚠ ' + x.message + ')'; await upsert('WHU:' + date, JSON.stringify({ date, rows, file: up.file || '', by: me(), at: new Date().toISOString() })); } U.days.delete(date); pulled = 0; await pull(true); if (!U.days.has(date)) U.days.set(date, { date, rows }); }
+          else if (dirty) { try { await saveLinks(date, map); } catch (x) { if (/Cancelled/.test(x.message)) throw x; } }
+          dirty = false; rows = (U.days.get(date) || {}).rows || rows;
+          up = null; draw(); msg('✔ Saved in SharePoint · ' + where + ' — the utilization cards now include ' + dmy(date) + '.'); try { mwRenderReport(); } catch (x) {} toast('🏭 WHs utilization ' + dmy(date) + ' saved'); }
         catch (x) { b.disabled = false; msg(/Cancelled/.test(x.message) ? 'Not saved.' : '⚠ Not saved: ' + x.message, !/Cancelled/.test(x.message)); } } }); }
   document.addEventListener('click', e => { const k = e.target.closest && e.target.closest('#mwKpis [data-whu]'); if (!k) return; const go = () => box(null); if (!U.read) pull(true).then(go); else go(); });
 

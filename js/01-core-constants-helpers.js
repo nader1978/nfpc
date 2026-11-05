@@ -505,3 +505,8 @@ function hasPerm(perm) {
   return role.perms.has('*') || role.perms.has(perm);
 }
 function isAdmin() { return currentUser && currentUser.role === 'admin'; }
+
+/* KPI arrow vs target: ▲ above · ▼ below · ■ (black) on target (as shown, rounded). Colour by meaning: higherGood = true → ▲ green / ▼ red; false (e.g. overtime) → ▲ red / ▼ green */
+function kpiArrow(v, base, higherGood, dec) { if (v == null || !isFinite(v)) return ''; base = base == null ? 100 : base; const f = Math.pow(10, dec || 0), r = Math.round(v * f) / f, b = Math.round(base * f) / f;
+  if (r === b) return '<span class="kpi-ar" style="color:#0f172a;font-size:.72em;margin-right:5px;vertical-align:.12em">■</span>'; const up = r > b, good = higherGood === false ? !up : up;
+  return `<span class="kpi-ar" style="color:${good ? '#16a34a' : '#dc2626'};font-size:.8em;margin-right:5px;vertical-align:.08em">${up ? '▲' : '▼'}</span>`; }

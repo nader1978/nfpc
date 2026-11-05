@@ -226,12 +226,12 @@ const mgKpi = (l, v, s, c) => `<div class="pl-kpi"${c ? ` style="border-left:4px
 const mgPct = (v, d) => v == null ? '—' : plF(v, d == null ? 1 : d) + '%';
 function mgKpis(a) {
   const T = plT(), ok = a.otDiff == null ? null : a.otDiff <= 0, f = (v, d) => v == null ? '—' : plF(v, d);
-  PLQ('#mgKpis').innerHTML = mgKpi('Productivity %', mgPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit)
+  PLQ('#mgKpis').innerHTML = mgKpi('Productivity %', kpiArrow(a.prodPct, 100, true, 0) + mgPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit)
     + mgKpi('Working volume', plF(a.vol), 'Ltrs / Kg')
     + mgKpi('Working hrs', plF(a.hrs, 1), `${plF(a.whN)} warehouse(s)`)
     + mgKpi('Working OT hrs', plF(a.ot, 1), `OT ${mgPct(a.otPct)} of working hrs${a.tOT != null ? ` · target ${mgPct(a.tOT)}` : ''}`)
-    + mgKpi('Over time % vs target', a.otDiff == null ? '—' : (a.otDiff > 0 ? '▲ +' : '▼ ') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit)
-    + mgKpi('Over time % (relative)', a.otDiff2 == null ? '—' : (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
+    + mgKpi('Over time % vs target', a.otDiff == null ? '—' : kpiArrow(a.otDiff, 0, false, 1) + (a.otDiff > 0 ? '+' : '') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit)
+    + mgKpi('Over time % (relative)', a.otDiff2 == null ? '—' : kpiArrow(a.otDiff2, 0, false, 0) + (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
     + mgKpi('Orders processed', plF(a.orders), `${plF(a.n)} daily record(s)`)
     + (a.bud != null ? mgKpi('Headcount', `${plF(a.act)} <span style="font-size:14px;font-weight:500;color:var(--gray-500)">/ ${plF(a.bud)}</span>`, `actual / budget · ${a.act - a.bud >= 0 ? '+' : ''}${plF(a.act - a.bud)}`, a.act > a.bud ? T.warn : null) : '')
     + mgKpi('Latest entry date', a.latest || '—', 'most recent record in the selection');

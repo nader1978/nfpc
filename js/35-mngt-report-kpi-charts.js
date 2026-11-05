@@ -3,12 +3,12 @@ const mwKpi = (l, v, s, c) => `<div class="pl-kpi"${c ? ` style="border-left:4px
 const mwPct = (v, d) => v == null ? '—' : plF(v, d == null ? 1 : d) + '%';
 function mwKpis(a) {
   const T = plT(), ok = a.otDiff == null ? null : a.otDiff <= 0, f = (v, d) => v == null ? '—' : plF(v, d);
-  PLQ('#mwKpis').innerHTML = mwKpi('Productivity %', mwPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit)
+  PLQ('#mwKpis').innerHTML = mwKpi('Productivity %', kpiArrow(a.prodPct, 100, true, 0) + mwPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit)
     + mwKpi('Working volume', plF(a.vol), 'Ltrs / Kg')
     + mwKpi('Working hrs', plF(a.hrs, 1), `${plF(a.whN)} warehouse(s)`)
     + mwKpi('Working OT hrs', plF(a.ot, 1), `OT ${mwPct(a.otPct)} of working hrs${a.tOT != null ? ` · target ${mwPct(a.tOT)}` : ''}`)
-    + mwKpi('Over time % vs target', a.otDiff == null ? '—' : (a.otDiff > 0 ? '▲ +' : '▼ ') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit)
-    + mwKpi('Over time % (relative)', a.otDiff2 == null ? '—' : (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
+    + mwKpi('Over time % vs target', a.otDiff == null ? '—' : kpiArrow(a.otDiff, 0, false, 1) + (a.otDiff > 0 ? '+' : '') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit)
+    + mwKpi('Over time % (relative)', a.otDiff2 == null ? '—' : kpiArrow(a.otDiff2, 0, false, 0) + (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
     + mwKpi('Orders processed', plF(a.orders), `${plF(a.n)} daily record(s)`)
     + (a.bud != null ? mwKpi('Headcount', `${plF(a.act)} <span style="font-size:14px;font-weight:500;color:var(--gray-500)">/ ${plF(a.bud)}</span>`, `actual / budget · ${a.act - a.bud >= 0 ? '+' : ''}${plF(a.act - a.bud)}`, a.act > a.bud ? T.warn : null) : '')
     + mwKpi('Latest entry date', a.latest || '—', 'most recent record in the selection');
