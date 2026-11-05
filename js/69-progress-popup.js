@@ -153,9 +153,9 @@
   const cssA = document.createElement('style'); cssA.textContent = `
 #opAsk .oa{width:min(430px,100%);background:var(--card,#fff);color:var(--text,#0f172a);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,.45);font-size:13.5px;animation:oaIn .16s ease-out}
 @keyframes oaIn{from{transform:translateY(8px) scale(.98);opacity:0}to{transform:none;opacity:1}}
-#opAsk .oa-h{background:#1e3a8a;color:#fff;padding:20px 22px;display:flex;align-items:center;gap:14px}#opAsk .oa.del .oa-h{background:#991b1b}
-#opAsk .oa-i{width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex:none}
-#opAsk .oa-l{font-size:11.5px;opacity:.85;letter-spacing:.07em;text-transform:uppercase}#opAsk .oa-t{font-size:18px;font-weight:700;line-height:1.25;word-break:break-word}
+#opAsk .oa-h{background:#1e3a8a;color:#fff;padding:11px 18px;display:flex;align-items:center;gap:11px}#opAsk .oa.del .oa-h{background:#991b1b}
+#opAsk .oa-i svg{width:18px;height:18px}.oa-i{width:34px;height:34px;border-radius:17px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;flex:none}
+#opAsk .oa-l{font-size:10.5px;opacity:.85;letter-spacing:.07em;text-transform:uppercase;line-height:1.2}#opAsk .oa-t{font-size:16px;font-weight:700;line-height:1.2;word-break:break-word}
 #opAsk .oa-b{padding:16px 22px 4px;display:flex;flex-direction:column;gap:9px}#opAsk .oa-r{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid var(--border,#eef2f7);padding-bottom:8px}
 #opAsk .oa-r span{color:var(--gray-500,#64748b)}#opAsk .oa-r b{text-align:right;word-break:break-word}#opAsk .oa-p{color:var(--gray-600,#475569);line-height:1.45}#opAsk .oa-w{color:#991b1b;font-weight:600}
 #opAsk .oa-f{padding:14px 22px 20px;display:flex;justify-content:flex-end;align-items:center;gap:10px}#opAsk .oa-f .h{margin-right:auto;font-size:11.5px;color:var(--gray-500,#64748b)}
