@@ -1208,5 +1208,10 @@ body.sb-mini .nav-sub-head{padding:0;margin:4px 14px;height:1px;min-height:1px;b
 
 /* top bar: no "Import token" button; the buttons always stay on one line (they scroll sideways on a narrow window) */
 #importTokenBtn{display:none!important}
-.topbar-actions{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;max-width:100%}
+.topbar-actions{flex-wrap:nowrap!important;flex:0 1 auto;min-width:0;margin-left:auto;overflow-x:auto;overflow-y:visible;scrollbar-width:none;padding:8px 2px 2px;margin-top:-8px}
+.topbar-actions::-webkit-scrollbar{display:none;height:0}
 .topbar-actions>*{flex-shrink:0;white-space:nowrap}
+.topbar{flex-wrap:wrap;row-gap:6px}
+.topbar>div:not(.topbar-actions):not(.tb-logo){min-width:220px;flex:1 1 260px}
+.topbar>div:not(.topbar-actions):not(.tb-logo) .topbar-title,.topbar>div:not(.topbar-actions):not(.tb-logo) .topbar-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1500px){.topbar-actions{gap:6px}.topbar-actions>button,.topbar-actions>.icon-btn,.topbar-actions>span{padding-left:8px!important;padding-right:8px!important;font-size:12.5px!important}}
