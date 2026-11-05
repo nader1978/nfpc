@@ -19,9 +19,15 @@ select.ss-on{cursor:pointer}`;
   document.head.appendChild(css);
   let P = null, cur = null, items = [], hi = -1;
   const ok = s => s && s.tagName === 'SELECT' && !s.multiple && !s.disabled && !s.dataset.nosearch && !s.closest('[data-nosearch]') && s.options.length >= MIN;
-  function close(focus) { if (!P) return; P.remove(); P = null; document.removeEventListener('mousedown', out, true); window.removeEventListener('resize', onWin, true); document.removeEventListener('scroll', onScroll, true); if (focus && cur && cur.isConnected) try { cur.focus({ preventScroll: true }); } catch (e) {} cur = null; }
+  function close(focus) { if (!P) return; P.remove(); P = null; document.removeEventListener('mousedown', out, true); window.removeEventListener('resize', onWin, true); if (window.visualViewport) visualViewport.removeEventListener('resize', onWin); document.removeEventListener('scroll', onScroll, true); if (focus && cur && cur.isConnected) try { cur.focus({ preventScroll: true }); } catch (e) {} cur = null; }
   const out = e => { if (P && !P.contains(e.target) && e.target !== cur) close(false); };
-  const onWin = () => close(false), onScroll = e => { if (P && !P.contains(e.target)) close(false); };
+  /* phones: the keyboard opening resizes and scrolls the page — keep the list open and move it with its drop-down; close only when the width changes (rotation) or the drop-down leaves the screen */
+  let W0 = 0, T0 = 0;
+  function place() { if (!P || !cur) return; const r = cur.getBoundingClientRect(), vh = (window.visualViewport && visualViewport.height) || innerHeight, W = Math.min(Math.max(r.width, 240), Math.max(240, innerWidth - 16)), below = vh - r.bottom - 10, above = r.top - 10, H = Math.min(360, Math.max(below, above));
+    P.style.width = W + 'px'; P.style.left = Math.max(8, Math.min(r.left, innerWidth - W - 8)) + 'px'; P.querySelector('.ss-l').style.maxHeight = (Math.max(140, H) - 46) + 'px';
+    if (below >= 220 || below >= above) { P.style.top = (r.bottom + 2) + 'px'; P.style.bottom = ''; } else { P.style.top = ''; P.style.bottom = (innerHeight - r.top + 2) + 'px'; } }
+  const onWin = () => { if (!P) return; if (Math.abs(innerWidth - W0) > 40) close(false); else place(); },
+    onScroll = e => { if (!P || P.contains(e.target)) return; const r = cur && cur.getBoundingClientRect(); if (!r || ((r.bottom < 0 || r.top > innerHeight) && Date.now() - T0 > 1500)) close(false); else place(); };
   function pick(i) { const it = items[i]; if (!it || it.dis || !cur) return; const s = cur; close(true); if (s.selectedIndex !== it.idx) { s.selectedIndex = it.idx; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); } }
   function draw(q) {
     const L = P.querySelector('.ss-l'), words = String(q || '').toLowerCase().split(/\s+/).filter(Boolean), mk = t => { const lo = t.toLowerCase(), on = new Array(t.length).fill(false); words.forEach(w => { let k = lo.indexOf(w); while (k >= 0) { for (let j = k; j < k + w.length; j++) on[j] = true; k = lo.indexOf(w, k + 1); } }); let h = '', inM = false; for (let j = 0; j < t.length; j++) { if (on[j] !== inM) { h += on[j] ? '<mark>' : '</mark>'; inM = on[j]; } h += esc(t[j]); } return h + (inM ? '</mark>' : ''); };
@@ -32,21 +38,20 @@ select.ss-on{cursor:pointer}`;
   }
   function setHi(i, scroll) { if (!P) return; P.querySelectorAll('.ss-o.on').forEach(x => x.classList.remove('on')); const el = P.querySelector(`.ss-o[data-i="${i}"]`); if (!el) return; hi = i; el.classList.add('on'); if (scroll) el.scrollIntoView({ block: 'nearest' }); }
   function move(d) { const els = [...P.querySelectorAll('.ss-o:not(.dis)')]; if (!els.length) return; let k = els.findIndex(x => +x.dataset.i === hi); k = k < 0 ? 0 : Math.max(0, Math.min(els.length - 1, k + d)); setHi(+els[k].dataset.i, true); }
+  const touchy = () => { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } };
   function open(s) {
     close(false); cur = s; items = [...s.options].map((o, idx) => ({ idx, v: o.value, t: (o.label || o.textContent || '').replace(/\s+/g, ' ').trim(), dis: o.disabled || o.hidden, g: o.parentElement && o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : '' })).filter(it => !(it.dis && it.t === ''));
     P = document.createElement('div'); P.id = 'ssPanel'; P.dataset.nohc = '1';
     P.innerHTML = `<div class="ss-q"><span>🔍</span><input type="text" placeholder="Search…" autocomplete="off" spellcheck="false"><span class="ss-n"></span></div><div class="ss-l"></div>`;
-    document.body.appendChild(P); const r = s.getBoundingClientRect(), W = Math.min(Math.max(r.width, 240), Math.max(240, innerWidth - 16)), below = innerHeight - r.bottom - 10, above = r.top - 10, H = Math.min(360, Math.max(below, above));
-    P.style.width = W + 'px'; P.style.left = Math.max(8, Math.min(r.left, innerWidth - W - 8)) + 'px'; P.querySelector('.ss-l').style.maxHeight = (Math.max(140, H) - 46) + 'px';
-    if (below >= 220 || below >= above) P.style.top = (r.bottom + 2) + 'px'; else P.style.bottom = (innerHeight - r.top + 2) + 'px';
-    const q = P.querySelector('input'); draw(''); q.focus();
+    document.body.appendChild(P); W0 = innerWidth; T0 = Date.now(); place();
+    const q = P.querySelector('input'); draw(''); if (!touchy()) q.focus();   /* on a phone the keyboard opens only when the user taps 🔍 Search */
     q.addEventListener('input', () => draw(q.value));
     q.addEventListener('keydown', e => { if (e.key === 'ArrowDown') { e.preventDefault(); move(1); } else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); } else if (e.key === 'PageDown') { e.preventDefault(); move(8); } else if (e.key === 'PageUp') { e.preventDefault(); move(-8); }
       else if (e.key === 'Enter') { e.preventDefault(); if (hi >= 0) pick(hi); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); } else if (e.key === 'Tab') { close(false); } });
     P.addEventListener('mousedown', e => { if (e.target !== q) e.preventDefault(); });
     P.addEventListener('click', e => { const o = e.target.closest('.ss-o'); if (o) pick(+o.dataset.i); });
     P.addEventListener('mousemove', e => { const o = e.target.closest('.ss-o:not(.dis)'); if (o && +o.dataset.i !== hi) setHi(+o.dataset.i, false); });
-    setTimeout(() => { document.addEventListener('mousedown', out, true); window.addEventListener('resize', onWin, true); document.addEventListener('scroll', onScroll, true); }, 0);
+    setTimeout(() => { document.addEventListener('mousedown', out, true); window.addEventListener('resize', onWin, true); document.addEventListener('scroll', onScroll, true); if (window.visualViewport) visualViewport.addEventListener('resize', onWin); }, 0);
   }
   /* mouse: open our list instead of the native one (touch screens keep the phone's own picker) */
   document.addEventListener('mousedown', e => { if (e.button !== 0) return; const s = e.target.closest && e.target.closest('select'); if (!ok(s)) return; e.preventDefault(); if (P && cur === s) { close(true); return; } try { s.focus({ preventScroll: true }); } catch (x) {} open(s); }, true);

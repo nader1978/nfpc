@@ -113,7 +113,36 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
 .mb-empty{text-align:center;color:var(--mut);padding:24px 10px;font-size:13.5px}
 .mb-sess{background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);color:#d97706;border-radius:16px;padding:12px;font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:center}.mb-sess button{border:0!important;background:#b45309!important;color:#fff!important;border-radius:10px;padding:8px 12px!important;font-weight:700;white-space:nowrap}
 #mobBtn{width:auto;padding:0 10px;font-size:13px}
-@media(min-width:700px){.mb-body{max-width:640px;margin:0 auto;width:100%}.mb-grid3{grid-template-columns:repeat(4,minmax(0,1fr))}}`;
+@media(min-width:700px){.mb-body{max-width:640px;margin:0 auto;width:100%}.mb-grid3{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* ===== layouts: A glossy grid · B soft clay bento · C dark premium (default) · D iOS style — the ☀️/🌙 theme works with every layout ===== */
+#mob.lay-a.light{background:#eef2f8}#mob.lay-b.light{background:#f5f1ea;--card:#fff;--soft:#fff3e8;--acc:#c2410c;--accb:#c2410c}#mob.lay-d.light{background:#fff;--card:#fff;--cardb:#eef2f7;--sh:none}
+#mob.lay-a .mb-in,#mob.lay-d .mb-in{border-radius:30%;background:linear-gradient(150deg,var(--a),var(--b));box-shadow:0 12px 18px -8px var(--b),0 4px 6px -2px rgba(15,23,42,.25),inset 0 2px 1px rgba(255,255,255,.55),inset 0 -5px 8px rgba(0,0,0,.22)}
+#mob.lay-a .mb-in:before,#mob.lay-d .mb-in:before{content:"";position:absolute;left:8%;right:8%;top:5%;height:46%;border-radius:40% 40% 45% 45%/50% 50% 40% 40%;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0))}
+#mob.lay-b .mb-in{border-radius:34%;background:color-mix(in srgb,var(--a) 22%,#fff);box-shadow:6px 8px 16px -4px rgba(120,113,108,.35),inset -4px -5px 8px rgba(0,0,0,.07),inset 4px 4px 8px rgba(255,255,255,.95)}
+#mob.lay-b:not(.light) .mb-in{background:color-mix(in srgb,var(--a) 30%,#1e293b);box-shadow:6px 8px 16px -4px rgba(0,0,0,.5),inset 3px 3px 6px rgba(255,255,255,.12)}
+#mob.lay-b .mb-in span{filter:drop-shadow(0 4px 3px rgba(0,0,0,.25))}
+/* A — blue band on the home page and the section page */
+#mob.lay-a.pg-home .mb-top,#mob.lay-a.pg-sec .mb-top{background:linear-gradient(135deg,#1e3a8a,#2563eb)}#mob.lay-a.pg-home .mb-ib,#mob.lay-a.pg-sec .mb-ib{color:#fff!important;background:rgba(255,255,255,.15)!important;border-color:rgba(255,255,255,.2)!important}
+.mb-aband{background:linear-gradient(135deg,#1e3a8a,#2563eb);margin:-8px -16px 0;padding:0 20px 46px;border-radius:0 0 28px 28px;color:#fff}.mb-aband .mb-eyb{color:#bfdbfe}.mb-aband .mb-h1{color:#fff}
+.mb-aquick{margin:-34px 0 6px;background:var(--card);border:1px solid var(--cardb);border-radius:20px;padding:12px 6px;display:flex;justify-content:space-around;box-shadow:0 14px 28px -14px rgba(15,23,42,.45)}
+.mb-aquick .mb-gi{width:auto!important;flex:1}.mb-aquick .mb-gi b{font-size:10.5px;font-weight:600}
+.mb-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mb-acard{background:var(--card)!important;border:1px solid var(--cardb)!important;border-radius:20px!important;padding:14px!important;display:flex!important;flex-direction:column;align-items:flex-start!important;gap:8px;text-align:left!important;box-shadow:var(--sh);height:auto!important;width:100%!important;white-space:normal!important}
+.mb-acard b{font-size:13.5px;color:var(--hd);line-height:1.2}.mb-acard small{font-size:11px;color:var(--mut)}
+/* B — bento */
+.mb-bento{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:96px;gap:12px}
+.mb-bt{border:0!important;border-radius:26px!important;padding:13px!important;display:flex!important;gap:10px;text-align:left!important;align-items:center;background:color-mix(in srgb,var(--a) 20%,#fff)!important;box-shadow:8px 10px 20px -10px rgba(120,113,108,.5),inset 2px 2px 4px rgba(255,255,255,.8);height:auto!important;width:100%!important;white-space:normal!important;color:#0f172a!important;min-width:0}
+#mob:not(.light) .mb-bt{background:color-mix(in srgb,var(--a) 22%,#111827)!important;color:#e2e8f0!important;box-shadow:8px 10px 20px -10px rgba(0,0,0,.6)}
+.mb-bt.tall{grid-row:span 2;flex-direction:column;align-items:flex-start;justify-content:space-between}.mb-bt b{font-size:13px;line-height:1.2;display:block}.mb-bt.tall b{font-size:16px}.mb-bt small{font-size:11px;opacity:.65}
+.mb-bhead{border-radius:28px;padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:14px;background:color-mix(in srgb,var(--a) 20%,#fff);color:#0f172a;box-shadow:8px 10px 20px -10px rgba(120,113,108,.5)}#mob:not(.light) .mb-bhead{background:color-mix(in srgb,var(--a) 22%,#111827);color:#e2e8f0}.mb-bhead b{font-size:21px;display:block}.mb-bhead small{opacity:.65;font-size:12px}
+/* D — iOS list */
+.mb-dlist{background:var(--card);border-radius:18px;border:1px solid var(--cardb);overflow:hidden}
+.mb-drow{display:flex;align-items:center;gap:14px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}.mb-drow:last-child{border-bottom:0}.mb-drow .d{flex:1;min-width:0}.mb-drow b{display:block;font-size:15px;color:var(--hd)}.mb-drow small{font-size:12px;color:var(--mut)}
+.mb-dfav{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 10px;scrollbar-width:none}.mb-dfav .mb-gi{width:72px!important;flex:none}
+.mb-dtitle{font-size:30px;font-weight:800;color:var(--hd);letter-spacing:-.02em}
+/* layout picker (Profile) */
+.mb-lays{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mb-lay{border:2px solid var(--inpb)!important;background:var(--inp)!important;border-radius:16px!important;padding:10px!important;text-align:left!important;display:flex!important;flex-direction:column;gap:6px;height:auto!important;width:100%!important;white-space:normal!important}.mb-lay.on{border-color:var(--acc)!important;box-shadow:0 0 0 3px var(--soft)}
+.mb-lay b{font-size:13px;color:var(--hd)}.mb-lay small{font-size:11px;color:var(--mut);line-height:1.3}.mb-lay i{display:block;height:44px;border-radius:10px}`;
   document.head.appendChild(css);
 
   /* [section, icon, glow colour, deep colour, [screen key ('' = still in Power Apps), icon, title, subtitle, colour, deep colour]] */
@@ -126,8 +155,16 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     ['Cooler service', '🧊', '#fb923c', '#ea580c', [['', '📲', 'Field service tickets', 'Visits assigned to you', '#fb923c', '#ea580c'], ['', '🛠️', 'Workshop repairs', 'Coolers in the workshop', '#94a3b8', '#475569'], ['', '🚐', 'My van & custody', 'Van stock and parts', '#22d3ee', '#0e7490']]]];
   const ALL = []; GROUPS.forEach((g, gi) => g[4].forEach(it => ALL.push({ k: it[0], ic: it[1], t: it[2], sub: it[3], a: it[4], b: it[5], g: gi })));
   const icon = (e, a, b, sz, dim) => `<span class="mb-in${dim ? ' dim' : ''}" style="--a:${a};--b:${b};--s:${sz || 56}px"><span>${e}</span></span>`;
-  let THEME = 'dark'; try { THEME = localStorage.getItem(PKEY + '_theme') || 'dark'; } catch (e) {}
-  function setTheme(t) { THEME = t; try { localStorage.setItem(PKEY + '_theme', t); } catch (e) {} const m = Q('#mob'); if (m) m.classList.toggle('light', t === 'light'); const tb = Q('[data-m="theme"]'); if (tb) tb.textContent = t === 'light' ? '🌙' : '☀️'; let mt = document.querySelector('meta[name=theme-color]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = t === 'light' ? '#eef2ff' : '#0f1a3a'; }
+  let THEME = 'dark';
+  function setTheme(t, keep) { THEME = t; if (!keep) try { localStorage.setItem(PKEY + '_theme', t); } catch (e) {} const m = Q('#mob'); if (m) m.classList.toggle('light', t === 'light'); const tb = Q('[data-m="theme"]'); if (tb) tb.textContent = t === 'light' ? '🌙' : '☀️'; let mt = document.querySelector('meta[name=theme-color]'); if (!mt) { mt = document.createElement('meta'); mt.name = 'theme-color'; document.head.appendChild(mt); } mt.content = t === 'light' ? '#eef2ff' : '#0f1a3a'; }
+  const LAYS = { A: ['Glossy grid', 'Blue header, quick actions, section cards', 'light', 'linear-gradient(135deg,#1e3a8a,#2563eb 55%,#eef2f8 55%)'], B: ['Soft clay bento', 'Warm pastel tiles of different sizes', 'light', 'linear-gradient(135deg,#cffafe 0 33%,#dbeafe 33% 66%,#fef3c7 66%)'], C: ['Dark premium', 'Night-blue with glowing round icons', 'dark', 'radial-gradient(circle at 20% 0%,#1e3a8a,#0b1226 70%)'], D: ['iOS style', 'Favourites row and a big section list', 'light', 'linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,#60a5fa,#c084fc) border-box'] };
+  /* the admin's choice comes from App_Config_tbl (row "MOBILE:layout" = {"layout":"C","userChoice":true}); a user may pick their own only when userChoice is on */
+  let CFG = { layout: 'C', userChoice: true }; try { Object.assign(CFG, JSON.parse(localStorage.getItem(PKEY + '_cfg') || '{}')); } catch (e) {}
+  const myLay = () => { let u = ''; try { u = localStorage.getItem(PKEY + '_lay') || ''; } catch (e) {} return (CFG.userChoice && LAYS[u]) ? u : (LAYS[CFG.layout] ? CFG.layout : 'C'); };
+  let LAY = myLay();
+  function setLay(l, mine) { if (mine) { try { localStorage.setItem(PKEY + '_lay', l); } catch (e) {} } LAY = myLay(); const m = Q('#mob'); if (m) { m.className = m.className.replace(/\blay-[a-d]\b/g, '').trim(); m.classList.add('lay-' + LAY.toLowerCase()); } let t = ''; try { t = localStorage.getItem(PKEY + '_theme') || ''; } catch (e) {} setTheme(t || LAYS[LAY][2], !t); }
+  async function cfgLoad() { try { const c = await tpCtx(); if (!c) return; const its = await fetchAllItems(c.siteId, c.listId, c.token), it = its.find(x => String((x.fields || {}).Title || '').trim() === 'MOBILE:layout'); if (!it) return; const v = JSON.parse(String(it.fields.Config_Value || '{}'));
+      CFG = { layout: LAYS[v.layout] ? v.layout : 'C', userChoice: v.userChoice !== false }; try { localStorage.setItem(PKEY + '_cfg', JSON.stringify(CFG)); } catch (e) {} const was = LAY; setLay(); if (was !== LAY || S.page === 'me') render(); } catch (e) { console.warn('ORBIT mobile: layout setting not read', e); } }
   let FAV = []; try { FAV = JSON.parse(localStorage.getItem(PKEY + '_fav') || '[]'); } catch (e) {}
   const favToggle = t => { FAV = FAV.includes(t) ? FAV.filter(x => x !== t) : FAV.concat(t); try { localStorage.setItem(PKEY + '_fav', JSON.stringify(FAV)); } catch (e) {} };
   const TITLES = { home: 'ORBIT', veh: 'Vehicle ODO Reading', temp: 'Temperature Reading', count: 'Rack Stock Count', put: 'Put Away Pallets', move: 'Move Stock (Racks)', recent: 'My activity', me: 'Profile', fav: 'Favourites' };
@@ -139,13 +176,13 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     d.innerHTML = `<div class="mb-top"><div class="mb-bar"><button class="mb-ib" data-m="back" aria-label="Back">‹</button><h1 id="mbTitle">ORBIT</h1><button class="mb-ib" data-m="theme" aria-label="Light or dark">☀️</button><button class="mb-ib" data-m="refresh" aria-label="Refresh">↻</button></div><div class="mb-hi" id="mbHi"></div></div>
       <div class="mb-body" id="mbBody"></div>
       <nav class="mb-nav"><button data-nav="home"><span>🏠</span>Home</button><button data-nav="fav"><span>⭐</span>Favourites</button><button data-nav="recent"><span>🕘</span>Activity</button><button data-nav="me"><span>👤</span>Profile</button></nav>`;
-    document.body.appendChild(d); setTheme(THEME);
+    document.body.appendChild(d); setLay();
     d.addEventListener('click', onClick); d.addEventListener('input', onInput); d.addEventListener('change', onChange); }
   S.stack = [];
   const go = (p, mode) => { if (mode === 'tab' || p === 'home') S.stack = []; else if (mode !== 'back' && p !== S.page) S.stack.push({ p: S.page, sec: S.sec }); if (p !== S.page) { S.page = p; S.v = {}; } render(); const b = Q('#mbBody'); if (b) b.scrollTop = 0; if (LOADERS[p]) LOADERS[p](); if (p === 'home') LOADERS.temp(true); };
   let rendering = 0;
   function render() { if (rendering) { setTimeout(render, 0); return; } rendering = 1; try { render0(); } finally { rendering = 0; } }
-  function render0() { const b = Q('#mbBody'); if (!b) return; Q('#mbTitle').textContent = S.page === 'home' ? '' : S.page === 'sec' ? '' : TITLES[S.page] || 'ORBIT'; Q('#mbHi').style.display = ['home', 'sec', 'fav', 'recent', 'me'].includes(S.page) ? 'none' : ''; Q('[data-m="back"]').style.display = S.page === 'home' ? 'none' : '';
+  function render0() { const b = Q('#mbBody'); if (!b) return; { const m = Q('#mob'); m.className = m.className.replace(/\bpg-\S+/g, '').trim(); m.classList.add('pg-' + S.page); } Q('#mbTitle').textContent = S.page === 'home' ? '' : S.page === 'sec' ? '' : TITLES[S.page] || 'ORBIT'; Q('#mbHi').style.display = ['home', 'sec', 'fav', 'recent', 'me'].includes(S.page) ? 'none' : ''; Q('[data-m="back"]').style.display = S.page === 'home' ? 'none' : '';
     const h = new Date().getHours(); Q('#mbHi').innerHTML = S.page === 'home' ? `${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}, <b>${esc((currentUser && (currentUser.displayName || currentUser.username)) || '')}</b>${myWh() || myLoc() ? ' · 📍 ' + esc(myWh() || 'Location ' + myLoc()) : ''}` : esc(myWh() || (myLoc() ? 'Location ' + myLoc() : ''));
     document.querySelectorAll('#mob .mb-nav button').forEach(x => x.classList.toggle('on', x.dataset.nav === S.page));
     b.innerHTML = sess() + (PAGES[S.page] || PAGES.home)(); }
@@ -159,18 +196,37 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     if (n) return `<button class="mb-today" data-go="temp"><div><small>Today</small><b>${d} / ${n} temp readings</b><small>${d >= n ? 'All done for today ✓' : 'Tap to record the next one'}${sv ? ' · ' + sv + ' saved from this phone' : ''}</small></div>${icon('🌡️', '#c084fc', '#6d28d9', 54)}</button>`;
     return `<button class="mb-today" data-nav="recent"><div><small>Today</small><b>${sv} saved from this phone</b><small>ODO, temperature, put away, moves, counts</small></div>${icon('📊', '#60a5fa', '#1d4ed8', 54)}</button>`; }
   const PAGES = {
-    home() { const q = S.q.toLowerCase().trim(), u = currentUser || {}, h = new Date().getHours(), first = String(u.displayName || u.username || '').split(/[ .]/)[0];
+    homeC() { const q = S.q.toLowerCase().trim(), u = currentUser || {}, h = new Date().getHours(), first = String(u.displayName || u.username || '').split(/[ .]/)[0];
       const top = `<div class="mb-hero"><div class="mb-eyb">ORBIT${myWh() || myLoc() ? ' · ' + esc(myWh() || 'Location ' + myLoc()) : ''}</div><div class="mb-h1">${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}, ${esc(first)}</div></div>`;
       const srch = `<div class="mb-search"><span>🔍</span><input id="mbQ" placeholder="Search all screens…" value="${esc(S.q)}" autocomplete="off"></div>`;
       if (q) { const L2 = ALL.filter(x => (x.t + ' ' + x.sub + ' ' + GROUPS[x.g][0]).toLowerCase().includes(q)); return top + srch + '<div style="height:10px"></div>' + (L2.map(row).join('') || '<div class="mb-empty">No screen matches.</div>'); }
       const favs = ALL.filter(x => FAV.includes(x.t));
       return top + todayCard() + srch + (favs.length ? `<div class="mb-g">⭐ Favourites</div><div class="mb-grid3">${favs.slice(0, 6).map(tile).join('')}</div>` : '')
         + `<div class="mb-g">Sections</div><div class="mb-grid3">${GROUPS.map((g, i) => `<button class="mb-gi" data-sec="${i}">${icon(g[1], g[2], g[3], 64)}<b>${esc(g[0])}</b><small>${g[4].filter(x => x[0]).length} of ${g[4].length} ready</small></button>`).join('')}</div>`; },
-    sec() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div class="mb-sh">${icon(g[1], g[2], g[3], 60)}<div><b>${esc(g[0])}</b><small>${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready here</small></div></div>` + ALL.filter(x => x.g === (S.sec || 0)).map(row).join(''); },
+    secC() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div class="mb-sh">${icon(g[1], g[2], g[3], 60)}<div><b>${esc(g[0])}</b><small>${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready here</small></div></div>` + ALL.filter(x => x.g === (S.sec || 0)).map(row).join(''); },
+    home() { const q = S.q.toLowerCase().trim(); if (q || LAY === 'C') return PAGES.homeC(); return PAGES['home' + LAY](); },
+    sec() { return PAGES['sec' + LAY](); },
+    homeA() { const u = currentUser || {}, h = new Date().getHours(), favs = ALL.filter(x => FAV.includes(x.t)), quick = (favs.length ? favs : ALL.filter(x => x.k)).slice(0, 4);
+      return `<div class="mb-aband"><div class="mb-eyb">${h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'}</div><div class="mb-h1">${esc(u.displayName || u.username || '')}</div><div style="font-size:12px;opacity:.85;margin-top:2px">📍 ${esc(myWh() || (myLoc() ? 'Location ' + myLoc() : 'ORBIT'))}</div></div>
+        <div class="mb-aquick">${quick.map(x => `<button class="mb-gi" ${x.k ? `data-go="${x.k}"` : 'data-soon="1"'}>${icon(x.ic, x.a, x.b, 42, !x.k)}<b>${esc(x.t.replace(/ \(.*\)| Reading| Pallets/g, ''))}</b></button>`).join('')}</div>
+        ${todayCard()}<div class="mb-search"><span>🔍</span><input id="mbQ" placeholder="Search all screens…" value="" autocomplete="off"></div>
+        <div class="mb-g">Sections</div><div class="mb-grid2">${GROUPS.map((g, i) => `<button class="mb-acard" data-sec="${i}">${icon(g[1], g[2], g[3], 48)}<b>${esc(g[0])}</b><small>${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready</small></button>`).join('')}</div>`; },
+    secA() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div class="mb-aband" style="padding-bottom:22px"><div style="display:flex;align-items:center;gap:14px">${icon(g[1], g[2], g[3], 56)}<div><div class="mb-h1" style="font-size:21px">${esc(g[0])}</div><div style="font-size:12px;opacity:.85">${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready here</div></div></div></div><div style="height:14px"></div>` + ALL.filter(x => x.g === (S.sec || 0)).map(row).join(''); },
+    homeB() { const u = currentUser || {}, first = String(u.displayName || u.username || '').split(/[ .]/)[0], favs = ALL.filter(x => FAV.includes(x.t));
+      return `<div class="mb-hero"><div class="mb-eyb" style="color:var(--mut)">Hello ${esc(first)} 👋 · ${esc(myWh() || 'ORBIT')}</div><div class="mb-h1">What's today?</div></div>${todayCard()}
+        <div class="mb-bento">${GROUPS.map((g, i) => { const tall = i === 0 || i === 3; return `<button class="mb-bt${tall ? ' tall' : ''}" data-sec="${i}" style="--a:${g[2]}">${icon(g[1], g[2], g[3], tall ? 62 : 42)}<div><b>${esc(g[0])}</b><small>${g[4].length} screens</small></div></button>`; }).join('')}</div>
+        ${favs.length ? `<div class="mb-g">⭐ Favourites</div><div class="mb-grid3">${favs.slice(0, 6).map(tile).join('')}</div>` : ''}<div style="height:12px"></div><div class="mb-search"><span>🔍</span><input id="mbQ" placeholder="Search all screens…" value="" autocomplete="off"></div>`; },
+    secB() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div class="mb-bhead" style="--a:${g[2]}">${icon(g[1], g[2], g[3], 60)}<div><b>${esc(g[0])}</b><small>${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready here</small></div></div><div class="mb-bento" style="grid-auto-rows:auto">${ALL.filter(x => x.g === (S.sec || 0)).map(x => `<button class="mb-bt tall" style="--a:${x.a};grid-row:auto;min-height:118px" ${x.k ? `data-go="${x.k}"` : 'data-soon="1"'}>${icon(x.ic, x.a, x.b, 44, !x.k)}<div><b>${esc(x.t)}</b><small>${x.k ? esc(x.sub) : 'Soon'}</small></div></button>`).join('')}</div>`; },
+    homeD() { const u = currentUser || {}, favs = ALL.filter(x => FAV.includes(x.t)), quick = favs.length ? favs : ALL.filter(x => x.k);
+      return `<div style="padding:0 2px 8px"><div class="mb-dtitle">ORBIT</div><div class="mb-hint">${esc(u.displayName || u.username || '')}${myWh() ? ' · ' + esc(myWh()) : ''}</div></div>
+        <div class="mb-g" style="margin-top:6px">${favs.length ? '⭐ Favourites' : 'Quick start'}</div><div class="mb-dfav">${quick.map(tile).join('')}</div>${todayCard()}
+        <div class="mb-search"><span>🔍</span><input id="mbQ" placeholder="Search" value="" autocomplete="off"></div><div class="mb-g">Sections</div>
+        <div class="mb-dlist">${GROUPS.map((g, i) => `<div class="mb-drow" data-sec="${i}">${icon(g[1], g[2], g[3], 46)}<div class="d"><b>${esc(g[0])}</b><small>${g[4].length} screens · ${g[4].filter(x => x[0]).length} ready</small></div><span class="mb-chev">›</span></div>`).join('')}</div>`; },
+    secD() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div style="display:flex;align-items:center;gap:12px;padding:0 2px 16px">${icon(g[1], g[2], g[3], 58)}<div class="mb-dtitle" style="font-size:24px">${esc(g[0])}</div></div><div class="mb-grid3">${ALL.filter(x => x.g === (S.sec || 0)).map(x => `<div style="position:relative">${tile(x)}<button class="mb-star${FAV.includes(x.t) ? ' on' : ''}" data-fav="${esc(x.t)}" style="position:absolute;top:-6px;right:0">${FAV.includes(x.t) ? '★' : '☆'}</button></div>`).join('')}</div>`; },
     fav() { const favs = ALL.filter(x => FAV.includes(x.t)); return favs.length ? `<div class="mb-hint" style="margin:4px 2px 14px">Your pinned screens. Tap ☆ on any screen in a section to add it here.</div>` + favs.map(row).join('') : `<div class="mb-card" style="text-align:center;padding:28px 18px">${icon('⭐', '#fbbf24', '#b45309', 64)}<h3 style="justify-content:center;margin:14px 0 6px">No favourites yet</h3><div class="mb-hint">Open a section and tap ☆ next to the screens you use most — they appear here and on the home page.</div></div>`; },
     recent() { return `<div class="mb-card"><h3>🕘 Saved from this phone</h3>${S.recent.length ? S.recent.map(r => `<div class="mb-li"><div class="d"><b>${esc(r.t)}</b><small>${new Date(r.at).toLocaleString()}</small></div><span class="mb-pill ${r.k === 'ok' ? 'g' : 'r'}">${r.k === 'ok' ? 'Saved' : 'Failed'}</span></div>`).join('') : '<div class="mb-empty">Nothing saved yet.</div>'}</div>`; },
     me() { const u = currentUser || {}; return `<div class="mb-card"><h3>👤 ${esc(u.displayName || u.username || '')}</h3>${[['User', u.username], ['Role', u.role], ['Job title', u.jobTitle], ['Location', (myWh() ? myWh() + ' · ' : '') + (myLoc() ? 'ID ' + myLoc() : '—')], ['Microsoft 365', getGlobalAccessToken() ? 'Connected' : 'Not connected']].map(([k, v]) => `<div class="mb-li"><div class="d"><small>${k}</small><b>${esc(v || '—')}</b></div></div>`).join('')}</div>
-      <button class="mb-btn s" data-m="renew">🔑 Renew Microsoft session</button><div style="height:10px"></div><button class="mb-btn s" data-m="theme2">🎨 Theme: ${THEME === 'light' ? 'Light ☀️' : 'Dark 🌙'} — tap to switch</button><div style="height:10px"></div><button class="mb-btn s" data-m="desktop">🖥 Desktop view</button><div style="height:10px"></div><button class="mb-btn s" data-m="logout">⏻ Sign out</button>`; },
+      <button class="mb-btn s" data-m="renew">🔑 Renew Microsoft session</button><div style="height:10px"></div>${CFG.userChoice ? `<div class="mb-card"><h3>🎨 Home layout</h3><div class="mb-lays">${Object.entries(LAYS).map(([k, v]) => `<button class="mb-lay${k === LAY ? ' on' : ''}" data-lay="${k}"><i style="background:${v[3]};border:2px solid transparent"></i><b>${k} · ${v[0]}</b><small>${v[1]}</small></button>`).join('')}</div></div>` : `<div class="mb-hint" style="margin:0 4px 12px">🎨 Layout <b>${LAY} · ${LAYS[LAY][0]}</b> — set by your administrator.</div>`}<button class="mb-btn s" data-m="theme2">🎨 Theme: ${THEME === 'light' ? 'Light ☀️' : 'Dark 🌙'} — tap to switch</button><div style="height:10px"></div><button class="mb-btn s" data-m="desktop">🖥 Desktop view</button><div style="height:10px"></div><button class="mb-btn s" data-m="logout">⏻ Sign out</button>`; },
 
     /* ----- Vehicle ODO ----- */
     veh() { const v = S.v, D = M.veh || {}, vehs = D.vehs || [], last = lastOdo(v.veh), cands = v.cands || [];
@@ -324,8 +380,8 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     catch (e) { if (!/Cancelled/.test(e.message)) { log('Move ' + p.code + ' — ' + e.message, 'bad'); toast('Not saved: ' + e.message, 'error'); } } }
 
   /* ---------- events ---------- */
-  function onClick(e) { const t = e.target.closest('button,[data-pal],[data-go],[data-soon]'); if (!t) return; const v = S.v;
-    if (t.dataset.fav) { e.stopPropagation(); favToggle(t.dataset.fav); return render(); } if (t.dataset.sec != null) { S.sec = +t.dataset.sec; S.v = {}; S.stack.push({ p: S.page, sec: S.sec }); S.page = 'sec'; render(); Q('#mbBody').scrollTop = 0; return; }
+  function onClick(e) { const t = e.target.closest('button,[data-pal],[data-go],[data-soon],[data-sec]'); if (!t) return; const v = S.v;
+    if (t.dataset.lay) { setLay(t.dataset.lay, true); return render(); } if (t.dataset.fav) { e.stopPropagation(); favToggle(t.dataset.fav); return render(); } if (t.dataset.sec != null) { S.sec = +t.dataset.sec; S.v = {}; S.stack.push({ p: S.page, sec: S.sec }); S.page = 'sec'; render(); Q('#mbBody').scrollTop = 0; return; }
     if (t.dataset.nav) return go(t.dataset.nav, 'tab'); if (t.dataset.go) return go(t.dataset.go); if (t.dataset.soon) return toast('This screen is still in the Power Apps app — it comes to ORBIT mobile in the next version.', 'info');
     if (t.dataset.set) { v[t.dataset.set] = t.dataset.val; return render(); }
     if (t.dataset.pick) { v.odo = t.dataset.pick; return render(); }
@@ -335,7 +391,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     const a = t.dataset.m; if (!a) return;
     if (a === 'back') { const b = S.stack.pop(); if (!b) return go('home'); S.sec = b.sec; return go(b.p, 'back'); } if (a === 'theme' || a === 'theme2') { setTheme(THEME === 'light' ? 'dark' : 'light'); return render(); } if (a === 'refresh') { Object.keys(M).forEach(k => { if (k === S.page) delete M[k]; }); if (['count', 'put', 'move'].includes(S.page)) return wms(true); return go(S.page); }
     if (a === 'renew') { if (window.srRenew) srRenew(); else toast('Open the desktop view to renew the session.', 'info'); return; }
-    if (a === 'desktop') return setOn(false); if (a === 'logout') { setOn(false); const b = Q('#logoutBtn') || [...document.querySelectorAll('button')].find(x => /sign out|log ?out/i.test(x.title || x.textContent)); if (b) b.click(); return; }
+    if (a === 'desktop') return setOn(false); if (a === 'logout') { document.body.classList.remove('mob-on'); const b = Q('#logoutBtn') || [...document.querySelectorAll('button')].find(x => /sign out|log ?out/i.test(x.title || x.textContent)); if (b) b.click(); return; }
     if (a === 'crop') return cropMode(); if (a === 'reread') return runOcr(); if (a === 'vSave') return vSave(); if (a === 'tSave') return tSave(); if (a === 'cSave') return cSave(); if (a === 'pSave') return pSave(); if (a === 'mSave') return mSave();
     if (a === 'cAdd') { const c = (Q('#cAdd') || {}).value || '', s = sku(c); if (!c.trim()) return; v.items = v.items || []; v.items.push({ code: s ? s.code : c.trim(), dtls: s ? s.dtls : '', uom: s ? s.uom : '', sys: 0, qty: 1 }); return render(); } }
   function onInput(e) { const t = e.target; if (t.id === 'mbQ') { S.q = t.value; const p = t.selectionStart; render(); const n = Q('#mbQ'); if (n) { n.focus(); n.setSelectionRange(p, p); } } else if (t.id === 'vOdo') S.v.odo = t.value; else if (t.id === 'tT' || t.id === 'tH') { S.v[t.id === 'tT' ? 't' : 'h'] = t.value; tWarn(); } else if (t.dataset.cnt != null) S.v.items[+t.dataset.cnt].qty = num(t.value); }
@@ -353,11 +409,33 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     if (t.id === 'mFrom') { v.from = t.value.trim().toUpperCase(); v.pi = null; return render(); } if (t.id === 'mTo') { v.to = t.value.trim().toUpperCase(); v.pos = ''; return render(); } }
 
   /* ---------- on / off ---------- */
-  const pref = () => { try { return localStorage.getItem(PKEY) || 'auto'; } catch (e) { return 'auto'; } };
-  const phone = () => { try { return matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 820; } catch (e) { return false; } };
-  function setOn(on, save) { shell(); document.body.classList.toggle('mob-on', !!on); try { localStorage.setItem(PKEY, on ? 'on' : 'off'); } catch (e) {} if (on) go(S.page || 'home'); }
-  function topBtn() { const acts = Q('.topbar-actions'); if (!acts || Q('#mobBtn')) return; const b = document.createElement('button'); b.type = 'button'; b.id = 'mobBtn'; b.className = 'icon-btn'; b.title = 'Open the ORBIT mobile app (phone layout)'; b.textContent = '📱 Mobile'; b.addEventListener('click', () => setOn(true)); acts.insertBefore(b, acts.firstChild); }
-  setTimeout(topBtn, 800);
-  const prevLogin = window.onLoginComplete; if (typeof onLoginComplete === 'function') { const _o = onLoginComplete; onLoginComplete = function () { const r = _o.apply(this, arguments); setTimeout(() => { topBtn(); const p = pref(); if (p === 'on' || (p === 'auto' && phone())) setOn(true); }, 700); return r; }; }
-  window.orbMobile = { on: () => setOn(true), off: () => setOn(false), S, M, go, readOdo, prep };
+  /* the web app (index.html) and the mobile app (mobile.html) are separate entry pages of the same package: index.html never opens the mobile app by itself */
+  const MOBILE_PAGE = !!window.ORBIT_MOBILE;
+  const goPage = f => { try { const u = new URL(f, location.href); location.href = u.href; } catch (e) { location.href = f; } };
+  function setOn(on) { if (!on && MOBILE_PAGE) return goPage('index.html'); if (on && !MOBILE_PAGE) return goPage('mobile.html'); shell(); document.body.classList.toggle('mob-on', !!on); if (on) go(S.page || 'home'); }
+  function topBtn() { const acts = Q('.topbar-actions'); if (!acts || Q('#mobBtn')) return; const b = document.createElement('button'); b.type = 'button'; b.id = 'mobBtn'; b.className = 'icon-btn'; b.title = 'Open the ORBIT mobile app (mobile.html — phone layout)'; b.textContent = '📱 Mobile'; b.addEventListener('click', () => (typeof isAdmin === 'function' && isAdmin()) ? adminBox() : setOn(true)); acts.insertBefore(b, acts.firstChild); }
+  if (!window.ORBIT_MOBILE) setTimeout(topBtn, 800);
+  const prevLogin = window.onLoginComplete; if (typeof onLoginComplete === 'function') { const _o = onLoginComplete; onLoginComplete = function () { setTimeout(() => { if (MOBILE_PAGE) { setOn(true); cfgLoad(); } else topBtn(); }, 700); return _o.apply(this, arguments); }; }
+  /* admin dialog in the web app: open the mobile app, or choose the layout every mobile user gets */
+  async function adminBox() { const old = Q('#mbAdm'); if (old) old.remove(); const d = document.createElement('div'); d.id = 'mbAdm'; d.dataset.nohc = '1';
+    d.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:16px;font-family:inherit';
+    const cards = () => Object.entries(LAYS).map(([k, v]) => `<label style="display:flex;flex-direction:column;gap:6px;border:2px solid ${k === sel ? '#1d4ed8' : '#e2e8f0'};border-radius:14px;padding:10px;cursor:pointer;background:${k === sel ? '#eff6ff' : '#fff'}"><input type="radio" name="mbl" value="${k}" ${k === sel ? 'checked' : ''} style="display:none"><span style="display:block;height:54px;border-radius:10px;background:${v[3]};border:2px solid transparent"></span><b style="font-size:13.5px">${k} · ${v[0]}</b><small style="color:#64748b;font-size:11.5px">${v[1]}</small></label>`).join('');
+    let sel = CFG.layout, uc = CFG.userChoice, row = null, c = null;
+    const draw = () => { d.innerHTML = `<div style="background:#fff;border-radius:18px;width:min(560px,100%);max-height:90vh;overflow:auto;padding:20px;box-shadow:0 30px 60px -20px rgba(15,23,42,.5);color:#0f172a">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><b style="font-size:17px;flex:1">📱 ORBIT mobile app</b><button type="button" data-a="x" class="ghost small">✕</button></div>
+      <div style="font-size:12.5px;color:#64748b;margin-bottom:12px">Layout of the mobile home page for <b>all users</b> (saved in ${esc(TP_LIST)}). Users open the app at <b>mobile.html</b>.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${cards()}</div>
+      <label style="display:flex;gap:8px;align-items:center;margin:14px 0 4px;font-size:13px"><input type="checkbox" id="mbUc" ${uc ? 'checked' : ''} style="width:16px;height:16px;margin:0"> Let users choose their own layout in the app (Profile)</label>
+      <div id="mbAdmMsg" style="font-size:12px;color:#64748b;min-height:16px;margin:6px 0"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" data-a="open" class="secondary">Open the mobile app</button><button type="button" data-a="save">💾 Save layout for everyone</button></div></div>`; };
+    draw(); document.body.appendChild(d);
+    d.addEventListener('click', async e => { if (e.target === d) return d.remove(); const r = e.target.closest('input[name=mbl]'); if (r) { sel = r.value; uc = Q('#mbUc').checked; return draw(); }
+      const b = e.target.closest('button[data-a]'); if (!b) return; const a = b.dataset.a; if (a === 'x') return d.remove(); if (a === 'open') return setOn(true);
+      if (a === 'save') { uc = Q('#mbUc').checked; const msg = Q('#mbAdmMsg'); msg.textContent = 'Saving…';
+        try { c = c || await tpCtx(); if (!c) throw new Error('sign in first'); const its = await fetchAllItems(c.siteId, c.listId, c.token); row = its.find(x => String((x.fields || {}).Title || '').trim() === 'MOBILE:layout'); const val = JSON.stringify({ layout: sel, userChoice: uc, by: me(), at: new Date().toISOString() });
+          if (row) await updateItem(c.siteId, c.listId, row.id, spCoerceFields(c.listId, { Config_Value: val }), c.token); else await createItem(c.siteId, c.listId, { Title: 'MOBILE:layout', Config_Value: val }, c.token);
+          CFG = { layout: sel, userChoice: uc }; try { localStorage.setItem(PKEY + '_cfg', JSON.stringify(CFG)); } catch (x) {} msg.style.color = '#15803d'; msg.textContent = '✔ Saved — mobile users get layout ' + sel + ' · ' + LAYS[sel][0] + ' the next time they open the app.'; toast('📱 Mobile layout ' + sel + ' saved for everyone'); }
+        catch (x) { if (/Cancelled|400/.test(x.message)) { msg.textContent = 'Not saved.'; return; } msg.style.color = '#b91c1c'; msg.textContent = '⚠ Not saved: ' + x.message; } } });
+    d.addEventListener('change', e => { if (e.target.name === 'mbl') { sel = e.target.value; uc = Q('#mbUc').checked; draw(); } }); }
+  window.orbMobile = { on: () => setOn(true), off: () => setOn(false), S, M, go, readOdo, prep, setLay, adminBox, cfg: () => CFG };
 })();

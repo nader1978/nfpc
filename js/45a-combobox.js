@@ -35,5 +35,8 @@ table input[data-cb],table input[list]{min-width:120px!important}
     else if (e.key === 'Enter' && hi >= 0 && items.length) { e.preventDefault(); e.stopPropagation(); pick(hi); } else if (e.key === 'Escape') close(); else if (e.key === 'Tab') close(); }, true);
   P.addEventListener('mousedown', e => { e.preventDefault(); const sb = e.target.closest('[data-sort]'); if (sb && cur) { sortSet(cur.dataset.cb, sb.dataset.sort); paint(); place(); return; } const d = e.target.closest('[data-i]'); if (d) pick(+d.dataset.i); });
   document.addEventListener('focusout', e => { if (isCb(e.target)) setTimeout(() => { if (document.activeElement !== cur) close(); }, 120); });
-  addEventListener('resize', close); document.addEventListener('scroll', e => { if (cur && !P.contains(e.target)) { const r = cur.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) close(); else place(); } }, true);
+  /* phones: the keyboard resizes / scrolls the page — keep the list open and follow the box; close only on a real width change (rotation) */
+  let cbW = innerWidth; const cbRes = () => { if (Math.abs(innerWidth - cbW) > 40) { cbW = innerWidth; close(); } else if (cur && P.style.display !== 'none') place(); };
+  addEventListener('resize', cbRes); if (window.visualViewport) visualViewport.addEventListener('resize', cbRes);
+  document.addEventListener('scroll', e => { if (cur && !P.contains(e.target)) { const r = cur.getBoundingClientRect(); if (r.bottom < -40 || r.top > innerHeight + 40) close(); else place(); } }, true);
 })();
