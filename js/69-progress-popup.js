@@ -53,7 +53,7 @@
   /* ---------- the job ---------- */
   function begin() {
     clearTimeout(hideT); if (J && !J.fin) return J;
-    shownRows = 0; J = { t0: Date.now(), user: Date.now() - lastUser < 5000, live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
+    shownRows = 0; J = { t0: Date.now(), user: Date.now() - lastUser < 5000 || (okAt > 0 && Date.now() - okAt < 90000), live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
     exp = null; stopReq = false; clearTimeout(showT); showT = setTimeout(() => { if (J && !J.fin && J.user && !asking) { J.shown = true; draw(); } }, SHOW_AFTER);
     return J;
   }
@@ -187,6 +187,14 @@
       document.addEventListener('keydown', key, true); document.addEventListener('keyup', kup, true);
       d.addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) fin(b.dataset.q === '1'); else if (e.target === d) fin(false); }); }); }
   window.orbAsk = box;
+  /* the older upload question (spAsk, used by 13 screens) now opens this same dialog (design A); "Yes" counts as the confirmation for the save that follows */
+  if (typeof spAsk === 'function') { const sp = function (text, title) { text = String(text == null ? '' : text) + (sp.extra || ''); sp.extra = '';
+      const L = text.split('\n').map(x => x.trim()).filter(Boolean), first = (L[0] || 'Upload the data').replace(/\?\s*$/, ''), rows = [], html = [];
+      L.slice(1).forEach(l => { const m = l.match(/^([^:⚠✔✖]{2,32}):\s*(.+)$/); if (m) rows.push([m[1].trim(), m[2].trim()]); else html.push(esc(l)); });
+      const del = /\b(delete|remove|clear|wipe)\b/i.test(first);
+      return box({ title: first + '?', label: title || (del ? 'Delete' : 'Save to SharePoint'), rows, html: html.join('<br>'), yes: del ? 'Yes, delete' : /upload/i.test(first) ? 'Yes, upload' : 'Yes, save', kind: del ? 'del' : undefined, icon: del ? undefined : 'up' })
+        .then(v => { const t = Date.now() + 400; if (v) okAt = t; else noAt = t; return v; }); };
+    sp.extra = ''; spAsk = sp; }
   window.confirm = function (msg) {
     msg = String(msg == null ? '' : msg); const now = Date.now(); okMsgs.forEach((t, k) => { if (now - t > 12000) okMsgs.delete(k); });
     if (okMsgs.has(msg)) { okMsgs.delete(msg); okAt = now + 4000; return true; }
