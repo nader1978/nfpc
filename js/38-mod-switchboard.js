@@ -87,7 +87,7 @@ body.dark .hm-adm{background:#3a2f10;color:#f1deb0;border-color:#5b4a1a}body.dar
 .hm-search input{border:0!important;outline:0;flex:1;background:transparent!important;color:inherit!important;font-size:14px;box-shadow:none!important;margin:0!important;padding:0!important}
 .hm-bars{display:flex;align-items:flex-end;gap:5px}.hm-bars i{flex:1;border-radius:4px 4px 0 0;display:block}
 .hm-chips{display:flex;flex-wrap:wrap;gap:6px}.hm-chip{display:inline-flex;gap:6px;align-items:center;background:var(--hm-bg);border:1px solid var(--hm-l);color:var(--hm-t)!important;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600;text-decoration:none}.hm-chip:hover{border-color:var(--hm-ac,#2563eb)}
-#navHomeHidden{display:none!important}.sidebar-brand{cursor:pointer}.on-home #backBtn,.on-home .tb-logo{display:none!important}
+#navHomeHidden{display:none!important}.sidebar-brand{cursor:pointer}.on-home #backBtn{display:none!important}.tb-logo{display:none!important}
 /* side panel = the end colour of the top bar */
 html body .sidebar{--sidebar-bg:var(--acc-1);--sidebar-hover:color-mix(in srgb,#fff 12%,var(--acc-1));--sidebar-text:#fff;background:var(--acc-1)!important;color:#fff}
 html body .sidebar .nav-item{color:#fff;font-weight:600}html body .sidebar .nav-item:hover{background:rgba(255,255,255,.12);color:#fff}

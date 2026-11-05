@@ -37,7 +37,8 @@ function locBadge() {
 }
 function locHomeStrip(host) {   /* switchboard: who / where */
   if (!host || !currentUser) return; const z = host.querySelector('.hm-zoom') || host, old = host.querySelector('.hm-loc'); if (old) old.remove();
-  if (!locIds(currentUser).length && !locScoped()) return;   /* admin with all locations: no strip */
+  if (typeof isAdmin === 'function' && isAdmin()) return;   /* admins see every location: no who / where / line-manager strip */
+  if (!locIds(currentUser).length && !locScoped()) return;
   const bits = [locText(), currentUser.jobTitle && '👤 ' + currentUser.jobTitle, currentUser.bu && 'BU ' + currentUser.bu, currentUser.region && 'Region ' + currentUser.region, currentUser.lineMngr && 'Line manager ' + currentUser.lineMngr].filter(Boolean);
   const d = document.createElement('div'); d.className = 'hm-loc'; d.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 10px;padding:9px 16px;font-size:13px;font-weight:600;background:var(--hm-c,#fff);border:1px solid var(--hm-l,#e3e8f2);border-radius:12px;color:var(--hm-t,#16223b)';
   d.innerHTML = bits.map((x, i) => '<span' + (i ? ' style="font-weight:500;color:var(--hm-m,#51607f)"' : ' style="font-size:15px"') + '>' + escapeHtml(x) + '</span>').join(''); z.insertBefore(d, z.firstChild);
