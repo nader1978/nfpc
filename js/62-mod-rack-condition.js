@@ -14,7 +14,7 @@
   /* ---------- shared with the 3D view ---------- */
   const W3H = window.W3Hits = { on: false, map: new Map(),
     col: h => h.n >= 3 ? [185, 28, 28] : h.n === 2 ? [234, 88, 12] : h.n === 1 ? [245, 158, 11] : [250, 214, 80],
-    tip: m => { let h = null; [m.code, ...(m.lanes || []).map(l => l.code)].forEach(c => { const v = W3H.map.get(String(c || '').toUpperCase()); if (v && (!h || v.n > h.n)) h = v; }); if (!h) return '';
+    tip: m => { let h = null; [m.code, m.rack, String(m.code || '').replace(/-P\d+$/i, ''), ...(m.lanes || []).map(l => l.code)].forEach(c => { const v = W3H.map.get(String(c || '').toUpperCase()); if (v && (!h || v.n > h.n)) h = v; }); if (!h) return '';
       return `<div style="background:#fee2e2;color:#991b1b;border-radius:6px;padding:4px 6px;margin-bottom:4px"><b>🛡 ${esc(h.code)}</b> · ${h.n} new hit(s) ${esc(dmy(S.f.from))} – ${esc(dmy(S.f.to))}${h.total ? ' · ' + h.total + ' recorded on the rack' : ''}${h.last ? '<br>last hit ' + esc(dmy(h.last)) : ''}${h.types.size ? '<br>' + esc([...h.types].join(', ')) : ''}</div>`; } };
 
   /* ---------- read ---------- */
@@ -48,8 +48,8 @@
 
   /* ---------- 3D overlay data ---------- */
   function upd3d() {
-    const m = new Map(); sel(S.f.loc3 === 'all' ? '' : S.f.loc).forEach(r => { let h = m.get(r.rk); if (!h) m.set(r.rk, h = { code: r.rack, n: 0, total: dmgOf(r.rack), last: '', types: new Set() }); if (r.hit) { h.n++; if (r.date > h.last) h.last = r.date; r.types.forEach(t => h.types.add(t)); } });
-    SRK.rows.forEach(r => { const n = Math.round(+r.dmg || 0); if (n > 0 && !m.has(r.code.toUpperCase()) && (!S.f.loc || r.loc === S.f.loc || S.f.loc3 === 'all')) m.set(r.code.toUpperCase(), { code: r.code, n: 0, total: n, last: '', types: new Set() }); });
+    const m = new Map(); sel('').forEach(r => {   /* all stores: the 3D draws only the store it shows */ let h = m.get(r.rk); if (!h) m.set(r.rk, h = { code: r.rack, n: 0, total: dmgOf(r.rack), last: '', types: new Set() }); if (r.hit) { h.n++; if (r.date > h.last) h.last = r.date; r.types.forEach(t => h.types.add(t)); } });
+    SRK.rows.forEach(r => { const n = Math.round(+r.dmg || 0); if (n > 0 && !m.has(r.code.toUpperCase())) m.set(r.code.toUpperCase(), { code: r.code, n: 0, total: n, last: '', types: new Set() }); });
     [...m.keys()].forEach(k => { const h = m.get(k); if (!h.n && !h.total) m.delete(k); }); W3H.map = m; try { if (W3H.on && window.w3Api) w3Api.redraw(); } catch (e) {} hitBtn();
   }
 
