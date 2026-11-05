@@ -319,7 +319,7 @@ function lulJudge(items) {
   if (!hits.some(h => h.hasCol)) return { found: true, allowed: false, noCol: true, ids, detail };
   return { found: true, allowed: hits.some(h => h.allow), ids, detail, f: (hits.find(h => h.allow) || hits[0]).f };
 }
-async function lulSha(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+async function lulSha(t) { return sha256(t); }
 async function lulLogin(username, password) {
   const c = lulCfg(), un = String(username || '').trim().toLowerCase(), bad = { state: 'bad', msg: 'Invalid username or password.' };
   const r = await lulFetch(); if (r.state !== 'ok') return { state: 'unreach', msg: r.msg || r.state };
