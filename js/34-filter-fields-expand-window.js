@@ -116,7 +116,7 @@ function ffScan() {
     '[data-mdl].mdl-min2>:first-child>:first-child{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
   ].join('\n');
   document.head.appendChild(st);
-  const SKIP = '#teBackdrop,.m-backdrop,#lulLock,.lul-lock,#opBack,#opAsk,#mbAdm,#mob,#wxModal,#wxTBox,#rvBox,#dcBox';
+  const SKIP = '#teBackdrop,.m-backdrop,#lulLock,.lul-lock,#opBack,#opAsk,#mbAdm,#mob,#wxModal,#wxTBox,#rvBox,#dcBox,#wmbBack,#wbBack';
   const WINSEL = '#tblExpandOverlay,#roSmGridModal,#roLvGridModal';
   const HEAD = '.tm-head,.card-header,.modal-header';
   const alpha = c => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(','); return p.length > 3 ? parseFloat(p[3]) : 1; };
