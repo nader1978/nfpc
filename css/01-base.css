@@ -1205,3 +1205,8 @@ body.dark .vis-pop{background:#1e293b}
 .nav-sub-body{margin-left:14px;border-left:1px solid rgba(255,255,255,.12)}.nav-sub.collapsed .nav-sub-body{display:none}.nav-sub.collapsed:has(.nav-item.active) .sname::after{content:' •';color:var(--brand)}
 body.sb-mini .nav-sub-head{padding:0;margin:4px 14px;height:1px;min-height:1px;background:var(--sidebar-hover);border:0}body.sb-mini .nav-sub-head .caret,body.sb-mini .nav-sub-head .sname,body.sb-mini .nav-sub-head .gcount{display:none}body.sb-mini .nav-sub-body{margin-left:0;border:0}body.sb-mini .nav-sub.collapsed .nav-sub-body{display:block}
 .ns-sub{margin:8px 0 0 18px;padding:6px 8px;border-left:3px solid var(--brand);background:rgba(127,127,127,.06);border-radius:0 8px 8px 0}.ns-sname{flex:1;min-width:120px;margin:0;font-weight:600}
+
+/* top bar: no "Import token" button; the buttons always stay on one line (they scroll sideways on a narrow window) */
+#importTokenBtn{display:none!important}
+.topbar-actions{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;max-width:100%}
+.topbar-actions>*{flex-shrink:0;white-space:nowrap}
