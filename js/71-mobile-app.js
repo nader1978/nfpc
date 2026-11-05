@@ -57,8 +57,8 @@
   const css = document.createElement('style'); css.textContent = `
 #mob{--tx:#e2e8f0;--hd:#fff;--mut:#94a3b8;--card:rgba(255,255,255,.06);--cardb:rgba(255,255,255,.1);--line:rgba(255,255,255,.08);--inp:rgba(255,255,255,.07);--inpb:rgba(255,255,255,.18);--acc:#60a5fa;--accb:#2563eb;--soft:rgba(96,165,250,.16);--seg:rgba(255,255,255,.07);--segon:rgba(255,255,255,.16);--nav:rgba(13,20,40,.9);--ib:rgba(255,255,255,.1);--glow:.85;--sh:0 10px 24px -14px rgba(0,0,0,.8);
  position:fixed;inset:0;z-index:9000;background:radial-gradient(circle at 15% -5%,#1e3a8a 0%,#0f1a3a 38%,#0a1022 70%);color:var(--tx);display:none;flex-direction:column;font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
-#mob.light{--tx:#0f172a;--hd:#0b1736;--mut:#64748b;--card:#fff;--cardb:rgba(15,23,42,.06);--line:#eef2f7;--inp:#f8fafc;--inpb:#cbd5e1;--acc:#1d4ed8;--accb:#1d4ed8;--soft:#eff6ff;--seg:#eef2f7;--segon:#fff;--nav:rgba(255,255,255,.94);--ib:rgba(15,23,42,.06);--glow:.45;--sh:0 10px 24px -14px rgba(15,23,42,.35);
- background:radial-gradient(circle at 15% -5%,#dbeafe 0%,#eef2ff 40%,#f5f7fb 75%)}
+#mob.light{--tx:#1d2939;--hd:#101828;--mut:#667085;--card:#fff;--cardb:#e7eaf3;--line:#eef1f6;--inp:#f9fafb;--inpb:#d0d5dd;--acc:#3b5bdb;--accb:#3b5bdb;--soft:#eef2ff;--seg:#f2f4f7;--segon:#fff;--nav:rgba(255,255,255,.92);--ib:#fff;--glow:.4;--sh:0 1px 2px rgba(16,24,40,.05),0 10px 26px -16px rgba(16,24,40,.22);
+ background:linear-gradient(180deg,#f5f7fc 0%,#eef1f8 100%)}
 body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
 #mob *{box-sizing:border-box}#mob button{font:inherit;cursor:pointer;margin:0;width:auto;color:inherit}#mob input,#mob select,#mob textarea{font:inherit;font-size:16px;margin:0;width:100%}
 #mob select option{color:#0f172a}
@@ -113,7 +113,17 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
 .mb-empty{text-align:center;color:var(--mut);padding:24px 10px;font-size:13.5px}
 .mb-sess{background:rgba(245,158,11,.14);border:1px solid rgba(245,158,11,.4);color:#d97706;border-radius:16px;padding:12px;font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:center}.mb-sess button{border:0!important;background:#b45309!important;color:#fff!important;border-radius:10px;padding:8px 12px!important;font-weight:700;white-space:nowrap}
 #mobBtn{width:auto;padding:0 10px;font-size:13px}
-@media(min-width:700px){.mb-body{max-width:640px;margin:0 auto;width:100%}.mb-grid3{grid-template-columns:repeat(4,minmax(0,1fr))}}
+#mob{--z:1}#mob .mb-top,#mob .mb-body,#mob .mb-nav{zoom:var(--z)}
+body.mob-on .sidebar,body.mob-on .m-menu-btn{display:none!important}
+body.mob-on #sectionToast{left:14px!important;right:14px!important;bottom:calc(env(safe-area-inset-bottom,0px) + 92px)!important;max-width:none!important;border-radius:14px!important;padding:12px 16px!important;font-size:14px!important;box-shadow:0 14px 34px -10px rgba(0,0,0,.45)!important}
+#mob .mb-top{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+#mob.light .mb-ib{box-shadow:0 1px 2px rgba(16,24,40,.06)}
+#mob .mb-card{border-radius:22px}#mob .mb-card h3{font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+#mob .mb-kv{padding:11px 4px}#mob .mb-kv .d small{display:block;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:3px}#mob .mb-kv .d b{font-size:15px;font-weight:650}
+#mob .mb-btn.s{font-weight:650;box-shadow:0 1px 2px rgba(16,24,40,.05)}
+#mob .mb-nav button.on span{transform:translateY(-1px)}#mob .mb-nav button{transition:background .2s,color .2s}
+#mob .mb-zoom{display:flex;gap:6px}#mob .mb-zoom button{flex:1;height:44px;border-radius:12px!important;border:1.5px solid var(--inpb)!important;background:var(--inp)!important;color:var(--hd)!important;font-weight:700;padding:0!important}#mob .mb-zoom button.on{border-color:var(--acc)!important;background:var(--soft)!important;color:var(--acc)!important}
+@media(min-width:700px){.mb-body{max-width:640px;margin:0 auto;width:100%}.mb-top .mb-bar{max-width:640px;margin:0 auto}.mb-nav{max-width:620px;margin:0 auto}.mb-grid3{grid-template-columns:repeat(4,minmax(0,1fr))}}
 /* ===== layouts: A glossy grid · B soft clay bento · C dark premium (default) · D iOS style — the ☀️/🌙 theme works with every layout ===== */
 #mob.lay-a.light{background:#eef2f8}#mob.lay-b.light{background:#f5f1ea;--card:#fff;--soft:#fff3e8;--acc:#c2410c;--accb:#c2410c}#mob.lay-d.light{background:#fff;--card:#fff;--cardb:#eef2f7;--sh:none}
 #mob.lay-a .mb-in,#mob.lay-d .mb-in{border-radius:30%;background:linear-gradient(150deg,var(--a),var(--b));box-shadow:0 12px 18px -8px var(--b),0 4px 6px -2px rgba(15,23,42,.25),inset 0 2px 1px rgba(255,255,255,.55),inset 0 -5px 8px rgba(0,0,0,.22)}
@@ -142,7 +152,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
 .mb-dtitle{font-size:30px;font-weight:800;color:var(--hd);letter-spacing:-.02em}
 /* layout picker (Profile) */
 .mb-lays{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mb-lay{border:2px solid var(--inpb)!important;background:var(--inp)!important;border-radius:16px!important;padding:10px!important;text-align:left!important;display:flex!important;flex-direction:column;gap:6px;height:auto!important;width:100%!important;white-space:normal!important}.mb-lay.on{border-color:var(--acc)!important;box-shadow:0 0 0 3px var(--soft)}
-.mb-lay b{font-size:13px;color:var(--hd)}.mb-lay small{font-size:11px;color:var(--mut);line-height:1.3}.mb-lay i{display:block;height:44px;border-radius:10px}`;
+.mb-lay b{font-size:13px;color:var(--hd)}.mb-lay small{font-size:11px;color:var(--mut);line-height:1.3}.mb-lay i{display:block;width:100%;height:44px;border-radius:10px;flex:none}`;
   document.head.appendChild(css);
 
   /* [section, icon, glow colour, deep colour, [screen key ('' = still in Power Apps), icon, title, subtitle, colour, deep colour]] */
@@ -165,6 +175,8 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
   function setLay(l, mine) { if (mine) { try { localStorage.setItem(PKEY + '_lay', l); } catch (e) {} } LAY = myLay(); const m = Q('#mob'); if (m) { m.className = m.className.replace(/\blay-[a-d]\b/g, '').trim(); m.classList.add('lay-' + LAY.toLowerCase()); } let t = ''; try { t = localStorage.getItem(PKEY + '_theme') || ''; } catch (e) {} setTheme(t || LAYS[LAY][2], !t); }
   async function cfgLoad() { try { const c = await tpCtx(); if (!c) return; const its = await fetchAllItems(c.siteId, c.listId, c.token), it = its.find(x => String((x.fields || {}).Title || '').trim() === 'MOBILE:layout'); if (!it) return; const v = JSON.parse(String(it.fields.Config_Value || '{}'));
       CFG = { layout: LAYS[v.layout] ? v.layout : 'C', userChoice: v.userChoice !== false }; try { localStorage.setItem(PKEY + '_cfg', JSON.stringify(CFG)); } catch (e) {} const was = LAY; setLay(); if (was !== LAY || S.page === 'me') render(); } catch (e) { console.warn('ORBIT mobile: layout setting not read', e); } }
+  let ZOOM = 1; try { ZOOM = +localStorage.getItem(PKEY + '_zoom') || 1; } catch (e) {}
+  function setZoom(z) { ZOOM = z; try { localStorage.setItem(PKEY + '_zoom', String(z)); } catch (e) {} const m = Q('#mob'); if (m) m.style.setProperty('--z', z); }
   let FAV = []; try { FAV = JSON.parse(localStorage.getItem(PKEY + '_fav') || '[]'); } catch (e) {}
   const favToggle = t => { FAV = FAV.includes(t) ? FAV.filter(x => x !== t) : FAV.concat(t); try { localStorage.setItem(PKEY + '_fav', JSON.stringify(FAV)); } catch (e) {} };
   const TITLES = { home: 'ORBIT', veh: 'Vehicle ODO Reading', temp: 'Temperature Reading', count: 'Rack Stock Count', put: 'Put Away Pallets', move: 'Move Stock (Racks)', recent: 'My activity', me: 'Profile', fav: 'Favourites' };
@@ -176,7 +188,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     d.innerHTML = `<div class="mb-top"><div class="mb-bar"><button class="mb-ib" data-m="back" aria-label="Back">‹</button><h1 id="mbTitle">ORBIT</h1><button class="mb-ib" data-m="theme" aria-label="Light or dark">☀️</button><button class="mb-ib" data-m="refresh" aria-label="Refresh">↻</button></div><div class="mb-hi" id="mbHi"></div></div>
       <div class="mb-body" id="mbBody"></div>
       <nav class="mb-nav"><button data-nav="home"><span>🏠</span>Home</button><button data-nav="fav"><span>⭐</span>Favourites</button><button data-nav="recent"><span>🕘</span>Activity</button><button data-nav="me"><span>👤</span>Profile</button></nav>`;
-    document.body.appendChild(d); setLay();
+    document.body.appendChild(d); setLay(); setZoom(ZOOM);
     d.addEventListener('click', onClick); d.addEventListener('input', onInput); d.addEventListener('change', onChange); }
   S.stack = [];
   const go = (p, mode) => { if (mode === 'tab' || p === 'home') S.stack = []; else if (mode !== 'back' && p !== S.page) S.stack.push({ p: S.page, sec: S.sec }); if (p !== S.page) { S.page = p; S.v = {}; } render(); const b = Q('#mbBody'); if (b) b.scrollTop = 0; if (LOADERS[p]) LOADERS[p](); if (p === 'home') LOADERS.temp(true); };
@@ -225,7 +237,8 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
     secD() { const g = GROUPS[S.sec] || GROUPS[0]; return `<div style="display:flex;align-items:center;gap:12px;padding:0 2px 16px">${icon(g[1], g[2], g[3], 58)}<div class="mb-dtitle" style="font-size:24px">${esc(g[0])}</div></div><div class="mb-grid3">${ALL.filter(x => x.g === (S.sec || 0)).map(x => `<div style="position:relative">${tile(x)}<button class="mb-star${FAV.includes(x.t) ? ' on' : ''}" data-fav="${esc(x.t)}" style="position:absolute;top:-6px;right:0">${FAV.includes(x.t) ? '★' : '☆'}</button></div>`).join('')}</div>`; },
     fav() { const favs = ALL.filter(x => FAV.includes(x.t)); return favs.length ? `<div class="mb-hint" style="margin:4px 2px 14px">Your pinned screens. Tap ☆ on any screen in a section to add it here.</div>` + favs.map(row).join('') : `<div class="mb-card" style="text-align:center;padding:28px 18px">${icon('⭐', '#fbbf24', '#b45309', 64)}<h3 style="justify-content:center;margin:14px 0 6px">No favourites yet</h3><div class="mb-hint">Open a section and tap ☆ next to the screens you use most — they appear here and on the home page.</div></div>`; },
     recent() { return `<div class="mb-card"><h3>🕘 Saved from this phone</h3>${S.recent.length ? S.recent.map(r => `<div class="mb-li"><div class="d"><b>${esc(r.t)}</b><small>${new Date(r.at).toLocaleString()}</small></div><span class="mb-pill ${r.k === 'ok' ? 'g' : 'r'}">${r.k === 'ok' ? 'Saved' : 'Failed'}</span></div>`).join('') : '<div class="mb-empty">Nothing saved yet.</div>'}</div>`; },
-    me() { const u = currentUser || {}; return `<div class="mb-card"><h3>👤 ${esc(u.displayName || u.username || '')}</h3>${[['User', u.username], ['Role', u.role], ['Job title', u.jobTitle], ['Location', (myWh() ? myWh() + ' · ' : '') + (myLoc() ? 'ID ' + myLoc() : '—')], ['Microsoft 365', getGlobalAccessToken() ? 'Connected' : 'Not connected']].map(([k, v]) => `<div class="mb-li"><div class="d"><small>${k}</small><b>${esc(v || '—')}</b></div></div>`).join('')}</div>
+    me() { const u = currentUser || {}; return `<div class="mb-card"><h3>👤 ${esc(u.displayName || u.username || '')}</h3>${[['User', u.username], ['Role', u.role], ['Job title', u.jobTitle], ['Location', (myWh() ? myWh() + ' · ' : '') + (myLoc() ? 'ID ' + myLoc() : '—')], ['Microsoft 365', getGlobalAccessToken() ? 'Connected' : 'Not connected']].map(([k, v]) => `<div class="mb-li mb-kv"><div class="d"><small>${k}</small><b>${esc(v || '—')}</b></div></div>`).join('')}</div>
+      <div class="mb-card"><h3>🔠 Text size</h3><div class="mb-zoom">${[['S', .9], ['M', 1], ['L', 1.12], ['XL', 1.25]].map(([l, z]) => `<button type="button" data-zoom="${z}" class="${Math.abs(ZOOM - z) < .01 ? 'on' : ''}" style="font-size:${12 + z * 4}px">${l}</button>`).join('')}</div></div>
       <button class="mb-btn s" data-m="renew">🔑 Renew Microsoft session</button><div style="height:10px"></div>${CFG.userChoice ? `<div class="mb-card"><h3>🎨 Home layout</h3><div class="mb-lays">${Object.entries(LAYS).map(([k, v]) => `<button class="mb-lay${k === LAY ? ' on' : ''}" data-lay="${k}"><i style="background:${v[3]};border:2px solid transparent"></i><b>${k} · ${v[0]}</b><small>${v[1]}</small></button>`).join('')}</div></div>` : `<div class="mb-hint" style="margin:0 4px 12px">🎨 Layout <b>${LAY} · ${LAYS[LAY][0]}</b> — set by your administrator.</div>`}<button class="mb-btn s" data-m="theme2">🎨 Theme: ${THEME === 'light' ? 'Light ☀️' : 'Dark 🌙'} — tap to switch</button><div style="height:10px"></div><button class="mb-btn s" data-m="desktop">🖥 Desktop view</button><div style="height:10px"></div><button class="mb-btn s" data-m="logout">⏻ Sign out</button>`; },
 
     /* ----- Vehicle ODO ----- */
@@ -381,7 +394,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
 
   /* ---------- events ---------- */
   function onClick(e) { const t = e.target.closest('button,[data-pal],[data-go],[data-soon],[data-sec]'); if (!t) return; const v = S.v;
-    if (t.dataset.lay) { setLay(t.dataset.lay, true); return render(); } if (t.dataset.fav) { e.stopPropagation(); favToggle(t.dataset.fav); return render(); } if (t.dataset.sec != null) { S.sec = +t.dataset.sec; S.v = {}; S.stack.push({ p: S.page, sec: S.sec }); S.page = 'sec'; render(); Q('#mbBody').scrollTop = 0; return; }
+    if (t.dataset.zoom) { setZoom(+t.dataset.zoom); return render(); } if (t.dataset.lay) { setLay(t.dataset.lay, true); return render(); } if (t.dataset.fav) { e.stopPropagation(); favToggle(t.dataset.fav); return render(); } if (t.dataset.sec != null) { S.sec = +t.dataset.sec; S.v = {}; S.stack.push({ p: S.page, sec: S.sec }); S.page = 'sec'; render(); Q('#mbBody').scrollTop = 0; return; }
     if (t.dataset.nav) return go(t.dataset.nav, 'tab'); if (t.dataset.go) return go(t.dataset.go); if (t.dataset.soon) return toast('This screen is still in the Power Apps app — it comes to ORBIT mobile in the next version.', 'info');
     if (t.dataset.set) { v[t.dataset.set] = t.dataset.val; return render(); }
     if (t.dataset.pick) { v.odo = t.dataset.pick; return render(); }
@@ -412,7 +425,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
   /* the web app (index.html) and the mobile app (mobile.html) are separate entry pages of the same package: index.html never opens the mobile app by itself */
   const MOBILE_PAGE = !!window.ORBIT_MOBILE;
   const goPage = f => { try { const u = new URL(f, location.href); location.href = u.href; } catch (e) { location.href = f; } };
-  function setOn(on) { if (!on && MOBILE_PAGE) return goPage('index.html'); if (on && !MOBILE_PAGE) { const w = window.open(new URL('mobile.html', location.href).href, '_blank'); if (!w) goPage('mobile.html'); return; }   /* 📱 Mobile opens the mobile app in a new tab */ shell(); document.body.classList.toggle('mob-on', !!on); if (on) go(S.page || 'home'); }
+  function setOn(on) { if (!on && MOBILE_PAGE) return goPage('index.html'); if (on && !MOBILE_PAGE) { const W = Math.min(440, screen.availWidth - 40), H = Math.min(900, screen.availHeight - 60), w = window.open(new URL('mobile.html', location.href).href, 'orbitMobile', `popup=yes,width=${W},height=${H},left=${Math.max(0, screen.availWidth - W - 30)},top=20,resizable=yes,scrollbars=yes`); if (!w) goPage('mobile.html'); return; }   /* 📱 Mobile opens the mobile app in a new tab */ shell(); document.body.classList.toggle('mob-on', !!on); if (on) go(S.page || 'home'); }
   function topBtn() { const acts = Q('.topbar-actions'); if (!acts || Q('#mobBtn')) return; const b = document.createElement('button'); b.type = 'button'; b.id = 'mobBtn'; b.className = 'icon-btn'; b.title = 'Open the ORBIT mobile app (mobile.html — phone layout)'; b.textContent = '📱 Mobile'; b.addEventListener('click', () => (typeof isAdmin === 'function' && isAdmin()) ? adminBox() : setOn(true)); acts.insertBefore(b, acts.firstChild); }
   if (!window.ORBIT_MOBILE) setTimeout(topBtn, 800);
   const prevLogin = window.onLoginComplete; if (typeof onLoginComplete === 'function') { const _o = onLoginComplete; onLoginComplete = function () { setTimeout(() => { if (MOBILE_PAGE) { setOn(true); cfgLoad(); } else topBtn(); }, 700); return _o.apply(this, arguments); }; }

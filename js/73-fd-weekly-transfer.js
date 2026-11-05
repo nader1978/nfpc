@@ -1,0 +1,129 @@
+/* ============================================================
+   F&D — WEEKLY → DAILY TRANSFER
+   1) F&D Demand → Production vs distribution (group by SKU): tick the SKUs and press "➡ Transfer to daily plan".
+      Pick the day and the locations: each SKU's weekly distribution of that day (its region → the location, from the
+      region ↔ location setup) is moved to the daily area.
+   2) F&D Plan → Trips / trailers: under the trips of each location a line "📦 Weekly SKUs · <LOC>" holds what was
+      transferred and not spread yet. "🧩 Spread" puts the SKUs (whole or split) on the trips of that location and day;
+      "➕ New trip" adds a trailer (T1103-AUH-03 …) when the volume or the item readiness needs it.
+   The spread SKUs become normal trip lines (pallets, fill, picking list, delivery note, push to pickers).
+   Kept per day in this browser (like the daily plan's own edits): LS  <base>_fdwx_<yyyy-mm-dd> = { wx:[], pin:{}, mt:[] }
+   ============================================================ */
+(function () {
+  const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const N = (v, d) => typeof plF === 'function' ? plF(v, d || 0) : (Math.round(v * 100) / 100).toLocaleString();
+  const toast = (t, k) => { try { sectionToast(t, k || 'success'); } catch (e) {} };
+  const me = () => (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '';
+  const K = d => LS_BASE + '_fdwx_' + d;
+  const get = d => { try { return Object.assign({ wx: [], pin: {}, mt: [] }, JSON.parse(localStorage.getItem(K(d)) || '{}')); } catch (e) { return { wx: [], pin: {}, mt: [] }; } };
+  const put = (d, o) => { try { localStorage.setItem(K(d), JSON.stringify(o)); } catch (e) { toast('⚠ Could not save in this browser: ' + e.message, 'error'); } };
+  const pinned = (X, w) => Object.values(X.pin[w.id] || {}).reduce((a, b) => a + (+b || 0), 0);
+  const left = (X, w) => Math.max(0, w.qty - pinned(X, w));
+  const dayLbl = d => { try { return dpDayLong(d); } catch (e) { return d; } };
+  /* units → crates / pallets / litres: the daily plan's item master first, else what the weekly file said */
+  function conv(w, q, o) { const pc = (o && o.pcsCrt) || w.pcsCrt || 0, cp = (o && o.crtPallet) || w.crtPallet || 0, up = (o && o.unitPallet) || (pc && cp ? pc * cp : 0), lt = (o && o.ltrConv) || w.ltr || 0;
+    return { crt: pc ? q / pc : 0, pal: up ? q / up : 0, ltr: q * lt }; }
+
+  /* ---------- 1) put the spread SKUs and the extra trailers into the daily trips ---------- */
+  function apply(out, s, cfg) {
+    const rowBy = new Map(s.rows.map(o => [o.code, o])), reg = typeof dpRegions === 'function' ? dpRegions(s) : {}, touched = new Set();
+    s.days.forEach(d => { const X = get(d); if (!X.wx.length && !X.mt.length) return;
+      X.mt.forEach(mt => { if (!s.locs.includes(mt.loc) || out.some(z => z.id === mt.id)) return; out.push({ day: d, loc: mt.loc, region: reg[mt.loc] || '', g: 'ALL', gl: '', cap: Math.max(1, +cfg.capP12 || 41), pal: 0, lines: [], id: mt.id, manual: true, no: 0, n: 0, util: 0, units: 0, crates: 0 }); touched.add(mt.id); });
+      X.wx.forEach(w => Object.entries(X.pin[w.id] || {}).forEach(([tid, q]) => { q = +q; const t = out.find(z => z.id === tid); if (!t || !(q > 0)) return; const o = rowBy.get(w.code), c = conv(w, q, o), uom = (o && o.uom) || w.uom || '';
+        t.lines.push({ code: w.code, item: w.item || (o && o.item) || '', brand: (o && o.brand) || '', category: (o && o.category) || '', uom, uom0: uom, prodIn: (o && o.prodIn) || '', ptype: (o && o.palletType) || '', qty: q, crt: c.crt, pal: c.pal, ltr: c.ltr, key: d + '|' + t.loc + '|' + w.code + '#wx', dem0: 0, wx: w.id }); touched.add(tid); })); });
+    out.forEach(t => { if (!touched.has(t.id)) return; t.pal = t.lines.reduce((a, l) => a + (+l.pal || 0), 0); t.util = t.pal / t.cap; t.units = t.lines.reduce((a, l) => a + (+l.qty || 0), 0); t.crates = t.lines.reduce((a, l) => a + (+l.crt || 0), 0); });
+    const grp = new Map(); out.forEach(t => { const k = t.day + '|' + t.loc; if (!grp.has(k)) grp.set(k, []); grp.get(k).push(t); });
+    grp.forEach(G => { if (!G.some(t => t.manual)) return; let i = 0; G.forEach(t => { t.no = ++i; t.n = G.length; }); });
+  }
+  if (typeof fdTrips === 'function') { const _t = fdTrips; fdTrips = function (s, cfg) { const out = _t.apply(this, arguments); try { apply(out, s, cfg || {}); } catch (e) { console.error('weekly transfer', e); } return out; }; }
+  /* a weekly line removed in the trip window goes back to the weekly pool */
+  if (typeof fdRemoveLine === 'function') { const _r = fdRemoveLine; fdRemoveLine = function (t, code) { const l = t && t.lines.find(x => x.code === code && x.wx); if (!l) return _r.apply(this, arguments);
+      const X = get(t.day); if (X.pin[l.wx]) { delete X.pin[l.wx][t.id]; put(t.day, X); } toast(code + ' is back on the "📦 Weekly SKUs · ' + t.loc + '" line.', 'info'); fdRecalc(); try { fdModalRefresh(t.id); } catch (e) {} }; }
+  /* in the trip window a weekly line shows its quantity (changed from 🧩 Spread) instead of the actual-quantity box */
+  if (typeof fdTripLineRow === 'function') { const _lr = fdTripLineRow; fdTripLineRow = function (t, l) { let h = _lr.apply(this, arguments); if (!l.wx) return h;
+      return h.replace(/<input type="number"[^>]*data-actq="[^"]*"[^>]*>/, `<b>${N(l.qty)}</b> <span class="fd-tag add" title="Transferred from the weekly plan — change it with 🧩 Spread on the Trips / trailers tab">📦 weekly</span>`); }; }
+  /* the upload / balance logic must not treat weekly lines as "above the plan" */
+  if (typeof fdExtraM === 'function') { const _x = fdExtraM; fdExtraM = function (m, l) { return l && l.wx ? 0 : _x.apply(this, arguments); }; }
+
+  /* ---------- 2) Trips / trailers: the "📦 Weekly SKUs" line under each location ---------- */
+  function pools() { const m = fd.m; if (!m) return []; const P = [];
+    m.snap.days.forEach(d => { if (fd.day && d !== fd.day) return; const X = get(d), by = new Map(); X.wx.forEach(w => { if (!m.snap.locs.includes(w.loc) || (fd.locs.length && !fd.locs.includes(w.loc))) return; if (!by.has(w.loc)) by.set(w.loc, []); by.get(w.loc).push(w); });
+      by.forEach((W, loc) => { const rowBy = m.rowBy; let pal = 0, units = 0, ltr = 0, n = 0; W.forEach(w => { const q = left(X, w); if (q > 1e-9) { n++; const c = conv(w, q, rowBy.get(w.code)); pal += c.pal; units += q; ltr += c.ltr; } }); P.push({ d, loc, W, X, pal, units, ltr, n }); }); });
+    return P; }
+  function poolRow(p) { const done = !p.n;
+    return `<tr class="wx-row" style="background:${done ? '#f0fdf4' : '#fffbeb'}"><td><b>📦 Weekly SKUs · ${esc(p.loc)}</b></td><td>${esc(dayLbl(p.d).replace(/^\w+\s/, ''))}</td><td>${esc(p.loc)}</td><td class="n">pool</td><td class="n">${N(p.pal, 1)}</td><td>${done ? '<span class="text-sm" style="color:#15803d">✔ all spread</span>' : '<span class="text-sm" style="color:#b45309">waiting to be spread</span>'}</td><td class="n">${p.n} / ${p.W.length}</td><td class="n">${N(p.units)}</td><td class="n">${p.ltr ? N(p.ltr) : ''}</td><td class="n"></td><td></td><td>${done ? '<span class="fd-tag add">Spread</span>' : `<span class="fd-tag less">${p.n} to spread</span>`}</td><td style="white-space:nowrap"><button class="secondary small" type="button" data-wxs="${p.d}|${esc(p.loc)}" title="Put these SKUs on the trips of ${esc(p.loc)}">🧩 Spread</button> <button class="ghost small" type="button" data-wxn="${p.d}|${esc(p.loc)}" title="Add one more trailer for ${esc(p.loc)} on this day">➕ New trip</button></td></tr>`; }
+  if (typeof fdTripsTab === 'function') { const _tt = fdTripsTab; fdTripsTab = function (T) { const html = _tt.apply(this, arguments); let P; try { P = pools(); } catch (e) { console.error(e); return html; } if (!P.length && !(T || []).some(t => t.manual)) return html;
+      const tpl = document.createElement('template'); tpl.innerHTML = html; const tb = tpl.content.querySelector('tbody'); if (!tb) return html;
+      tb.querySelectorAll('tr[data-id]').forEach(tr => { const t = fd.m.byId.get(tr.dataset.id); if (t && t.manual) { const a = tr.lastElementChild; tr.firstElementChild.insertAdjacentHTML('beforeend', ' <span class="fd-tag add" title="Trailer added by hand">➕ added</span>'); if (a && !t.lines.length) a.insertAdjacentHTML('beforeend', ` <button class="ghost small" type="button" data-wxdel="${t.day}|${esc(t.id)}" title="Remove this empty trailer">🗑</button>`); } });
+      P.forEach(p => { const rows = [...tb.querySelectorAll('tr[data-id]')].filter(tr => { const t = fd.m.byId.get(tr.dataset.id); return t && t.day === p.d && t.loc === p.loc; }), ref = rows[rows.length - 1], h = document.createElement('template'); h.innerHTML = poolRow(p); const row = h.content.firstElementChild;
+        if (ref) ref.after(row); else { const empty = tb.querySelector('.pl-empty'); if (empty) empty.closest('tr').remove(); tb.appendChild(row); } });
+      return tpl.innerHTML; }; }
+  function newTrip(d, loc) { const X = get(d), ids = new Set(fd.m.trips.filter(t => t.day === d && t.loc === loc).map(t => t.id)); let i = ids.size + 1, id; do { id = `T${d.slice(5, 7)}${d.slice(8, 10)}-${loc}-${String(i).padStart(2, '0')}`; i++; } while (ids.has(id) || X.mt.some(x => x.id === id));
+    X.mt.push({ id, loc, at: new Date().toISOString(), by: me() }); put(d, X); fdRecalc(); toast('➕ ' + id + ' added — spread the weekly SKUs onto it with 🧩 Spread.'); return id; }
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-wxs],[data-wxn],[data-wxdel]'); if (!b || !fd.m) return; e.preventDefault(); e.stopPropagation();
+    if (b.dataset.wxn) { const [d, loc] = b.dataset.wxn.split('|'); return newTrip(d, loc); }
+    if (b.dataset.wxdel) { const [d, id] = b.dataset.wxdel.split('|'), X = get(d); X.mt = X.mt.filter(x => x.id !== id); Object.values(X.pin).forEach(p => delete p[id]); put(d, X); fdRecalc(); return toast(id + ' removed.', 'info'); }
+    const [d, loc] = b.dataset.wxs.split('|'); spread(d, loc); }, true);
+
+  /* ---------- 🧩 Spread: SKU rows × trip columns, quantities in units ---------- */
+  function spread(d, loc) { const old = Q('#wxModal'); if (old) old.remove(); const X = get(d), W = X.wx.filter(w => w.loc === loc), rowBy = fd.m.rowBy; let TL = fd.m.trips.filter(t => t.day === d && t.loc === loc).map(t => t.id);
+    const ed = {}; W.forEach(w => { ed[w.id] = Object.assign({}, X.pin[w.id] || {}); });
+    const base = id => { const t = fd.m.byId.get(id); return t ? t.lines.filter(l => !l.wx).reduce((a, l) => a + (+l.pal || 0), 0) : 0; }, cap = id => { const t = fd.m.byId.get(id); return t ? t.cap : (+fd.m.st.cfg.capP12 || 41); };
+    const palOf = (w, q) => conv(w, q, rowBy.get(w.code)).pal, tripPal = id => base(id) + W.reduce((a, w) => a + palOf(w, +(ed[w.id][id] || 0)), 0), rest = w => w.qty - Object.values(ed[w.id]).reduce((a, b) => a + (+b || 0), 0);
+    const el = document.createElement('div'); el.id = 'wxModal'; el.dataset.nohc = '1'; el.style.cssText = 'position:fixed;inset:0;z-index:9300;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:12px';
+    const draw = () => { el.innerHTML = `<div style="background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(1180px,100%);max-height:94vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(15,23,42,.5)">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:16px;flex:1;min-width:240px">🧩 Spread the weekly SKUs · ${esc(loc)} · ${esc(dayLbl(d))}</b><button type="button" class="ghost small" data-w="auto" title="Fill the trips in order, up to each trailer's capacity">⚡ Auto-spread</button><button type="button" class="ghost small" data-w="new">➕ New trip</button><button type="button" class="ghost small" data-w="clear">↺ Clear all</button><button type="button" class="ghost small" data-w="x">✕</button></div>
+      <div style="padding:8px 16px;font-size:12.5px;color:var(--gray-600,#64748b)">Type how many <b>units</b> of each SKU go on each trip. A SKU can be split over several trips; what is not given to a trip stays on the weekly line. Trailer fill counts the trip's own lines plus these.</div>
+      <div style="overflow:auto;padding:0 16px"><table class="fd-tbl" style="width:100%"><thead><tr><th>ICODE</th><th>Item</th><th class="n">Transferred</th><th class="n">Left</th>${TL.map(id => `<th class="n" style="min-width:120px">${esc(id)}${fd.m.byId.get(id) && fd.m.byId.get(id).manual ? ' ➕' : ''}<br><small style="font-weight:500;color:${tripPal(id) > cap(id) + 1e-6 ? '#dc2626' : '#64748b'}">${N(tripPal(id), 1)} / ${cap(id)} pal</small></th>`).join('')}<th></th></tr></thead><tbody>
+        ${W.map(w => { const r = rest(w); return `<tr><td><b>${esc(w.code)}</b></td><td>${esc(w.item)}</td><td class="n">${N(w.qty)}</td><td class="n" style="font-weight:700;color:${r < -1e-9 ? '#dc2626' : r > 1e-9 ? '#b45309' : '#15803d'}">${N(r)}</td>${TL.map(id => `<td class="n"><input type="number" min="0" step="any" data-q="${esc(w.id)}" data-t="${esc(id)}" value="${ed[w.id][id] ? +ed[w.id][id] : ''}" placeholder="0" style="width:96px;margin:0;text-align:right"></td>`).join('')}<td style="white-space:nowrap"><select data-all="${esc(w.id)}" style="margin:0;width:auto"><option value="">all left →</option>${TL.map(id => `<option>${esc(id)}</option>`).join('')}</select></td></tr>`; }).join('')}
+      </tbody></table></div>
+      <div style="display:flex;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span id="wxMsg" class="text-sm" style="flex:1">${W.some(w => rest(w) < -1e-9) ? '⚠ Some SKUs are given more than was transferred.' : W.filter(w => rest(w) > 1e-9).length + ' SKU(s) still on the weekly line.'}</span><button type="button" class="ghost" data-w="x">Cancel</button><button type="button" data-w="save">💾 Save the spread</button></div></div>`; };
+    draw(); document.body.appendChild(el);
+    el.addEventListener('change', e => { const t = e.target;
+      if (t.dataset.q) { const v = +t.value; if (v > 0) ed[t.dataset.q][t.dataset.t] = v; else delete ed[t.dataset.q][t.dataset.t]; return draw(); }
+      if (t.dataset.all && t.value) { const w = W.find(x => x.id === t.dataset.all), r = rest(w); if (r > 1e-9) ed[w.id][t.value] = (+ed[w.id][t.value] || 0) + r; return draw(); } });
+    el.addEventListener('click', e => { if (e.target === el) return el.remove(); const b = e.target.closest('button[data-w]'); if (!b) return; const a = b.dataset.w;
+      if (a === 'x') return el.remove();
+      if (a === 'clear') { W.forEach(w => { ed[w.id] = {}; }); return draw(); }
+      if (a === 'new') { const id = newTrip(d, loc); TL = fd.m.trips.filter(t => t.day === d && t.loc === loc).map(t => t.id); if (!TL.includes(id)) TL.push(id); return draw(); }
+      if (a === 'auto') { W.forEach(w => { let r = rest(w); for (const id of TL) { if (r <= 1e-9) break; const room = cap(id) - tripPal(id), per = palOf(w, 1); if (room <= 1e-6) continue; const q = per > 0 ? Math.min(r, Math.floor(room / per)) : r; if (q > 0) { ed[w.id][id] = (+ed[w.id][id] || 0) + q; r -= q; } } }); const lft = W.filter(w => rest(w) > 1e-9).length; draw(); const m = Q('#wxMsg'); if (m && lft) m.textContent = '⚠ ' + lft + ' SKU(s) did not fit — add a trip with ➕ New trip and press ⚡ Auto-spread again.'; return; }
+      if (a === 'save') { if (W.some(w => rest(w) < -1e-9)) { const m = Q('#wxMsg'); if (m) { m.textContent = '⚠ Fix the red "Left" values first — a SKU cannot be given more than was transferred.'; m.style.color = '#dc2626'; } return; }
+        const X2 = get(d); W.forEach(w => { X2.pin[w.id] = ed[w.id]; }); put(d, X2); el.remove(); fdRecalc(); const lft = W.filter(w => rest(w) > 1e-9).length; toast('🧩 Spread saved for ' + loc + (lft ? ' · ' + lft + ' SKU(s) still on the weekly line' : ' · all weekly SKUs are on trips') + '.'); } }); }
+
+  /* ---------- 3) the weekly page: tick SKUs → ➡ Transfer to daily plan ---------- */
+  const SEL = new Set();
+  function selCol() { if (fdm.pBy !== 'item') { const bar = Q('#wxBar'); if (bar) bar.style.display = 'none'; return; } const host = Q('#fdmPTable'); if (!host) return; const B = fdmProdBuild(); if (!B) return; const sh = B.G.slice(0, fdm.pShown);
+    const hr = host.querySelector('thead tr'); if (hr && !hr.querySelector('.wx-h')) hr.insertAdjacentHTML('beforeend', `<th class="wx-h" style="text-align:center;white-space:nowrap" title="Tick the SKUs to move to the daily plan">➡ Daily <input type="checkbox" id="wxAll" style="width:auto;margin:0 0 0 4px;vertical-align:middle"></th>`);
+    [...host.querySelectorAll('tbody tr')].forEach((tr, i) => { if (tr.classList.contains('fd-tot')) { tr.insertAdjacentHTML('beforeend', '<td></td>'); return; } const o = sh[i]; if (!o || tr.querySelector('.wx-c')) return; tr.insertAdjacentHTML('beforeend', `<td class="wx-c" style="text-align:center"><input type="checkbox" data-wxc="${esc(o.i.code)}" ${SEL.has(o.i.code) ? 'checked' : ''} style="width:auto;margin:0"></td>`); });
+    let bar = Q('#wxBar'); if (!bar) { bar = document.createElement('div'); bar.id = 'wxBar'; bar.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 10px'; const wrap = host.closest('.card'); wrap.insertBefore(bar, wrap.firstChild); }
+    bar.style.display = ''; bar.innerHTML = `<button type="button" class="success small" data-wxt="1" ${SEL.size ? '' : 'disabled'}>➡ Transfer to daily plan (${SEL.size} SKU${SEL.size === 1 ? '' : 's'})</button><button type="button" class="ghost small" data-wxclr="1" ${SEL.size ? '' : 'disabled'}>Clear selection</button><span class="text-sm" style="color:var(--gray-600)">Tick the SKUs in the <b>➡ Daily</b> column — their distribution of the chosen day moves to <b>F&amp;D Plan → Trips / trailers</b>, one weekly line per location.</span>`; }
+  if (typeof fdmProdRender === 'function') { const _pr = fdmProdRender; fdmProdRender = function () { const r = _pr.apply(this, arguments); try { selCol(); } catch (e) { console.error(e); } return r; }; }
+  document.addEventListener('change', e => { const t = e.target; if (t.dataset && t.dataset.wxc) { if (t.checked) SEL.add(t.dataset.wxc); else SEL.delete(t.dataset.wxc); return selCol(); }
+    if (t.id === 'wxAll') { const B = fdmProdBuild(); if (!B) return; B.G.slice(0, fdm.pShown).forEach(o => { if (t.checked) SEL.add(o.i.code); else SEL.delete(o.i.code); }); Q('#fdmPTable').querySelectorAll('[data-wxc]').forEach(c => { c.checked = t.checked; }); selCol(); } });
+  document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('[data-wxt],[data-wxclr]'); if (!b) return; if (b.dataset.wxclr) { SEL.clear(); Q('#fdmPTable').querySelectorAll('[data-wxc]').forEach(c => { c.checked = false; }); return selCol(); } transferBox(); });
+  function transferBox() { const W = fdm.weeks.find(w => w.weekStart === fdm.pW); if (!W || !SEL.size) return; const cfg = fdmCfg(), items = W.items.filter(i => SEL.has(i.code)), today = new Date().toISOString().slice(0, 10);
+    let day = W.days.find(d => d >= today) || W.days[0]; const locs = cfg.map.filter(m => m.loc && m.region);
+    const qtyOf = (i, loc, d) => { const mp = locs.find(m => m.loc === loc), k = W.days.indexOf(d); if (!mp || k < 0) return 0; let s = 0; Object.keys(i.reg).forEach(r => { if (dpNorm(r) === dpNorm(mp.region)) s += (i.reg[r] || [])[k] || 0; }); return s; };
+    let pick = null; const old = Q('#wxTBox'); if (old) old.remove(); const el = document.createElement('div'); el.id = 'wxTBox'; el.dataset.nohc = '1'; el.style.cssText = 'position:fixed;inset:0;z-index:9300;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:12px';
+    const draw = () => { const L = locs.filter(m => items.some(i => qtyOf(i, m.loc, day) > 0)); if (!pick) pick = new Set(L.map(m => m.loc)); const X = get(day);
+      el.innerHTML = `<div style="background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(1080px,100%);max-height:94vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(15,23,42,.5)">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:16px;flex:1;min-width:220px">➡ Transfer ${items.length} SKU(s) to the daily plan</b><label class="text-sm">Day <select id="wxDay" style="width:auto;margin:0">${W.days.map(d => `<option value="${d}" ${d === day ? 'selected' : ''}>${esc(dayLbl(d))}</option>`).join('')}</select></label><button type="button" class="ghost small" data-t="x">✕</button></div>
+        <div style="padding:8px 16px;font-size:12.5px;color:var(--gray-600,#64748b)">The weekly distribution of <b>${esc(dayLbl(day))}</b> per location (region ↔ location from the F&amp;D Setup). Untick a location to leave it out. The SKUs appear in <b>F&amp;D Plan → Trips / trailers</b> as "📦 Weekly SKUs · location" when the daily plan of that day is open.${L.length ? '' : '<br><b style="color:#b45309">None of the ticked SKUs is distributed on this day — pick another day.</b>'}${locs.length ? '' : '<br><b style="color:#b45309">No region ↔ location links in the F&amp;D Setup tab yet.</b>'}</div>
+        <div style="overflow:auto;padding:0 16px"><table class="fd-tbl" style="width:100%"><thead><tr><th>ICODE</th><th>Item</th>${L.map(m => `<th class="n"><label style="white-space:nowrap;cursor:pointer"><input type="checkbox" data-loc="${esc(m.loc)}" ${pick.has(m.loc) ? 'checked' : ''} style="width:auto;margin:0 4px 0 0;vertical-align:middle">${esc(m.loc)}</label></th>`).join('')}<th class="n">Total</th></tr></thead><tbody>
+          ${items.map(i => { const v = L.map(m => qtyOf(i, m.loc, day)); return `<tr><td><b>${esc(i.code)}</b></td><td>${esc(i.item)}</td>${v.map((q, x) => `<td class="n" style="${pick.has(L[x].loc) ? '' : 'opacity:.35'}">${q ? N(q) : ''}${X.wx.some(w => w.code === i.code && w.loc === L[x].loc) ? ' <span title="Already transferred — it will be replaced" style="color:#b45309">↻</span>' : ''}</td>`).join('')}<td class="n"><b>${N(v.reduce((a, q, x) => a + (pick.has(L[x].loc) ? q : 0), 0))}</b></td></tr>`; }).join('')}
+        </tbody></table></div>
+        <div style="display:flex;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--border,#e2e8f0);flex-wrap:wrap"><span class="text-sm" style="flex:1">↻ = already transferred for that day and location — the new quantity replaces it (what was already spread on trips is kept up to the new quantity).</span><button type="button" class="ghost" data-t="x">Cancel</button><button type="button" class="success" data-t="go" ${L.some(m => pick.has(m.loc)) ? '' : 'disabled'}>➡ Transfer</button></div></div>`; };
+    draw(); document.body.appendChild(el);
+    el.addEventListener('change', e => { const t = e.target; if (t.id === 'wxDay') { day = t.value; pick = null; return draw(); } if (t.dataset.loc) { if (t.checked) pick.add(t.dataset.loc); else pick.delete(t.dataset.loc); draw(); } });
+    el.addEventListener('click', e => { if (e.target === el) return el.remove(); const b = e.target.closest('button[data-t]'); if (!b) return; if (b.dataset.t === 'x') return el.remove();
+      const X = get(day); let n = 0, ls = new Set();
+      items.forEach(i => [...pick].forEach(loc => { const q = qtyOf(i, loc, day); if (!(q > 0)) return; const id = day + '|' + loc + '|' + i.code; let w = X.wx.find(x => x.id === id);
+        const rec = { id, day, loc, code: i.code, item: i.item, uom: i.uom || '', qty: q, pcsCrt: i.pcsCrt || 0, crtPallet: i.crtPallet || 0, ltr: i.ltrConv || 0, src: 'Weekly ' + W.weekStart, at: new Date().toISOString(), by: me() };
+        if (w) Object.assign(w, rec); else X.wx.push(rec);
+        const p = X.pin[id]; if (p) { let over = Object.values(p).reduce((a, b) => a + b, 0) - q; Object.keys(p).reverse().forEach(t => { if (over <= 0) return; const cut = Math.min(p[t], over); p[t] -= cut; over -= cut; if (p[t] <= 0) delete p[t]; }); }
+        n++; ls.add(loc); }));
+      put(day, X); el.remove(); SEL.clear(); try { fdmProdRender(); } catch (x) {} try { if (fd.m) fdRecalc(); } catch (x) {}
+      toast(`➡ ${n} line(s) transferred to ${dayLbl(day)} · ${[...ls].join(', ')} — open F&D Plan → Trips / trailers to spread them on the trips.`); }); }
+
+  window.fdWeeklyTransfer = { get, put, apply, spread, newTrip, transferBox, SEL };
+})();

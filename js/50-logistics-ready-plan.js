@@ -32,20 +32,15 @@
   const COLS = [['Plan_Date', 'Plan date', 'date', 120], ['User_Name', 'Driver', 'text', 130], ['Driver_FileNr', 'File no.', 'text', 80], ['Unit_Nr', 'Unit no.', 'text', 90], ['Trailer_Nr', 'Trailer no.', 'text', 90], ['Distn_From', 'From', 'text', 130], ['Loaction_From', 'Loc. from', 'text', 80],
     ['Distn_To', 'To', 'text', 130], ['Location_To', 'Loc. to', 'text', 80], ['Nr_of_Plts', 'Pallets', 'num', 64], ['Loaded_Mtrl_Type', 'Material', 'text', 100], ['Remarks', 'Remarks / instructions', 'text', 180]];
   const sigOf = x => [x.Plan_Date, x.Unit_Nr, x.User_Name, x.Distn_From, x.Distn_To].map(v => String(v == null ? '' : v).trim().toLowerCase()).join('|');
-  /* read only the rows of the plan's dates (± 1 day) instead of the whole list (41,000+ rows):
-     1) filter on the date column → 2) filter on Created (always indexed) for the last 60 days → 3) whole list as the last resort */
-  async function dupRead(ids, token, col) {
-    const ds = ST.rows.map(r => lpDate(r.rec.Plan_Date)).filter(d => /^\d{4}-\d\d-\d\d$/.test(d)).sort(); if (!ds.length) return [];
-    const sh = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }, lo = sh(ds[0], -1), hi = sh(ds[ds.length - 1], 1), dc = col('Trans_Date') || col('Plan_Date');
-    if (dc) { try { return await exp_fetchFilteredItems(ids.siteId, ids.listId, token, `fields/${dc} ge '${lo}T00:00:00Z' and fields/${dc} le '${hi}T23:59:59Z'`); } catch (e) { console.warn('ready plan: date filter refused —', e.message); } }
-    try { return await exp_fetchFilteredItems(ids.siteId, ids.listId, token, `fields/Created ge '${sh(ds[0], -60)}T00:00:00Z'`); } catch (e) { console.warn('ready plan: Created filter refused —', e.message); }
-    return fetchAllItems(ids.siteId, ids.listId, token); }
+  /* duplicate check: read only the rows ADDED in the last 3 days (Created is always indexed) — never the whole list */
+  async function dupRead(ids, token) { const since = new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10);
+    return exp_fetchFilteredItems(ids.siteId, ids.listId, token, `fields/Created ge '${since}T00:00:00Z'`); }
   async function dupCheck() {   /* trips already in the list: same Plan_Link (RcdID), else same date + unit + driver + from + to */
     const name = dst(), token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) { ST.chk = 'not checked (sign in first)'; return; }
-    try { const map = await utEffMap(DID), col = k => map[k] && map[k] !== SKIP_VALUE ? map[k] : null, ids = await resolveIds(site, name, token), its = await dupRead(ids, token, col), have = new Set(), hs = new Set();
+    try { const map = await utEffMap(DID), col = k => map[k] && map[k] !== SKIP_VALUE ? map[k] : null, ids = await resolveIds(site, name, token), its = await dupRead(ids, token), have = new Set(), hs = new Set();
       its.forEach(it => { const f = it.fields || {}, g = k => col(k) ? f[col(k)] : ''; const pl = String(g('Plan_Link') == null ? '' : g('Plan_Link')).trim(); if (pl) have.add(pl); hs.add(sigOf({ Plan_Date: lpDate(g('Trans_Date') || g('Plan_Date')), Unit_Nr: g('Unit_Nr'), User_Name: g('User_Name'), Distn_From: g('Distn_From'), Distn_To: g('Distn_To') })); });
-      ST.rows.forEach(r => { const d = r.rec.Plan_Link ? have.has(String(r.rec.Plan_Link)) : hs.has(sigOf(r.rec)); if (d && !r.dup) r.sel = false; r.dup = d; }); ST.chk = 'checked against "' + name + '" · ' + new Date().toLocaleTimeString(); ST.unm = TF.map(x => x[0]).filter(k => !col(k) && k !== 'Title'); }
-    catch (e) { ST.chk = 'could not check "' + name + '": ' + e.message; } }
+      ST.rows.forEach(r => { const d = r.rec.Plan_Link ? have.has(String(r.rec.Plan_Link)) : hs.has(sigOf(r.rec)); if (d && !r.dup) r.sel = false; r.dup = d; }); ST.chk = 'checked against the last 3 days of "' + name + '" (' + its.length + ' rows) · ' + new Date().toLocaleTimeString(); ST.unm = TF.map(x => x[0]).filter(k => !col(k) && k !== 'Title'); }
+    catch (e) { ST.chk = 'duplicate check skipped ("' + name + '": ' + e.message + ') — the upload goes on'; } }
   /* delete / replace question (not the upload dialog) */
   function askDel(title, text, okLbl) { return new Promise(res => { const o = document.createElement('div'); o.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px'; o.dataset.nohc = '1';
     o.innerHTML = `<div role="dialog" aria-modal="true" style="background:var(--card,#fff);color:var(--text,#222);border-radius:12px;max-width:500px;width:100%;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)"><div style="font-weight:700;font-size:16px;margin-bottom:8px">${lpEsc(title)}</div><div style="font-size:13px;line-height:1.55;margin-bottom:14px">${text}</div><div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="ghost" data-v="0">Cancel</button><button type="button" data-v="1" style="background:#b91c1c;border-color:#b91c1c;color:#fff">${lpEsc(okLbl || 'Delete')}</button></div></div>`;
