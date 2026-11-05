@@ -6,7 +6,7 @@
    Optional, for a known total:  orbProg.expect(n, 'Saving the ready plan')  before a bulk save.
    ============================================================ */
 (function () {
-  const BIG = 40, B0 = 25, SHOW_AFTER = 550, IDLE_END = 900;
+  const BIG = 1000, B0 = 25, SHOW_AFTER = 250, IDLE_END = 900;   /* B up to 1,000 rows · D above 1,000 */
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = n => (Math.round(n) || 0).toLocaleString();
   const names = new Map();   /* listId → list name (from resolveIds) */
@@ -53,7 +53,7 @@
   /* ---------- the job ---------- */
   function begin() {
     clearTimeout(hideT); if (J && !J.fin) return J;
-    shownRows = 0; J = { t0: Date.now(), user: Date.now() - lastUser < 5000 || (okAt > 0 && Date.now() - okAt < 90000), live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
+    shownRows = 0; J = { t0: Date.now(), user: Date.now() - lastUser < 15000 || (okAt > 0 && Date.now() - okAt < 90000), live: 0, r: 0, rows: 0, w: 0, ok: 0, bad: 0, del: 0, files: 0, mail: 0, lists: new Set(), log: [], batches: [], meta: 0, fin: false, shown: false, min: false, total: exp ? exp.n : null, label: exp ? exp.label : '' };
     exp = null; stopReq = false; clearTimeout(showT); showT = setTimeout(() => { if (J && !J.fin && J.user && !asking) { J.shown = true; draw(); } }, SHOW_AFTER);
     return J;
   }
