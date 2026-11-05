@@ -412,7 +412,7 @@ body.mob-on #mob{display:flex}body.mob-on{overflow:hidden}
   /* the web app (index.html) and the mobile app (mobile.html) are separate entry pages of the same package: index.html never opens the mobile app by itself */
   const MOBILE_PAGE = !!window.ORBIT_MOBILE;
   const goPage = f => { try { const u = new URL(f, location.href); location.href = u.href; } catch (e) { location.href = f; } };
-  function setOn(on) { if (!on && MOBILE_PAGE) return goPage('index.html'); if (on && !MOBILE_PAGE) return goPage('mobile.html'); shell(); document.body.classList.toggle('mob-on', !!on); if (on) go(S.page || 'home'); }
+  function setOn(on) { if (!on && MOBILE_PAGE) return goPage('index.html'); if (on && !MOBILE_PAGE) { const w = window.open(new URL('mobile.html', location.href).href, '_blank'); if (!w) goPage('mobile.html'); return; }   /* 📱 Mobile opens the mobile app in a new tab */ shell(); document.body.classList.toggle('mob-on', !!on); if (on) go(S.page || 'home'); }
   function topBtn() { const acts = Q('.topbar-actions'); if (!acts || Q('#mobBtn')) return; const b = document.createElement('button'); b.type = 'button'; b.id = 'mobBtn'; b.className = 'icon-btn'; b.title = 'Open the ORBIT mobile app (mobile.html — phone layout)'; b.textContent = '📱 Mobile'; b.addEventListener('click', () => (typeof isAdmin === 'function' && isAdmin()) ? adminBox() : setOn(true)); acts.insertBefore(b, acts.firstChild); }
   if (!window.ORBIT_MOBILE) setTimeout(topBtn, 800);
   const prevLogin = window.onLoginComplete; if (typeof onLoginComplete === 'function') { const _o = onLoginComplete; onLoginComplete = function () { setTimeout(() => { if (MOBILE_PAGE) { setOn(true); cfgLoad(); } else topBtn(); }, 700); return _o.apply(this, arguments); }; }

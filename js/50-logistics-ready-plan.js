@@ -32,9 +32,17 @@
   const COLS = [['Plan_Date', 'Plan date', 'date', 120], ['User_Name', 'Driver', 'text', 130], ['Driver_FileNr', 'File no.', 'text', 80], ['Unit_Nr', 'Unit no.', 'text', 90], ['Trailer_Nr', 'Trailer no.', 'text', 90], ['Distn_From', 'From', 'text', 130], ['Loaction_From', 'Loc. from', 'text', 80],
     ['Distn_To', 'To', 'text', 130], ['Location_To', 'Loc. to', 'text', 80], ['Nr_of_Plts', 'Pallets', 'num', 64], ['Loaded_Mtrl_Type', 'Material', 'text', 100], ['Remarks', 'Remarks / instructions', 'text', 180]];
   const sigOf = x => [x.Plan_Date, x.Unit_Nr, x.User_Name, x.Distn_From, x.Distn_To].map(v => String(v == null ? '' : v).trim().toLowerCase()).join('|');
+  /* read only the rows of the plan's dates (± 1 day) instead of the whole list (41,000+ rows):
+     1) filter on the date column → 2) filter on Created (always indexed) for the last 60 days → 3) whole list as the last resort */
+  async function dupRead(ids, token, col) {
+    const ds = ST.rows.map(r => lpDate(r.rec.Plan_Date)).filter(d => /^\d{4}-\d\d-\d\d$/.test(d)).sort(); if (!ds.length) return [];
+    const sh = (d, n) => { const x = new Date(d + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }, lo = sh(ds[0], -1), hi = sh(ds[ds.length - 1], 1), dc = col('Trans_Date') || col('Plan_Date');
+    if (dc) { try { return await exp_fetchFilteredItems(ids.siteId, ids.listId, token, `fields/${dc} ge '${lo}T00:00:00Z' and fields/${dc} le '${hi}T23:59:59Z'`); } catch (e) { console.warn('ready plan: date filter refused —', e.message); } }
+    try { return await exp_fetchFilteredItems(ids.siteId, ids.listId, token, `fields/Created ge '${sh(ds[0], -60)}T00:00:00Z'`); } catch (e) { console.warn('ready plan: Created filter refused —', e.message); }
+    return fetchAllItems(ids.siteId, ids.listId, token); }
   async function dupCheck() {   /* trips already in the list: same Plan_Link (RcdID), else same date + unit + driver + from + to */
     const name = dst(), token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) { ST.chk = 'not checked (sign in first)'; return; }
-    try { const map = await utEffMap(DID), col = k => map[k] && map[k] !== SKIP_VALUE ? map[k] : null, ids = await resolveIds(site, name, token), its = await fetchAllItems(ids.siteId, ids.listId, token), have = new Set(), hs = new Set();
+    try { const map = await utEffMap(DID), col = k => map[k] && map[k] !== SKIP_VALUE ? map[k] : null, ids = await resolveIds(site, name, token), its = await dupRead(ids, token, col), have = new Set(), hs = new Set();
       its.forEach(it => { const f = it.fields || {}, g = k => col(k) ? f[col(k)] : ''; const pl = String(g('Plan_Link') == null ? '' : g('Plan_Link')).trim(); if (pl) have.add(pl); hs.add(sigOf({ Plan_Date: lpDate(g('Trans_Date') || g('Plan_Date')), Unit_Nr: g('Unit_Nr'), User_Name: g('User_Name'), Distn_From: g('Distn_From'), Distn_To: g('Distn_To') })); });
       ST.rows.forEach(r => { const d = r.rec.Plan_Link ? have.has(String(r.rec.Plan_Link)) : hs.has(sigOf(r.rec)); if (d && !r.dup) r.sel = false; r.dup = d; }); ST.chk = 'checked against "' + name + '" · ' + new Date().toLocaleTimeString(); ST.unm = TF.map(x => x[0]).filter(k => !col(k) && k !== 'Title'); }
     catch (e) { ST.chk = 'could not check "' + name + '": ' + e.message; } }
@@ -54,10 +62,12 @@
       ST.rows = todo.map(r => { const o = r.raw, pd = lpDate(gv(o, 'plandate')), np = gv(o, 'nrofplts'); return { id: lpId(), sel: true, dup: false, shift: lpS(gv(o, 'triptimming')), rec: { Plan_Date: pd, User_Name: lpS(gv(o, 'drivername')), Driver_FileNr: lpS(gv(o, 'driverfilenr')), Unit_Nr: lpS(gv(o, 'unitnr')), Trailer_Nr: lpS(gv(o, 'trailernr')),
         Distn_From: lpS(gv(o, 'destinationfromvalue')), Loaction_From: lpS(gv(o, 'locationfromvalue')), Distn_To: lpS(gv(o, 'destinationtovalue')), Location_To: lpS(gv(o, 'locationtovalue')), Nr_of_Plts: np == null || np === '' ? '' : lpNum(np), Loaded_Mtrl_Type: lpS(gv(o, 'loadedmtrltypevalue')), Remarks: lpS(gv(o, 'tripinstrucations')), Plan_Link: lpS(gv(o, 'rcdid')) } }; });
       stSave(); stRender(true); sectionToast('📥 ' + ST.rows.length + ' trip(s) of "' + f.name + '" are in transit — check / edit them, then press ☁ Upload.', 'success');
-      await dupCheck(); stSave(); stRender(true);
+      /* no SharePoint read here — the duplicate check runs at ☁ Upload, only for the plan's dates */
     } catch (err) { sectionToast('✘ ' + err.message, 'error'); }
   }
   async function upload() {
+    if (!ST.rows.some(r => r.sel)) return sectionToast('Tick the trips to upload first.', 'warn');
+    { const m = document.querySelector('#lpStgMsg'); if (m) m.textContent = 'Checking the plan days in SharePoint…'; await dupCheck(); stSave(); stRender(true); }   /* trips found already in the list are unticked */   /* only the rows of the plan's dates (± 1 day) */
     const R = ST.rows.filter(r => r.sel); if (!R.length) return sectionToast('Tick the trips to upload first.', 'warn'); const name = dst();
     const bad = R.filter(r => !r.rec.Plan_Date || !(r.rec.User_Name || r.rec.Unit_Nr)); if (bad.length) return sectionToast(bad.length + ' ticked row(s) have no plan date or no driver / unit — fix or untick them.', 'warn');
     const dd = R.filter(r => r.dup).length, pad = n => String(n).padStart(2, '0'), d0 = new Date(), now = d0.getFullYear() + '-' + pad(d0.getMonth() + 1) + '-' + pad(d0.getDate()) + ' ' + pad(d0.getHours()) + ':' + pad(d0.getMinutes()) + ':' + pad(d0.getSeconds()), by = getCurrentUserValue();
