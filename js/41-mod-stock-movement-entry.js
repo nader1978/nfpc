@@ -88,7 +88,7 @@ body.dark #view-smv .smv-pill.r{background:#14532d;color:#bbf7d0}body.dark #view
     const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) { say('Sign-in / Site URL is not ready — suggestions are off. You can still type everything by hand.', 1); return; }
     st.loading = true; say('Loading recent movements and SKU master from SharePoint…');
     try { const list = utGet(ID).list || DEF_LIST, ids = await resolveIds(site, list, token); try { await fetchColumns(ids.siteId, ids.listId, token); } catch (e) {}
-      const items = await fetchRecentItems(ids.siteId, ids.listId, token, 6000), rows = items.map(i => i.fields || i).filter(Boolean); build(rows); say('✔ ' + rows.length + ' movements read from ' + list + ' · ' + st.hist.sku.size + ' SKUs known.'); }
+      const items = await fetchRecentItems(ids.siteId, ids.listId, token, 6000), rows = items.map(i => i.fields || i).filter(Boolean); try { await UOMC.ensure(); UOMC.norm(rows); } catch (e) {} build(rows); say('✔ ' + rows.length + ' movements read from ' + list + ' · ' + st.hist.sku.size + ' SKUs known.'); }
     catch (e) { say('Could not read the list: ' + e.message, 1); st.hist = st.hist || build([]); } finally { st.loading = false; render(); }
   }
   function build(rows) {

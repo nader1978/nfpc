@@ -100,14 +100,14 @@
     });
     return out;
   }
-  const HDR = ['Warehouse', 'Aisle', 'Bay', 'Level', 'Pos', 'Pallet position', 'SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Qty (units)', 'Pallets', 'Capacity'];
+  const HDR = ['Warehouse', 'Aisle', 'Bay', 'Level', 'Pos', 'Pallet position', 'SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Qty (PC)', 'Pallets', 'Capacity'];
   /* the two summary reports are built from the same filtered lines as the position list (search + scope apply; empty positions are left out) */
   const dleft = e => { if (!e) return ''; const t = new Date(e + 'T00:00:00'); return isNaN(t) ? '' : Math.round((t - new Date(new Date().toDateString())) / 864e5); };
   function plSum(R, by) { const M = new Map(); R.filter(x => !x.e).forEach(x => { const r = x.r, k = by === 'sku' ? r[6] : r[6] + '\u0001' + r[8]; let g = M.get(k); if (!g) M.set(k, g = { sku: r[6], dtls: r[7], batch: r[8], prod: r[9], exp: r[10], qty: 0, pal: 0, pos: new Set(), bat: new Set(), exps: [] });
         g.qty += num(r[11]); g.pal += num(r[12]); g.pos.add(r[5]); if (r[8]) g.bat.add(r[8]); if (r[10]) g.exps.push(r[10]); if (!g.dtls && r[7]) g.dtls = r[7]; if (by !== 'sku') { if (!g.prod || (r[9] && r[9] < g.prod)) g.prod = r[9] || g.prod; if (!g.exp && r[10]) g.exp = r[10]; } });
     const L = [...M.values()]; L.forEach(g => { g.qty = Math.round(g.qty * 100) / 100; g.pal = Math.round(g.pal * 100) / 100; if (by === 'sku') g.exp = g.exps.sort()[0] || ''; });
     L.sort((a, b) => String(a.sku).localeCompare(String(b.sku), undefined, { numeric: true }) || String(a.exp || '9999').localeCompare(String(b.exp || '9999')) || String(a.batch).localeCompare(String(b.batch), undefined, { numeric: true })); return L; }
-  const HDR_B = ['SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Days left', 'Qty (units)', 'Pallets', 'Positions'], HDR_S = ['SKU', 'Description', 'Batches', 'Earliest expiry', 'Days left', 'Qty (units)', 'Pallets', 'Positions'];
+  const HDR_B = ['SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Days left', 'Qty (PC)', 'Pallets', 'Positions'], HDR_S = ['SKU', 'Description', 'Batches', 'Earliest expiry', 'Days left', 'Qty (PC)', 'Pallets', 'Positions'];
   const plFlt = () => [PL.fz && 'warehouse ' + PL.fz, PL.fs && 'SKU ' + PL.fs, PL.fb && 'batch ' + PL.fb, PL.fr && 'rack ' + PL.fr].filter(Boolean).map(x => ' · ' + x).join('');
   function plData() { if (PL.rep !== 'pos') { const R = plRows() || [], by = PL.rep, L = plSum(R, by), z = window.w3Api ? w3Api.zone() : '', scope = PL.scope === 'all' ? 'all warehouses' : [z, selv('#w3Aisle') && 'aisle ' + selv('#w3Aisle'), selv('#w3Bay') && 'bay ' + selv('#w3Bay'), selv('#w3Lvl') && selv('#w3Lvl') !== '0' && 'level ' + selv('#w3Lvl')].filter(Boolean).join(' · ');
       const rows = by === 'sku' ? L.map(g => [g.sku, g.dtls, g.bat.size, g.exp, dleft(g.exp), g.qty, g.pal, g.pos.size]) : L.map(g => [g.sku, g.dtls, g.batch, g.prod, g.exp, dleft(g.exp), g.qty, g.pal, g.pos.size]), qi = by === 'sku' ? 5 : 6, tq = Math.round(L.reduce((a, g) => a + g.qty, 0) * 100) / 100, tp = Math.round(L.reduce((a, g) => a + g.pal, 0) * 100) / 100, tot = new Set(R.filter(x => !x.e).map(x => x.r[5])).size;
