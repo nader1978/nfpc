@@ -9,10 +9,10 @@
 <script>window.ORBIT_MOBILE = 1;   /* mobile.html = the ORBIT mobile app entry page (same files as index.html) */</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=182">
-<link rel="stylesheet" href="css/02-mobile.css?v=182">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=182">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=182">
+<link rel="stylesheet" href="css/01-base.css?v=185">
+<link rel="stylesheet" href="css/02-mobile.css?v=185">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=185">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=185">
 </head>
 <body>
 
@@ -160,7 +160,7 @@
       <div class="view" id="view-smv">
         <div class="card" id="smvCard">
           <div class="card-header"><div class="card-title">🧾 Stock Movement Entry <span class="text-sm" style="font-weight:400;">— receive or release stock · saved to <b>SKUs_Movements_Batch_tbl</b></span></div>
-            <div class="btn-row"><button class="secondary small" type="button" id="smvFullBtn" data-a="full" data-x="" title="Open this section in a large window">⤢ Expand</button><button class="secondary small" data-acm="1" type="button" title="All actions of this screen" aria-haspopup="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-3px"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Actions</button><span class="tm-hid" style="display:none"><button type="button" data-sm="print" data-a="print" title="Print the entry sheet">🖨 Print</button><button type="button" data-sm="excel" data-a="excel" title="Download the lines as Excel">📊 Excel</button><button type="button" data-sm="mail" data-a="mail" title="Email the entry sheet">✉ Email</button><button type="button" data-sm="reload" data-a="reload" title="Re-read SKUs, batches and balances from SharePoint">🔄 Reload suggestions</button><button type="button" data-sm="dest" data-a="dest" title="Choose the list and map its columns">🔌 List &amp; mapping</button></span></div></div>
+            <div class="btn-row"><button class="secondary small" type="button" id="smvFullBtn" data-a="full" data-x="" title="Open this section in a large window">⤢ Expand</button><button class="secondary small" data-acm="1" type="button" title="All actions of this screen" aria-haspopup="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-3px"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Actions</button><span class="tm-hid" style="display:none"><button type="button" data-sm="print" data-a="print" title="Print the entry sheet">🖨 Print</button><button type="button" data-sm="excel" data-a="excel" title="Download the lines as Excel">📊 Excel</button><button type="button" data-sm="mail" data-a="mail" title="Email the entry sheet">✉ Email</button><button type="button" data-sm="reloc" data-a="reloc" title="Move pallets from one rack position to another">🔁 Relocate pallets</button><button type="button" data-sm="reload" data-a="reload" title="Re-read SKUs, batches and balances from SharePoint">🔄 Reload suggestions</button><button type="button" data-sm="dest" data-a="dest" title="Choose the list and map its columns">🔌 List &amp; mapping</button></span></div></div>
           <div class="card-desc">Choose the transaction, fill the header once, then enter the SKU lines. SKU details, UoM, batch dates and the available balance are suggested from what is already in the list. The user name and the time stamp are added automatically when you save.</div>
           <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin:6px 0 14px">
             <div class="form-group" style="margin:0"><label>Transaction</label><div class="smv-seg"><button type="button" data-type="SKU Receive" class="on">📥 SKU Receive</button><button type="button" data-type="SKU Release">📤 SKU Release</button></div></div>
@@ -169,7 +169,7 @@
             <div class="form-group" style="margin:0"><label>Received trailer no. / source <span class="hint">e.g. left over</span></label><input type="text" id="smvTrl" placeholder="e.g. 35587" style="min-width:190px"></div>
           </div>
           <div id="smvRoot"></div>
-          <div class="btn-row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button type="button" class="secondary" data-a="add">➕ Add line</button><button type="button" class="ghost" data-a="add5">➕ Add 5 lines</button><button type="button" class="ghost" data-a="paste">📋 Paste from Excel</button><button type="button" class="ghost" data-a="file">📂 Open Excel file</button><input type="file" id="smvFile" accept=".xlsx,.xls,.csv" hidden><button type="button" class="ghost" data-a="clear">🧹 Clear</button><button type="button" class="ghost ct-open" data-ct-for="#smvRoot" title="Show / hide, re-arrange and resize the columns of the lines">▦ Columns</button><span style="flex:1"></span><button type="button" class="secondary" id="smvPick" data-a="topick" style="display:none" title="Send to the picking list (WH_Pick_Transit_tbl). Nothing is released until the picker confirms in WHs Movements → Pick transit.">📋 Push to picking list</button><button type="button" class="success" id="smvSave" data-a="save">☁ Save to SharePoint</button></div>
+          <div class="btn-row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button type="button" class="secondary" data-a="add">➕ Add line</button><button type="button" class="ghost" data-a="add5">➕ Add 5 lines</button><button type="button" class="ghost" data-a="paste">📋 Paste from Excel</button><button type="button" class="ghost" data-a="file">📂 Open Excel file</button><input type="file" id="smvFile" accept=".xlsx,.xls,.csv" hidden><button type="button" class="ghost" data-a="clear">🧹 Clear</button><button type="button" class="ghost ct-open" data-ct-for="#smvRoot" title="Show / hide, re-arrange and resize the columns of the lines">▦ Columns</button><button type="button" class="secondary" data-a="reloc" title="Move pallets from one rack position to another">🔁 Relocate pallets</button><span style="flex:1"></span><button type="button" class="secondary" id="smvFefo" data-a="fefo" style="display:none" title="For every line with a SKU and a Qty released but no batch: suggest the batches, rack positions and quantities by FEFO">⚡ Suggest by FEFO</button><button type="button" class="secondary" id="smvPick" data-a="topick" style="display:none" title="Send to the picking list (WH_Pick_Transit_tbl). Nothing is released until the picker confirms in WHs Movements → Pick transit.">📋 Push to picking list</button><button type="button" class="success" id="smvSave" data-a="save">☁ Save to SharePoint</button></div>
           <div id="smvStatus" class="status-msg smv-hint" style="margin-top:8px"></div>
         </div>
         <div class="card"><div class="card-header"><div class="card-title">🕘 Latest movements in the list</div><button type="button" class="ghost small ct-open" data-ct-for="#smvRecent" title="Show / hide, re-arrange and resize the columns">▦ Columns</button></div><div id="smvRecent"></div></div>
@@ -198,7 +198,7 @@
         <div class="card" id="wmvCard">
           <div class="card-header"><div class="card-title">🏭 WHs Movements (FEFO) <span class="text-sm" style="font-weight:400;">— inbound &amp; outbound by pallets or bulk · FEFO batch allocation · saved to <b>SKUs_Movements_Batch_tbl</b></span></div>
             <div class="btn-row"><button class="secondary small" type="button" data-a="reload" title="Re-read balances from SharePoint">🔄 Reload</button><button class="secondary small" data-acm="1" type="button" title="All actions of this screen" aria-haspopup="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" style="vertical-align:-3px"><path d="M4 6h16M4 12h16M4 18h16"/></svg> Actions</button><span class="tm-hid" style="display:none"><button type="button" data-wm="print" data-a="print" title="Print">🖨 Print</button><button type="button" data-wm="excel" data-a="excel" title="Excel">📊 Excel</button><button type="button" data-wm="mail" data-a="mail" title="Email">✉ Email</button><button type="button" data-wm="reload" data-a="reload" title="Reload balances">🔄 Reload balances</button><button type="button" data-wm="dest" data-a="dest" title="List and mapping">🔌 List &amp; mapping</button></span></div></div>
-          <div class="pl-tabs" id="wmvTabs" style="margin:6px 0 10px"><button type="button" data-t="entry" class="on">✍ Movement entry</button><button type="button" data-t="demand">📋 Demand &amp; pick list</button><button type="button" data-t="stock">📦 Stock by batch (FEFO order)</button><button type="button" data-t="recent">🕘 Recent movements</button><button type="button" data-t="mobile">📱 Picking &amp; receiving (mobile)</button><button type="button" data-t="transit">🚚 Pick transit (to confirm)</button></div>
+          <div class="pl-tabs" id="wmvTabs" style="margin:6px 0 10px"><button type="button" data-t="entry" class="on">✍ Movement entry</button><button type="button" data-t="demand">📋 Demand &amp; pick list</button><button type="button" data-t="stock">📦 Stock by batch (FEFO order)</button><button type="button" data-t="recent">🕘 Recent movements</button><button type="button" data-t="mobile">📱 Picking &amp; receiving (mobile)</button><button type="button" data-t="transit">🚚 Pick transit (to confirm)</button><button type="button" data-t="reloc">🔁 Relocate pallets</button></div>
           <div id="wmvEntryOnly"><div id="wmvTop" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin:6px 0 10px">
             <div class="form-group" style="margin:0"><label>Movement</label><div class="wm-seg"><button type="button" data-type="in" class="on">📥 Inbound (receive)</button><button type="button" data-type="out" class="out">📤 Outbound (release)</button></div></div>
             <div class="form-group" style="margin:0"><label>Quantity entered as</label><div class="wm-seg"><button type="button" data-mode="pallet" class="on">🟫 Pallets</button><button type="button" data-mode="bulk">📦 Bulk units</button></div></div>
@@ -1908,9 +1908,10 @@
           </div>
 
           <div class="card">
-            <div class="card-header"><div class="card-title">📦 Items released <span class="text-sm" style="font-weight:400;" id="fcTot"></span></div><div class="btn-row"><span id="fcRefInfo" class="text-sm" style="color:var(--gray-600)"></span><button id="fcRefresh" class="ghost small" type="button" title="Reload the Item code, UOM and Batch tables from SharePoint so newly added items and batches appear straight away">🔄 Refresh item, UOM &amp; batch tables</button><button id="fcPasteBtn" class="ghost small" type="button">📋 Paste lines</button><button id="fcAddLine" class="secondary small" type="button">➕ Add line</button></div></div>
+            <div class="card-header"><div class="card-title">📦 Items released <span class="text-sm" style="font-weight:400;" id="fcTot"></span></div><div class="btn-row"><span id="fcRefInfo" class="text-sm" style="color:var(--gray-600)"></span><button id="fcRefresh" class="ghost small" type="button" title="Reload the Item code, UOM and Batch tables from SharePoint so newly added items and batches appear straight away">🔄 Refresh item, UOM &amp; batch tables</button><button id="fcSuggest" class="secondary small" type="button" title="For lines with a SKU and a quantity but no batch: suggest the batches by FEFO from the stock ledger">⚡ Suggest batches (FEFO)</button><button id="fcPasteBtn" class="ghost small" type="button">📋 Paste lines</button><button id="fcAddLine" class="secondary small" type="button">➕ Add line</button></div></div>
             <div id="fcPasteBox" style="display:none;margin-bottom:8px;"><div class="text-sm" style="color:var(--gray-600);margin-bottom:4px;">One item per row — <strong>SKU, Qty</strong> and optionally <strong>UOM, Batch, Expiry (yyyy-mm-dd), Remarks</strong> — separated by tab (paste from Excel) or comma.</div><textarea id="fcPasteTxt" rows="4" style="width:100%;font-family:monospace;font-size:12px;"></textarea><div class="btn-row" style="margin-top:4px;"><button id="fcPasteOk" class="secondary small" type="button">Add these lines</button><button id="fcPasteNo" class="ghost small" type="button">Cancel</button></div></div>
-            <div class="fd-wrap" style="max-height:420px"><table class="fd-tbl fc-items"><thead><tr><th>SKU</th><th>Description</th><th>UOM</th><th class="n">Qty</th><th>Batch</th><th>Expiry</th><th>Remarks</th><th></th></tr></thead><tbody id="fcItems"></tbody></table></div>
+            <div id="fcStock"></div>
+            <div class="fd-wrap" style="max-height:420px"><table class="fd-tbl fc-items"><thead><tr><th>SKU</th><th>Description</th><th>UOM</th><th class="n">Qty</th><th>Batch</th><th>Expiry</th><th>Rack / pos</th><th class="n" title="Stock on hand in the ledger (SKUs_Movements_Batch_tbl)">Available</th><th>Remarks</th><th></th></tr></thead><tbody id="fcItems"></tbody></table></div>
           </div>
 
           <div class="card" id="fcEvCard">
@@ -2956,90 +2957,92 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=182"></script>
-<script src="js/01-core-constants-helpers.js?v=182"></script>
-<script src="js/02-users-and-roles-ui.js?v=182"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=182"></script>
-<script src="js/04-confirm-combo-csv.js?v=182"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=182"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=182"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=182"></script>
-<script src="js/08-uom-tracker-attachments.js?v=182"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=182"></script>
-<script src="js/10-refresh-all-good-return.js?v=182"></script>
-<script src="js/11-fefo-filter-engine.js?v=182"></script>
-<script src="js/12-uploader-main-lookup.js?v=182"></script>
-<script src="js/13-uploader-key-computation.js?v=182"></script>
-<script src="js/14-exporter-prefilters.js?v=182"></script>
-<script src="js/15-value-cache-record-editor.js?v=182"></script>
-<script src="js/16-data-editor-download.js?v=182"></script>
-<script src="js/17-mapping-sample-check.js?v=182"></script>
-<script src="js/18-schedules-notifications-settings.js?v=182"></script>
-<script src="js/19-email-results.js?v=182"></script>
-<script src="js/20-prefilters-compose.js?v=182"></script>
-<script src="js/21-planning-filters-charts.js?v=182"></script>
-<script src="js/22-planning-dept.js?v=182"></script>
-<script src="js/23-daily-plan-model-charts.js?v=182"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=182"></script>
-<script src="js/25-fd-plan-trips.js?v=182"></script>
-<script src="js/26-production-vs-distribution.js?v=182"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=182"></script>
-<script src="js/28-oasis-prism-signboards.js?v=182"></script>
-<script src="js/29-staff-roster.js?v=182"></script>
-<script src="js/30-roster-edits-templates.js?v=182"></script>
-<script src="js/31-attendance-leave-planner.js?v=182"></script>
-<script src="js/32-management-daily-report.js?v=182"></script>
-<script src="js/33-logistics-trip-planning.js?v=182"></script>
-<script src="js/34-filter-fields-expand-window.js?v=182"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=182"></script>
-<script src="js/36-attendance-ot-calc.js?v=182"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=182"></script>
-<script src="js/38-mod-switchboard.js?v=182"></script>
-<script src="js/39-mod-tab-hide.js?v=182"></script>
-<script src="js/40-mod-activity-archive.js?v=182"></script>
-<script src="js/40b-create-popup.js?v=182"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=182"></script>
-<script src="js/42-mod-relogin-button.js?v=182"></script>
-<script src="js/43-mod-project-progress.js?v=182"></script>
-<script src="js/44-mod-fleet-management.js?v=182"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=182"></script>
-<script src="js/45c-pick-transit.js?v=182"></script>
-<script src="js/45a-combobox.js?v=182"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=182"></script>
-<script src="js/46b-rmpm-mobile.js?v=182"></script>
-<script src="js/47-foc-release-voucher.js?v=182"></script>
-<script src="js/48-list-analytics.js?v=182"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=182"></script>
-<script src="js/50-logistics-ready-plan.js?v=182"></script>
-<script src="js/51-location-scope.js?v=182"></script>
-<script src="js/52-title-profiles.js?v=182"></script>
-<script src="js/52a-nav-central.js?v=182"></script>
-<script src="js/52b-brand-central.js?v=182"></script>
-<script src="js/53-rack-locations.js?v=182"></script>
-<script src="js/55-central-config.js?v=182"></script>
-<script src="js/58-session-renew.js?v=182"></script>
-<script src="js/59-mod-warehouse-3d.js?v=182"></script>
-<script src="js/59b-wh3d-rack-setup.js?v=182"></script>
-<script src="js/59c-wh3d-picks-link.js?v=182"></script>
-<script src="js/60-update-check.js?v=182"></script>
-<script src="js/56-mod-equipment-workshop.js?v=182"></script>
-<script src="js/61-col-tools.js?v=182"></script>
-<script src="js/62-mod-rack-condition.js?v=182"></script>
-<script src="js/63-mod-ot-recovery.js?v=182"></script>
-<script src="js/64-smv-mobile.js?v=182"></script>
-<script src="js/65-select-search.js?v=182"></script>
-<script src="js/66-orbit-brand.js?v=182"></script>
-<script src="js/67-rack-balance.js?v=182"></script>
-<script src="js/68-whs-utilization.js?v=182"></script>
-<script src="js/69-progress-popup.js?v=182"></script>
-<script src="js/70-chart-motion.js?v=182"></script>
-<script src="js/71-mobile-app.js?v=182"></script>
-<script src="js/72-mgw-shared-utilization.js?v=182"></script>
-<script src="js/73-fd-weekly-transfer.js?v=182"></script>
-<script src="js/75-driver-compliance.js?v=182"></script>
-<script src="js/74-popup-front.js?v=182"></script>
-<script src="js/76-batch-code.js?v=182"></script>
-<script src="js/99-boot.js?v=182"></script>
+<script src="js/00-users-data.js?v=185"></script>
+<script src="js/01-core-constants-helpers.js?v=185"></script>
+<script src="js/02-users-and-roles-ui.js?v=185"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=185"></script>
+<script src="js/04-confirm-combo-csv.js?v=185"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=185"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=185"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=185"></script>
+<script src="js/08-uom-tracker-attachments.js?v=185"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=185"></script>
+<script src="js/10-refresh-all-good-return.js?v=185"></script>
+<script src="js/11-fefo-filter-engine.js?v=185"></script>
+<script src="js/12-uploader-main-lookup.js?v=185"></script>
+<script src="js/13-uploader-key-computation.js?v=185"></script>
+<script src="js/14-exporter-prefilters.js?v=185"></script>
+<script src="js/15-value-cache-record-editor.js?v=185"></script>
+<script src="js/16-data-editor-download.js?v=185"></script>
+<script src="js/17-mapping-sample-check.js?v=185"></script>
+<script src="js/18-schedules-notifications-settings.js?v=185"></script>
+<script src="js/19-email-results.js?v=185"></script>
+<script src="js/20-prefilters-compose.js?v=185"></script>
+<script src="js/21-planning-filters-charts.js?v=185"></script>
+<script src="js/22-planning-dept.js?v=185"></script>
+<script src="js/23-daily-plan-model-charts.js?v=185"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=185"></script>
+<script src="js/25-fd-plan-trips.js?v=185"></script>
+<script src="js/26-production-vs-distribution.js?v=185"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=185"></script>
+<script src="js/28-oasis-prism-signboards.js?v=185"></script>
+<script src="js/29-staff-roster.js?v=185"></script>
+<script src="js/30-roster-edits-templates.js?v=185"></script>
+<script src="js/31-attendance-leave-planner.js?v=185"></script>
+<script src="js/32-management-daily-report.js?v=185"></script>
+<script src="js/33-logistics-trip-planning.js?v=185"></script>
+<script src="js/34-filter-fields-expand-window.js?v=185"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=185"></script>
+<script src="js/36-attendance-ot-calc.js?v=185"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=185"></script>
+<script src="js/38-mod-switchboard.js?v=185"></script>
+<script src="js/39-mod-tab-hide.js?v=185"></script>
+<script src="js/40-mod-activity-archive.js?v=185"></script>
+<script src="js/40b-create-popup.js?v=185"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=185"></script>
+<script src="js/42-mod-relogin-button.js?v=185"></script>
+<script src="js/43-mod-project-progress.js?v=185"></script>
+<script src="js/44-mod-fleet-management.js?v=185"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=185"></script>
+<script src="js/45c-pick-transit.js?v=185"></script>
+<script src="js/45a-combobox.js?v=185"></script>
+<script src="js/45d-pallet-relocation.js?v=185"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=185"></script>
+<script src="js/46b-rmpm-mobile.js?v=185"></script>
+<script src="js/47-foc-release-voucher.js?v=185"></script>
+<script src="js/47b-foc-stock-link.js?v=185"></script>
+<script src="js/48-list-analytics.js?v=185"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=185"></script>
+<script src="js/50-logistics-ready-plan.js?v=185"></script>
+<script src="js/51-location-scope.js?v=185"></script>
+<script src="js/52-title-profiles.js?v=185"></script>
+<script src="js/52a-nav-central.js?v=185"></script>
+<script src="js/52b-brand-central.js?v=185"></script>
+<script src="js/53-rack-locations.js?v=185"></script>
+<script src="js/55-central-config.js?v=185"></script>
+<script src="js/58-session-renew.js?v=185"></script>
+<script src="js/59-mod-warehouse-3d.js?v=185"></script>
+<script src="js/59b-wh3d-rack-setup.js?v=185"></script>
+<script src="js/59c-wh3d-picks-link.js?v=185"></script>
+<script src="js/60-update-check.js?v=185"></script>
+<script src="js/56-mod-equipment-workshop.js?v=185"></script>
+<script src="js/61-col-tools.js?v=185"></script>
+<script src="js/62-mod-rack-condition.js?v=185"></script>
+<script src="js/63-mod-ot-recovery.js?v=185"></script>
+<script src="js/64-smv-mobile.js?v=185"></script>
+<script src="js/65-select-search.js?v=185"></script>
+<script src="js/66-orbit-brand.js?v=185"></script>
+<script src="js/67-rack-balance.js?v=185"></script>
+<script src="js/68-whs-utilization.js?v=185"></script>
+<script src="js/69-progress-popup.js?v=185"></script>
+<script src="js/70-chart-motion.js?v=185"></script>
+<script src="js/71-mobile-app.js?v=185"></script>
+<script src="js/72-mgw-shared-utilization.js?v=185"></script>
+<script src="js/73-fd-weekly-transfer.js?v=185"></script>
+<script src="js/75-driver-compliance.js?v=185"></script>
+<script src="js/74-popup-front.js?v=185"></script>
+<script src="js/76-batch-code.js?v=185"></script>
+<script src="js/99-boot.js?v=185"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {

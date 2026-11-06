@@ -68,29 +68,46 @@
   setInterval(scan, 1500);
 
   /* ---------- 3D: pallet position list ---------- */
-  const PL = { q: '', only: 'all', scope: 'view' };
+  const PL = { q: '', only: 'all', scope: 'view', rep: 'pos' };   /* rep: pos = every pallet position · batch = balance per SKU & batch · sku = balance per SKU */
   const selv = id => { const e = Q(id); return e ? String(e.value || '') : ''; };
   function plRows() {
     const A = window.w3Api; if (!A || !A.slots) return null; const S = A.slots() || [], z = A.zone(), a = selv('#w3Aisle'), b = selv('#w3Bay'), l = selv('#w3Lvl');
     const inScope = s => PL.scope === 'all' || (s.zone === z && (!a || String(s.aisle) === a) && (!b || String(s.bay) === b) && (!l || l === '0' || String(s.lvl) === l));
-    const q = PL.q.trim().toLowerCase(), out = [];
+    const q = PL.q.trim().toLowerCase(), out = [], only = PL.rep === 'pos' ? PL.only : 'all';
     S.filter(inScope).sort((x, y) => String(x.zone).localeCompare(y.zone) || x.aisle - y.aisle || x.bay - y.bay || x.lvl - y.lvl || x.pos - y.pos || String(x.code).localeCompare(String(y.code), undefined, { numeric: true })).forEach(s => {
       const pos = s.code, base = [s.zone, s.aisle, s.bay, s.lvl, s.l3p ? s.pos : (s.pos || '')];
-      if (!s.occ) { if (PL.only === 'occ') return; if (q && !String(pos).toLowerCase().includes(q)) return; out.push({ e: 1, r: [...base, pos, '', '', '', '', '', 0, 0, s.cap || ''] }); return; }
-      if (PL.only === 'empty') return;
+      if (!s.occ) { if (only === 'occ') return; if (q && !String(pos).toLowerCase().includes(q)) return; out.push({ e: 1, r: [...base, pos, '', '', '', '', '', 0, 0, s.cap || ''] }); return; }
+      if (only === 'empty') return;
       (s.lines || []).forEach(x => { if (q && ![pos, x.sku, x.dtls, x.batch].join(' ').toLowerCase().includes(q)) return; const d = x.days;
         out.push({ x: d != null && d < 0, r: [...base, pos, x.sku, x.dtls || '', x.batch || '', x.prod || '', x.exp || '', Math.round(x.qty * 100) / 100, Math.round(x.pal * 100) / 100, s.cap || ''] }); });
     });
     return out;
   }
   const HDR = ['Warehouse', 'Aisle', 'Bay', 'Level', 'Pos', 'Pallet position', 'SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Qty (units)', 'Pallets', 'Capacity'];
-  function plData() { const R = plRows() || [], occ = new Set(R.filter(x => !x.e).map(x => x.r[5])), z = window.w3Api ? w3Api.zone() : '';
+  /* the two summary reports are built from the same filtered lines as the position list (search + scope apply; empty positions are left out) */
+  const dleft = e => { if (!e) return ''; const t = new Date(e + 'T00:00:00'); return isNaN(t) ? '' : Math.round((t - new Date(new Date().toDateString())) / 864e5); };
+  function plSum(R, by) { const M = new Map(); R.filter(x => !x.e).forEach(x => { const r = x.r, k = by === 'sku' ? r[6] : r[6] + '\u0001' + r[8]; let g = M.get(k); if (!g) M.set(k, g = { sku: r[6], dtls: r[7], batch: r[8], prod: r[9], exp: r[10], qty: 0, pal: 0, pos: new Set(), bat: new Set(), exps: [] });
+        g.qty += num(r[11]); g.pal += num(r[12]); g.pos.add(r[5]); if (r[8]) g.bat.add(r[8]); if (r[10]) g.exps.push(r[10]); if (!g.dtls && r[7]) g.dtls = r[7]; if (by !== 'sku') { if (!g.prod || (r[9] && r[9] < g.prod)) g.prod = r[9] || g.prod; if (!g.exp && r[10]) g.exp = r[10]; } });
+    const L = [...M.values()]; L.forEach(g => { g.qty = Math.round(g.qty * 100) / 100; g.pal = Math.round(g.pal * 100) / 100; if (by === 'sku') g.exp = g.exps.sort()[0] || ''; });
+    L.sort((a, b) => String(a.sku).localeCompare(String(b.sku), undefined, { numeric: true }) || String(a.exp || '9999').localeCompare(String(b.exp || '9999')) || String(a.batch).localeCompare(String(b.batch), undefined, { numeric: true })); return L; }
+  const HDR_B = ['SKU', 'Description', 'Batch', 'Production', 'Expiry', 'Days left', 'Qty (units)', 'Pallets', 'Positions'], HDR_S = ['SKU', 'Description', 'Batches', 'Earliest expiry', 'Days left', 'Qty (units)', 'Pallets', 'Positions'];
+  function plData() { if (PL.rep !== 'pos') { const R = plRows() || [], by = PL.rep, L = plSum(R, by), z = window.w3Api ? w3Api.zone() : '', scope = PL.scope === 'all' ? 'all warehouses' : [z, selv('#w3Aisle') && 'aisle ' + selv('#w3Aisle'), selv('#w3Bay') && 'bay ' + selv('#w3Bay'), selv('#w3Lvl') && selv('#w3Lvl') !== '0' && 'level ' + selv('#w3Lvl')].filter(Boolean).join(' · ');
+      const rows = by === 'sku' ? L.map(g => [g.sku, g.dtls, g.bat.size, g.exp, dleft(g.exp), g.qty, g.pal, g.pos.size]) : L.map(g => [g.sku, g.dtls, g.batch, g.prod, g.exp, dleft(g.exp), g.qty, g.pal, g.pos.size]), qi = by === 'sku' ? 5 : 6, tq = Math.round(L.reduce((a, g) => a + g.qty, 0) * 100) / 100, tp = Math.round(L.reduce((a, g) => a + g.pal, 0) * 100) / 100, tot = new Set(R.filter(x => !x.e).map(x => x.r[5])).size;
+      const totals = (by === 'sku' ? HDR_S : HDR_B).map((h, i) => i === 0 ? 'Total' : i === qi ? tq : i === qi + 1 ? tp : i === qi + 2 ? tot : '');
+      return { title: by === 'sku' ? 'Stock balance per SKU' : 'Stock balance per SKU & batch', sheet: by === 'sku' ? 'Balance per SKU' : 'Balance per SKU & batch', note: scope + ' · ' + L.length + (by === 'sku' ? ' SKU(s)' : ' SKU / batch line(s)') + (PL.q ? ' · search "' + PL.q + '"' : '') + ' · ' + new Date().toLocaleString(), headers: by === 'sku' ? HDR_S : HDR_B, rows, totals, _S: 1, scope, tq, tp, n: L.length, occ: tot, qi }; }
+    const R = plRows() || [], occ = new Set(R.filter(x => !x.e).map(x => x.r[5])), z = window.w3Api ? w3Api.zone() : '';
     const scope = PL.scope === 'all' ? 'all warehouses' : [z, selv('#w3Aisle') && 'aisle ' + selv('#w3Aisle'), selv('#w3Bay') && 'bay ' + selv('#w3Bay'), selv('#w3Lvl') && selv('#w3Lvl') !== '0' && 'level ' + selv('#w3Lvl')].filter(Boolean).join(' · ');
     const tq = R.reduce((a, x) => a + num(x.r[11]), 0), tp = R.reduce((a, x) => a + num(x.r[12]), 0);
     return { title: 'Pallet positions — SKU & quantity', sheet: 'Pallet positions', note: scope + ' · ' + occ.size + ' occupied position(s)' + (PL.q ? ' · search "' + PL.q + '"' : '') + ' · ' + new Date().toLocaleString(),
       headers: HDR, rows: R.map(x => x.r), totals: ['Total', '', '', '', '', occ.size + ' occupied', '', '', '', '', '', Math.round(tq * 100) / 100, Math.round(tp * 100) / 100, ''], _R: R, scope, tq, tp, occ: occ.size }; }
   function plDraw() {
-    const box = Q('#plBox'); if (!box) return; const d = plData(), R = d._R, emp = new Set(R.filter(x => x.e).map(x => x.r[5])).size;
+    const box = Q('#plBox'); if (!box) return; const d = plData();
+    const th = box.querySelector('thead tr'); if (th) th.innerHTML = (d.headers || HDR).map(h => '<th>' + h + '</th>').join('');
+    if (d._S) { const H = d.headers, di = H.indexOf('Days left'), ni = d.qi, nums = new Set([ni, ni + 1, ni + 2, di, H.indexOf('Batches')].filter(i => i >= 0));
+      box.querySelector('.pl-k').innerHTML = `<span>Scope <b>${esc(d.scope || '—')}</b></span><span>${PL.rep === 'sku' ? 'SKUs' : 'SKU / batch lines'} <b>${fmt(d.n)}</b></span><span>Quantity <b>${fmt(d.tq)}</b></span><span>Pallets <b>${fmt(d.tp)}</b></span><span>Occupied positions <b>${fmt(d.occ)}</b></span>`;
+      box.querySelector('tbody').innerHTML = d.rows.slice(0, 3000).map(r => `<tr${di >= 0 && r[di] !== '' && r[di] < 0 ? ' class="x"' : ''}>${r.map((v, i) => `<td class="${nums.has(i) ? 'n' : ''}${i === di && v !== '' && v < 0 ? ' ex' : ''}">${i === 0 ? '<b>' + esc(v) + '</b>' : nums.has(i) && typeof v === 'number' ? fmt(v) : esc(v)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${H.length}" style="text-align:center;padding:18px;color:var(--gray-600)">Nothing to show — load the 3D view first or change the filters.</td></tr>`;
+      box.querySelector('tfoot').innerHTML = d.rows.length ? `<tr class="g">${d.totals.map((v, i) => `<td class="${nums.has(i) ? 'n' : ''}">${i === ni || i === ni + 1 || i === ni + 2 ? fmt(v) : esc(v)}</td>`).join('')}</tr>` : ''; return; }
+    const R = d._R, emp = new Set(R.filter(x => x.e).map(x => x.r[5])).size;
     box.querySelector('.pl-k').innerHTML = `<span>Scope <b>${esc(d.scope || '—')}</b></span><span>Occupied positions <b>${fmt(d.occ)}</b></span><span>Empty <b>${fmt(emp)}</b></span><span>SKU lines <b>${fmt(R.filter(x => !x.e).length)}</b></span><span>Quantity <b>${fmt(d.tq)}</b></span><span>Pallets <b>${fmt(d.tp)}</b></span>`;
     let last = '', h = ''; R.slice(0, 3000).forEach(x => { const r = x.r, first = r[5] !== last; last = r[5];
       h += `<tr class="${x.e ? 'e' : ''}${x.x ? ' x' : ''}"><td>${first ? esc(r[0]) : ''}</td><td class="n">${first ? r[1] : ''}</td><td class="n">${first ? r[2] : ''}</td><td class="n">${first ? r[3] : ''}</td><td class="n">${first ? r[4] : ''}</td><td>${first ? '<b>' + esc(r[5]) + '</b>' : ''}</td><td>${x.e ? '<i>empty</i>' : esc(r[6])}</td><td>${esc(r[7])}</td><td>${esc(r[8])}</td><td>${esc(r[9])}</td><td class="ex">${esc(r[10])}</td><td class="n">${x.e ? '' : fmt(r[11])}</td><td class="n">${x.e ? '' : fmt(r[12])}</td><td class="n">${esc(r[13])}</td></tr>`; });
@@ -100,17 +117,18 @@
   function plOpen() {
     if (!window.w3Api || !(w3Api.slots() || []).length) { if (typeof sectionToast === 'function') sectionToast('Load the 3D view first (Reload).', 'warn'); return; }
     let box = Q('#plBox'); if (box) box.remove(); box = document.createElement('div'); box.id = 'plBox'; box.dataset.nohc = '1';
-    box.innerHTML = `<div class="pl-c"><div class="pl-h"><h3>📋 Pallet positions — SKU &amp; quantity</h3>
+    box.innerHTML = `<div class="pl-c"><div class="pl-h"><h3>📋 <span data-pl="ttl">Pallet positions — SKU &amp; quantity</span></h3>
+      <select data-pl="rep" data-nosearch="1" title="Choose the report"><option value="pos">Report: pallet positions</option><option value="batch">Report: balance per SKU &amp; batch</option><option value="sku">Report: balance per SKU</option></select>
       <input type="search" data-pl="q" placeholder="🔍 Position, SKU, batch…" value="${esc(PL.q)}">
       <select data-pl="only" data-nosearch="1"><option value="all">All positions</option><option value="occ">Occupied only</option><option value="empty">Empty only</option></select>
       <select data-pl="scope" data-nosearch="1"><option value="view">As filtered on the 3D</option><option value="all">All my warehouses</option></select>
       <button class="secondary small" type="button" data-pl="xl">📊 Excel</button><button class="secondary small" type="button" data-pl="pr">🖨 Print</button><button class="secondary small" type="button" data-pl="ml">✉ Email</button><button class="ghost small" type="button" data-pl="x">✕ Close</button></div>
       <div class="pl-k"></div><div class="pl-b"><table><thead><tr>${HDR.map(h => '<th>' + h + '</th>').join('')}</tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>`;
-    document.body.appendChild(box); box.querySelector('[data-pl="only"]').value = PL.only; box.querySelector('[data-pl="scope"]').value = PL.scope; plDraw();
+    document.body.appendChild(box); box.querySelector('[data-pl="rep"]').value = PL.rep; box.querySelector('[data-pl="rep"]').dispatchEvent(new Event('change', { bubbles: true })); box.querySelector('[data-pl="only"]').value = PL.only; box.querySelector('[data-pl="scope"]').value = PL.scope; plDraw();
     box.addEventListener('click', e => { if (e.target === box) return box.remove(); const b = e.target.closest('button[data-pl]'); if (!b) return; const a = b.dataset.pl, d = () => { const x = plData(); delete x._R; return x; };
       if (a === 'x') box.remove(); else if (a === 'xl') a2Export(d()); else if (a === 'pr') a2Print(d()); else if (a === 'ml') a2Mail(d); });
     box.addEventListener('input', e => { if (e.target.dataset.pl === 'q') { PL.q = e.target.value; plDraw(); } });
-    box.addEventListener('change', e => { const k = e.target.dataset.pl; if (k === 'only' || k === 'scope') { PL[k] = e.target.value; plDraw(); } });
+    box.addEventListener('change', e => { const k = e.target.dataset.pl; if (k === 'only' || k === 'scope' || k === 'rep') { PL[k] = e.target.value; if (k === 'rep') { const t = box.querySelector('[data-pl="ttl"]'); if (t) t.textContent = { pos: 'Pallet positions — SKU & quantity', batch: 'Stock balance per SKU & batch', sku: 'Stock balance per SKU' }[PL.rep]; const o = box.querySelector('[data-pl="only"]'); if (o) o.disabled = PL.rep !== 'pos'; } plDraw(); } });
   }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && Q('#plBox')) Q('#plBox').remove(); });
   function plBtn() { const bar = Q('#w3Body .w3bar'); if (!bar || Q('#w3PlBtn')) return; const b = document.createElement('button'); b.id = 'w3PlBtn'; b.type = 'button'; b.className = 'secondary small'; b.textContent = '📋 Position list';

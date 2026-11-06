@@ -39,7 +39,7 @@ function fcPut(v) { if (fcDb) { try { fcDb.transaction('v', 'readwrite').objectS
 function fcRm(id) { if (fcDb) { try { fcDb.transaction('v', 'readwrite').objectStore('v').delete(id); } catch (e) {} } else fcLsSave(); }
 
 /* ---------- model ---------- */
-const fcBlankItem = () => ({ sku: '', desc: '', uom: 'PC', qty: '', batch: '', expiry: '', remarks: '' });
+const fcBlankItem = () => ({ sku: '', desc: '', uom: 'PC', qty: '', batch: '', expiry: '', remarks: '', loc: '', pos: '' });
 const fcBlankP = () => ({ name: '', title: '', sig: '', at: '' });
 function fcNextNo(date) { const y = String(date || fcToday()).slice(0, 4); let mx = 0; fc.list.forEach(v => { const m = /^FOC-(\d{4})-(\d+)$/.exec(v.no || ''); if (m && m[1] === y) mx = Math.max(mx, +m[2]); }); return `FOC-${y}-${String(mx + 1).padStart(4, '0')}`; }
 function fcBlank() { const n = fcNowIso(); const v = { id: 'fc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), no: '', date: n.slice(0, 10), time: n.slice(11), status: 'Draft', wh: '', dept: '', reason: '', recip: '', ref: '', notes: '', req: fcBlankP(), iss: fcBlankP(), apr: fcBlankP(), items: [fcBlankItem()], evid: [], created: n, createdBy: fcUser(), updated: '', log: [], up: null }; v.no = fcNextNo(v.date); return v; }
@@ -63,8 +63,8 @@ function fcDatalists() {
   if (!fcQ('#fcUomList')) { const d = document.createElement('datalist'); d.id = 'fcUomList'; d.innerHTML = ['PC', 'CTN', 'PAL', 'BOX', 'KG', 'L', 'SET', 'PACK'].map(u => `<option value="${u}">`).join(''); fcQ('#view-foc').appendChild(d); }
 }
 function fcItemsRender(focusLast) {
-  const v = fc.cur; fcQ('#fcItems').innerHTML = v.items.map((it, i) => `<tr data-i="${i}"><td><input data-f="sku" list="fcSkuList" value="${fcE(it.sku)}" style="min-width:120px"></td><td><input data-f="desc" value="${fcE(it.desc)}" style="min-width:220px"></td><td><input data-f="uom" list="fcUomList" value="${fcE(it.uom)}" style="width:70px"></td><td><input data-f="qty" type="number" min="0" step="any" value="${fcE(it.qty)}" style="width:90px;text-align:right"></td><td><input data-f="batch" list="fcBatchList" value="${fcE(it.batch)}" style="width:110px"></td><td><input data-f="expiry" type="date" value="${fcE(it.expiry)}"></td><td><input data-f="remarks" value="${fcE(it.remarks)}" style="min-width:140px"></td><td><button type="button" class="ghost small" data-rm="${i}" title="Remove line">✖</button></td></tr>`).join('');
-  fcTot(); if (focusLast) { const r = fcQ('#fcItems').lastElementChild; if (r) r.querySelector('input').focus(); }
+  const v = fc.cur; fcQ('#fcItems').innerHTML = v.items.map((it, i) => `<tr data-i="${i}"><td><input data-f="sku" list="fcSkuList" value="${fcE(it.sku)}" style="min-width:120px"></td><td><input data-f="desc" value="${fcE(it.desc)}" style="min-width:220px"></td><td><input data-f="uom" list="fcUomList" value="${fcE(it.uom)}" style="width:70px"></td><td><input data-f="qty" type="number" min="0" step="any" value="${fcE(it.qty)}" style="width:90px;text-align:right"></td><td><input data-f="batch" list="fcBatchList" value="${fcE(it.batch)}" style="width:110px"></td><td><input data-f="expiry" type="date" value="${fcE(it.expiry)}"></td><td data-c="loc" class="text-sm" style="white-space:nowrap">${window.FCL ? FCL.locTxt(it) : ''}</td><td data-c="av" class="n">${window.FCL ? FCL.availHtml(it) : ''}</td><td><input data-f="remarks" value="${fcE(it.remarks)}" style="min-width:140px"></td><td><button type="button" class="ghost small" data-rm="${i}" title="Remove line">✖</button></td></tr>`).join('');
+  fcTot(); if (window.FCL) FCL.strip(); if (focusLast) { const r = fcQ('#fcItems').lastElementChild; if (r) r.querySelector('input').focus(); }
 }
 function fcTot() { const v = fc.cur; fcQ('#fcTot').textContent = `— ${fcLines(v).length} line(s) · total qty ${plF(fcQty(v), 2)}`; }
 function fcWrite() {
@@ -101,9 +101,10 @@ function fcValidate(v) {
 }
 function fcSave(andNew) {
   fcRead(); const v = fc.cur; v.items = v.items.filter((i, ix) => String(i.sku).trim() || fcNum(i.qty) || i.desc || ix === 0 && false); if (!v.items.length) v.items = [fcBlankItem()]; if (!fcValidate(v)) { fcItemsRender(); return false; }
+  { let ps = ''; try { ps = JSON.parse(fc.saved || '[]')[3] || ''; } catch (e) {} if (window.FCL && !FCL.pre(v, ps)) { fcItemsRender(); fcPill(); return false; } }   /* stock link: availability / FEFO / deduction checks */
   if (fcSig(v) === 3 && (v.status === 'Draft' || v.status === 'Pending approval')) { v.status = 'Approved'; sectionToast('All three signatures captured — status set to Approved.', 'success'); }
   const ex = fc.list.findIndex(x => x.id === v.id); v.updated = fcNowIso(); fcLog(v, ex < 0 ? `Created (${v.status})` : `Saved (${v.status})`); if (ex < 0) fc.list.push(v); else fc.list[ex] = v; if (v.up) { /* keep upload marker but flag change */ v.up.changed = true; }
-  fcPut(v); fc.saved = fcSnap(v); addActivity('create', `FOC voucher ${v.no} saved (${fcLines(v).length} lines)`); sectionToast(`✓ Voucher ${v.no} saved.`, 'success');
+  fcPut(v); fc.saved = fcSnap(v); addActivity('create', `FOC voucher ${v.no} saved (${fcLines(v).length} lines)`); sectionToast(`✓ Voucher ${v.no} saved.`, 'success'); if (window.FCL) FCL.post(v);   /* Released → deduct the stock from the ledger */
   if (andNew) fcOpen(null, true); else fcWrite(); fcKpis(); fcDatalists(); return true;
 }
 function fcOpen(id, force) {
@@ -151,7 +152,9 @@ async function fcLoadBatchTable() {
   map.forEach(a => a.sort((x, y) => (x.expiry || '9999').localeCompare(y.expiry || '9999') || x.batch.localeCompare(y.batch))); fcTab.batches = map; fcTab.batchAt = Date.now(); return n;
 }
 function fcBatchesFor(sku) {
-  const k = String(sku || '').trim().toLowerCase(); if (!k) return []; const a = fcTab.batches.get(k); if (a && a.length) return a;
+  const k = String(sku || '').trim().toLowerCase(); if (!k) return [];
+  try { const w = window.WMVX && WMVX.S.hist && WMVX, m = w && w.master(String(sku).trim()); if (m && m.batches.size) { const L = [...m.batches.values()].filter(b => b.bal > 1e-9).sort((x, y) => (x.exp || '9999').localeCompare(y.exp || '9999') || String(x.batch).localeCompare(String(y.batch))).map(b => ({ batch: b.batch, expiry: b.exp || '', qty: b.bal, loc: [...b.pp.keys()].filter(Boolean).slice(0, 3).join(', ') })); if (L.length) return L; } } catch (e) {}   /* the stock ledger first */
+  const a = fcTab.batches.get(k); if (a && a.length) return a;
   try { const ix = wFefoState.batchIndex && wFefoState.batchIndex.get(k); if (ix) return ix.map(b => ({ batch: b.batchCode, expiry: b.expiryDate ? String(b.expiryDate).slice(0, 10) : '', qty: b.qty, loc: b.locationCode })); } catch (e) {} return [];
 }
 async function fcRefreshItems(auto) {
@@ -303,8 +306,8 @@ function fcInit() {
   q('#fcSigs').addEventListener('click', e => { const b = e.target.closest('button[data-a]'), box = e.target.closest('.fc-sig'); if (!b || !box) return; const k = box.dataset.k; if (b.dataset.a === 'clr') { box.querySelector('canvas').getContext('2d').clearRect(0, 0, FC_W, FC_H); fcSigSet(box, k, ''); } else { sigBox = box; q('#fcSigFile').click(); } });
   q('#fcSigFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (sigBox) fcSigImage(sigBox, sigBox.dataset.k, f); });
   q('#fcSave').addEventListener('click', () => fcSave(false)); q('#fcSaveNew').addEventListener('click', () => fcSave(true)); q('#fcNew').addEventListener('click', () => fcOpen(null));
-  q('#fcDup').addEventListener('click', () => { fcRead(); const v = JSON.parse(JSON.stringify(fc.cur)); if (fcDirty() && !confirm('Duplicate the voucher including your unsaved changes?')) return; v.id = 'fc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); v.date = fcToday(); v.time = fcNowIso().slice(11); v.no = fcNextNo(v.date); v.status = 'Draft'; ['req', 'iss', 'apr'].forEach(k => { v[k].sig = ''; v[k].at = ''; }); v.up = null; v.evid = []; v.log = []; v.created = fcNowIso(); v.createdBy = fcUser(); v.updated = ''; fc.cur = v; fc.saved = ''; fcWrite(); sectionToast('Copied as a new Draft — signatures were cleared.', 'success'); });
-  q('#fcDel').addEventListener('click', () => { const v = fc.cur; if (!fc.list.some(x => x.id === v.id)) return; if (!confirm(`Delete voucher ${v.no} permanently? This cannot be undone. (To keep the record, set the status to Cancelled instead.)`)) return; fc.list = fc.list.filter(x => x.id !== v.id); fcRm(v.id); addActivity('delete', 'FOC voucher ' + v.no + ' deleted'); fcKpis(); fcTabs(); fcOpen(null, true); });
+  q('#fcDup').addEventListener('click', () => { fcRead(); const v = JSON.parse(JSON.stringify(fc.cur)); if (fcDirty() && !confirm('Duplicate the voucher including your unsaved changes?')) return; v.id = 'fc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); v.date = fcToday(); v.time = fcNowIso().slice(11); v.no = fcNextNo(v.date); v.status = 'Draft'; ['req', 'iss', 'apr'].forEach(k => { v[k].sig = ''; v[k].at = ''; }); v.up = null; v.posted = null; v.evid = []; v.log = []; v.created = fcNowIso(); v.createdBy = fcUser(); v.updated = ''; fc.cur = v; fc.saved = ''; fcWrite(); sectionToast('Copied as a new Draft — signatures were cleared.', 'success'); });
+  q('#fcDel').addEventListener('click', () => { const v = fc.cur; if (!fc.list.some(x => x.id === v.id)) return; if (window.FCL && FCL.isPosted(v)) { sectionToast(`Stock was deducted for ${v.no} — set the status to Cancelled first (the stock is returned), then it can be deleted.`, 'warn'); return; } if (!confirm(`Delete voucher ${v.no} permanently? This cannot be undone. (To keep the record, set the status to Cancelled instead.)`)) return; fc.list = fc.list.filter(x => x.id !== v.id); fcRm(v.id); addActivity('delete', 'FOC voucher ' + v.no + ' deleted'); fcKpis(); fcTabs(); fcOpen(null, true); });
   q('#fcPrint').addEventListener('click', () => fcPrintVs([fcCurForOut()])); q('#fcPdf').addEventListener('click', () => fcPrintVs([fcCurForOut()]));
   q('#fcEmail').addEventListener('click', () => { const v = fcCurForOut(); if (!fcLines(v).length) { sectionToast('Add at least one item (SKU and quantity) before emailing.', 'warn'); return; } window.extMailData = fcMailOf(v); wMail_open('ext'); });
   q('#fcUp').addEventListener('click', async () => { if (fcDirty()) { if (!fcSave(false)) return; } await fcUpload([fc.cur], q('#fhUpMode').value, q('#fcUpStatus'), null); fcLogRender(); });
