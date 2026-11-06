@@ -70,9 +70,9 @@
   const lo = Q('#logoutBtn'); if (lo) lo.addEventListener('click', () => { try { flush(); } catch (e) {} }, true);
   let busy = false;
   async function flush() {
-    if (busy) return; const q = qRead(); if (!q.length) return; let ok = false; try { ok = !!getGlobalAccessToken() && !!getGlobalSiteUrl() && utReady('syslog'); } catch (e) {} if (!ok) return; busy = true;
+    if (busy) return; const q = qRead(); if (!q.length) return; let ok = false; try { ok = !!getGlobalAccessToken() && !!getGlobalSiteUrl() && utReady('syslog'); } catch (e) {} if (!ok) return; busy = true; window.__orbQuiet = true;
     try { const part = q.slice(0, 40), r = await utPush('syslog', part, x => x.kind); if (r.ok || !r.fail) qWrite(qRead().slice(part.length)); else if (r.fail && !r.ok) throw new Error((r.errors && r.errors[0]) || 'refused'); } catch (e) { /* keep the queue; try again later */ }
-    busy = false; if (qRead().length > 40) setTimeout(flush, 500); }
+    window.__orbQuiet = false; busy = false; if (qRead().length > 40) setTimeout(flush, 500); }
   setInterval(flush, 60000); setTimeout(flush, 6000);
   window.addEventListener('pagehide', () => { try { flush(); } catch (e) {} });
 

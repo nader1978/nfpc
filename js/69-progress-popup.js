@@ -216,6 +216,8 @@
   window.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : input && input.url, method = (init && init.method) || (input && input.method) || 'GET', c = classify(url, method);
     if (!c) return F0(input, init);
+    /* background system-log writes (Admin Console) are silent: no question, no progress window */
+    if (window.__orbQuiet && c.k !== 'mail') { let sl = ''; try { sl = String((utGet('syslog') || {}).list || '').toLowerCase(); } catch (x) {} const ln = String(listName(c.list) || c.list || '').toLowerCase(); if (!c.list || (sl && (ln === sl || String(c.list).toLowerCase() === sl))) return F0(input, init); }
     const j = begin(); if (c.k === 'meta') { j.meta++; } else if (c.list) j.lists.add(c.list);
     if ((c.k === 'w' || c.k === 'mail') && !(await gate(c, j))) { j.cancel = true; tick(); return new Response(JSON.stringify({ error: { code: 'cancelled', message: 'Cancelled by the user — nothing was saved' } }), { status: 400, statusText: 'Cancelled', headers: { 'Content-Type': 'application/json' } }); }
     if (c.k === 'w' && paused) await paused.p;
