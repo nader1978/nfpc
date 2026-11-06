@@ -10,7 +10,7 @@
   const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
   const h1 = v => { const n = Math.round((+v || 0) * 100) / 100; return n ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : ''; };
   const now = new Date(), S = { loaded: false, loading: false, err: '', tab: 'loc', D: { hdr: [], ln: [], st: [], up: [] },
-    f: { from: ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: ymd(now), loc: '', mgr: '', q: '', status: 'appr', open: false } };
+    f: { from: ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: ymd(now), loc: '', mgr: '', q: '', status: 'appr', open: false, bad: false, tol: 0.5 } };
   const say = (t, w) => { const e = Q('#otrStatus'); if (e) { e.textContent = t; e.style.color = w ? '#b45309' : ''; } };
   const rec = it => { const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); K.id = +it.id; return K; };
   const num = v => { const n = +String(v == null ? '' : v).replace(/[,\s]/g, ''); return isFinite(n) ? n : 0; };
@@ -28,15 +28,32 @@
 
   /* ---------- model ---------- */
   const hdrBy = () => { const m = new Map(); S.D.hdr.forEach(h => m.set(h.id, h)); return m; };
+  /* ---------- attendance check: day-off hours given vs the hours the staff actually worked on the day-off date ---------- */
+  const A = { r: null, m: null, d: null, k: new Map() };
+  function attIdx() {
+    if (typeof at === 'undefined') return null; if (!at.rows.length && typeof atLoad === 'function') atLoad(); if (!at.rows.length) return null;
+    if (A.r !== at.rows) { const m = new Map(), d = new Set(), req = new Map(); at.rows.forEach(r => { d.add(r.date); const k = atKey(r.id) + '|' + r.date, w = atHours(r), q = +r.req || 0; let o = m.get(k); if (!o) m.set(k, o = { w: 0, q: 0, st: '' }); o.w += w; o.q = Math.max(o.q, q); o.st = o.st || r.st || ''; if (q > 0) { const a = req.get(atKey(r.id)) || []; a.push(q); req.set(atKey(r.id), a); } });
+      const typ = new Map(); req.forEach((a, k) => { a.sort((x, y) => x - y); typ.set(k, a[Math.floor(a.length / 2)]); }); A.r = at.rows; A.m = m; A.d = d; A.k = typ; }
+    return A;
+  }
+  function attCheck(r, entered) {
+    const X = attIdx(); if (!r.off || !(entered > 0)) return { st: 'na', txt: r.off ? '' : (entered > 0 ? 'no day-off date' : '') };
+    if (!X) return { st: 'noatt', txt: 'upload attendance' }; const key = atKey(r.file);
+    if (!X.d.has(r.off)) return { st: 'nodate', txt: 'date not in attendance sheet' };
+    const o = X.m.get(key + '|' + r.off), typ = X.k.get(key) || 8, req = o && o.q > 0 ? o.q : typ, work = o ? o.w : 0, exp = Math.max(0, req - work), diff = Math.round((entered - exp) * 100) / 100;
+    return { st: Math.abs(diff) <= (+S.f.tol || 0) ? 'ok' : diff > 0 ? 'over' : 'under', work: Math.round(work * 100) / 100, req, exp: Math.round(exp * 100) / 100, diff, none: !o, att: o ? o.st : '', txt: '' };
+  }
   const apprOk = st => /approv|actual/i.test(st || '');
   function staffRows() {
     const H = hdrBy(), q = S.f.q.toLowerCase();
+    const grp = new Map(); S.D.st.forEach(r => { const off = dt(r.rplcddaydate), t = num(r.takenrplcmnthours); if (!off || !(t > 0)) return; const k = atKey(r.stafffilenr) + '|' + off; grp.set(k, (grp.get(k) || 0) + t); });
     return S.D.st.map(r => { const h = H.get(num(r.headerlink)) || {}, status = h.approvalstatus || '';
       return { id: r.id, date: dt(r.otworkdate), file: String(r.stafffilenr || '').trim(), name: String(r.staffname || '').trim(), title: String(r.staftitle || '').trim(), loc: String(r.whsdesc || h.whsdesc || '').trim(), locId: r.locationid,
         mgr: String(r.stafflinemngr || '').trim() || String(h.username || '').trim(), status, hdr: num(r.headerlink), ot: num(r.othours), taken: num(r.takenrplcmnthours), ver: num(r.approvedtknhrs), off: dt(r.rplcddaydate), offSt: String(r.rplcddaystatus || ''), otType: h.ottype || '' }; })
       .filter(r => (!r.date || (r.date >= S.f.from && r.date <= S.f.to)) && (S.f.status === 'all' || apprOk(r.status) || !r.status) && (!S.f.loc || r.loc === S.f.loc) && (!S.f.mgr || r.mgr === S.f.mgr) && (!q || (r.name + ' ' + r.file).toLowerCase().includes(q)))
       .map(r => Object.assign(r, { pend: Math.max(0, r.taken - r.ver), bal: Math.max(0, r.ot - r.ver) }))
-      .filter(r => !S.f.open || r.bal > 0);
+      .map(r => { const g = r.off ? grp.get(atKey(r.file) + '|' + r.off) : 0; r.entTot = g || r.taken; r.chk = attCheck(r, r.entTot); return r; })
+      .filter(r => !S.f.open || r.bal > 0).filter(r => !S.f.bad || r.chk.st === 'over' || r.chk.st === 'under');
   }
   const agg = (R, key) => { const m = new Map(); R.forEach(r => { const k = key(r); let a = m.get(k); if (!a) m.set(k, a = { k, staff: new Set(), days: 0, ot: 0, taken: 0, ver: 0, pend: 0, bal: 0, rows: [] }); a.staff.add(r.file || r.name); a.days++; a.ot += r.ot; a.taken += r.taken; a.ver += r.ver; a.pend += r.pend; a.bal += r.bal; a.rows.push(r); }); return [...m.values()]; };
   const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
@@ -44,7 +61,9 @@
 
   /* ---------- views ---------- */
   function kpis(R) { const ot = R.reduce((a, r) => a + r.ot, 0), tk = R.reduce((a, r) => a + r.taken, 0), vr = R.reduce((a, r) => a + r.ver, 0), K = (t, v, s) => `<div class="otr-k"><span>${t}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`;
-    return `<div class="otr-kpis">${K('Approved OT hours', h1(ot) || 0, new Set(R.map(r => r.file || r.name)).size + ' staff · ' + R.length + ' OT day(s)')}${K('Given back as day off', h1(tk) || 0, 'claimed by the in-charge')}${K('Verified day-off hours', h1(vr) || 0, h1(Math.max(0, tk - vr)) ? h1(Math.max(0, tk - vr)) + ' h waiting for verification' : 'all verified')}${K('Open balance (to be paid / recovered)', h1(Math.max(0, ot - vr)) || 0)}${K('Recovery rate', pct(vr, ot) + '%', 'verified ÷ approved')}</div>`; }
+    return `<div class="otr-kpis">${K('Approved OT hours', h1(ot) || 0, new Set(R.map(r => r.file || r.name)).size + ' staff · ' + R.length + ' OT day(s)')}${K('Given back as day off', h1(tk) || 0, 'claimed by the in-charge')}${K('Verified day-off hours', h1(vr) || 0, h1(Math.max(0, tk - vr)) ? h1(Math.max(0, tk - vr)) + ' h waiting for verification' : 'all verified')}${K('Open balance (to be paid / recovered)', h1(Math.max(0, ot - vr)) || 0)}${K('Recovery rate', pct(vr, ot) + '%', 'verified ÷ approved')}${attK(R, K)}</div>`; }
+  function attK(R, K) { if (!attIdx()) return K('Attendance check', '—', 'upload the Attendance sheet'); const c = { ok: 0, over: 0, under: 0, other: 0 }; R.forEach(r => { const s = r.chk.st; if (s === 'na') return; if (s in c) c[s]++; else c.other++; }); const n = c.ok + c.over + c.under;
+    return K('Attendance check', n ? pct(c.ok, n) + '% match' : '—', n ? c.ok + ' match · ' + (c.over + c.under) + ' differ' + (c.other ? ' · ' + c.other + ' no data' : '') : (c.other ? c.other + ' with no attendance data' : 'nothing to check')); }
   const TH = '<th class="n">Staff</th><th class="n">OT days</th><th class="n">Approved OT h</th><th class="n">Day off given h</th><th class="n">Verified h</th><th class="n">Waiting verify h</th><th class="n">Open balance h</th><th style="min-width:150px">Recovered</th>';
   const TD = a => `<td class="n">${a.staff.size}</td><td class="n">${a.days}</td><td class="n"><b>${h1(a.ot)}</b></td><td class="n">${h1(a.taken)}</td><td class="n">${h1(a.ver)}</td><td class="n">${h1(a.pend)}</td><td class="n"><b>${h1(a.bal)}</b></td><td>${bar(pct(a.ver, a.ot))}</td>`;
   function byLoc(R) {
@@ -56,10 +75,15 @@
     const L = agg(R, r => (r.file || '') + '|' + r.name).sort((a, b) => b.bal - a.bal || b.ot - a.ot);
     return `<div class="otr-wrap"><table class="otr-t"><thead><tr><th>Staff name</th><th>File no.</th><th>Title</th><th>Location</th><th>In-charge</th><th class="n">OT days</th><th class="n">Approved OT h</th><th class="n">Day off given h</th><th class="n">Verified h</th><th class="n">Waiting verify h</th><th class="n">Open balance h</th><th style="min-width:130px">Recovered</th><th>Last day off</th></tr></thead><tbody>
       ${L.map(a => { const r0 = a.rows[0], last = a.rows.map(r => r.off).filter(Boolean).sort().pop() || ''; return `<tr><td><a href="#" data-staff="${esc(r0.file || r0.name)}"><b>${esc(r0.name)}</b></a></td><td>${esc(r0.file)}</td><td>${esc(r0.title)}</td><td>${esc(r0.loc)}</td><td>${esc(r0.mgr)}</td><td class="n">${a.days}</td><td class="n"><b>${h1(a.ot)}</b></td><td class="n">${h1(a.taken)}</td><td class="n">${h1(a.ver)}</td><td class="n">${h1(a.pend)}</td><td class="n"><b>${h1(a.bal)}</b></td><td>${bar(pct(a.ver, a.ot))}</td><td>${esc(dmy(last))}</td></tr>`; }).join('') || '<tr><td colspan="13" class="otr-hint">Nothing for this selection.</td></tr>'}</tbody></table></div>`; }
+  function chkTd(r) { const c = r.chk, P = (cls, t, tip) => `<span class="otr-p ${cls}" title="${esc(tip || '')}">${t}</span>`;
+    if (c.st === 'na') return `<td class="n"></td><td class="n"></td><td class="n"></td><td>${esc(c.txt)}</td>`;
+    if (c.st === 'noatt' || c.st === 'nodate') return `<td class="n"></td><td class="n"></td><td class="n"></td><td>${P('o', c.st === 'noatt' ? 'No attendance loaded' : 'Date not in sheet', c.txt)}</td>`;
+    const tip = 'Entered ' + h1(r.entTot) + ' h · required ' + h1(c.req) + ' h · worked ' + h1(c.work) + ' h' + (c.none ? ' (no punch record that day)' : '') + (r.entTot !== r.taken ? ' · total of all OT lines for this day off' : ''), d = c.diff;
+    return `<td class="n">${h1(c.work) || '0'}</td><td class="n">${h1(c.exp) || '0'}</td><td class="n"><b>${d > 0 ? '+' : ''}${h1(d) || '0'}</b></td><td>${c.st === 'ok' ? P('g', '✔ Match', tip) : c.st === 'over' ? P('r', '▲ Entered higher', tip) : P('o', '▼ Entered lower', tip)}</td>`; }
   function days(R) {
     const L = R.slice().sort((a, b) => (b.date || '').localeCompare(a.date || '') || a.name.localeCompare(b.name));
-    return `<div class="otr-wrap"><table class="otr-t"><thead><tr><th>OT date</th><th>Staff name</th><th>File no.</th><th>Location</th><th>In-charge</th><th>OT type</th><th>Request status</th><th class="n">Approved OT h</th><th class="n">Day off given h</th><th class="n">Verified h</th><th class="n">Open balance h</th><th>Day off on</th><th>Day-off status</th></tr></thead><tbody>
-      ${L.map(r => `<tr><td>${esc(dmy(r.date))}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.file)}</td><td>${esc(r.loc)}</td><td>${esc(r.mgr)}</td><td>${esc(r.otType)}</td><td>${esc(r.status)}</td><td class="n"><b>${h1(r.ot)}</b></td><td class="n">${h1(r.taken)}</td><td class="n">${h1(r.ver)}</td><td class="n"><b>${h1(r.bal)}</b></td><td>${esc(dmy(r.off))}</td><td>${esc(r.offSt)}</td></tr>`).join('') || '<tr><td colspan="13" class="otr-hint">Nothing for this selection.</td></tr>'}</tbody></table></div>`; }
+    return `<div class="otr-wrap"><table class="otr-t"><thead><tr><th>OT date</th><th>Staff name</th><th>File no.</th><th>Location</th><th>In-charge</th><th>OT type</th><th>Request status</th><th class="n">Approved OT h</th><th class="n">Day off given h</th><th class="n">Verified h</th><th class="n">Open balance h</th><th>Day off on</th><th>Day-off status</th><th class="n" title="Hours the staff worked on the day-off date per the Attendance sheet">Worked h (att.)</th><th class="n" title="Required hours of that day minus hours worked">Expected day off h</th><th class="n">Diff h</th><th>Attendance check</th></tr></thead><tbody>
+      ${L.map(r => `<tr><td>${esc(dmy(r.date))}</td><td><b>${esc(r.name)}</b></td><td>${esc(r.file)}</td><td>${esc(r.loc)}</td><td>${esc(r.mgr)}</td><td>${esc(r.otType)}</td><td>${esc(r.status)}</td><td class="n"><b>${h1(r.ot)}</b></td><td class="n">${h1(r.taken)}</td><td class="n">${h1(r.ver)}</td><td class="n"><b>${h1(r.bal)}</b></td><td>${esc(dmy(r.off))}</td><td>${esc(r.offSt)}</td>${chkTd(r)}</tr>`).join('') || '<tr><td colspan="17" class="otr-hint">Nothing for this selection.</td></tr>'}</tbody></table></div>`; }
   function offLog() {
     const q = S.f.q.toLowerCase(), L = S.D.up.map(u => ({ off: dt(u.rplcddaydate), ot: dt(u.otworkdate), name: String(u.staffname || ''), file: String(u.stafffilenr || ''), loc: String(u.whsdesc || ''), mgr: String(u.stafflinemngr || ''), h: num(u.takenrplcmnthours), vs: String(u.verifyingstatus || ''), vh: num(u.verifiedtknhrs), vby: String(u.varifiedby || u.verifiedby || ''), vat: String(u.verifyingtimestamp || ''), by: String(u.updatedby || ''), st: String(u.rplcddaystatus || ''), rem: String(u.linemngrremarks || ''), vrem: String(u.verifierremarks || '') }))
       .filter(u => { const d = u.off || u.ot; return (!d || (d >= S.f.from && d <= S.f.to)) && (!S.f.loc || u.loc === S.f.loc) && (!S.f.mgr || u.mgr === S.f.mgr) && (!q || (u.name + ' ' + u.file).toLowerCase().includes(q)); }).sort((a, b) => (b.off || b.ot).localeCompare(a.off || a.ot));
@@ -85,12 +109,13 @@
       ${U.fi('Location', `<select data-f="loc"><option value="">All locations</option>${locs.map(l => `<option${l === S.f.loc ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`)}${U.fi('In-charge', `<select data-f="mgr"><option value="">All in-charges</option>${mgrs.map(l => `<option${l === S.f.mgr ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`)}
       ${U.fi('Requests', `<select data-f="status"><option value="appr"${S.f.status === 'appr' ? ' selected' : ''}>Approved OT only</option><option value="all"${S.f.status === 'all' ? ' selected' : ''}>All requests (incl. pending / rejected)</option></select>`)}${U.fi('Staff', `<input type="search" data-f="q" value="${esc(S.f.q)}" placeholder="Name / file no." style="min-width:170px">`)}
       <label class="rp-ck"><input type="checkbox" data-f="open"${S.f.open ? ' checked' : ''}> open balance only</label>
+      <label class="rp-ck" title="Day off given h does not match the Attendance sheet"><input type="checkbox" data-f="bad"${S.f.bad ? ' checked' : ''}> attendance mismatches only</label>${U.fi('Tolerance h', `<input type="number" data-f="tol" min="0" step="0.25" value="${S.f.tol}" style="width:70px">`)}
       <span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-or="m0">This month</button><button class="secondary small" type="button" data-or="m1">Last month</button><button class="secondary small" type="button" data-or="y">This year</button>')}</div>
       ${S.f.mgr || S.f.q ? `<div class="otr-hint">Filtered: ${S.f.mgr ? 'in-charge <b>' + esc(S.f.mgr) + '</b> ' : ''}${S.f.q ? 'staff “' + esc(S.f.q) + '” ' : ''}<a href="#" data-or="clr">✖ clear</a></div>` : ''}
       ${S.loaded ? kpis(R) : ''}
       ${U.tabbar([['loc', '📍 By location & in-charge'], ['staff', '👤 By staff'], ['day', '📅 OT days'], ['off', '🛌 Day-off log'], ['req', '📝 OT requests']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-or', '#otrBody')}
       ${S.loading && !S.loaded ? '<div class="otr-hint">Reading the OT lists…</div>' : !S.loaded ? `<div class="otr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the OT lists.'}</div>` : S.tab === 'loc' ? byLoc(R) : S.tab === 'staff' ? byStaff(R) : S.tab === 'day' ? days(R) : S.tab === 'off' ? offLog() : requests()}
-      <div class="otr-hint" style="margin-top:8px"><b>Approved OT h</b> = OT_Hours of the staff on approved requests · <b>Day off given</b> = Taken_Rplcmnt_Hours entered by the in-charge · <b>Verified</b> = Approved_Tkn_Hrs (checked by the verifier) · <b>Open balance</b> = approved − verified · <b>Recovered</b> = verified ÷ approved.</div>`;
+      <div class="otr-hint" style="margin-top:8px"><b>Approved OT h</b> = OT_Hours of the staff on approved requests · <b>Day off given</b> = Taken_Rplcmnt_Hours entered by the in-charge · <b>Verified</b> = Approved_Tkn_Hrs (checked by the verifier) · <b>Open balance</b> = approved − verified · <b>Recovered</b> = verified ÷ approved. · <b>Attendance check</b> (OT days tab) = on the day-off date, expected day off = required hours − hours worked in the uploaded Attendance sheet (matched by file no. + date); it is compared with the hours entered (within the tolerance). Several OT lines taken on the same day are added together.</div>`;
   }
   function init() {
     const v = Q('#view-otr'); if (!v || v._i) return; v._i = 1;
@@ -98,7 +123,7 @@
       if (t.dataset.t) { S.tab = t.dataset.t; return render(); } if (t.dataset.mgr != null) { S.f.mgr = t.dataset.mgr; S.tab = 'staff'; return render(); } if (t.dataset.staff != null) { S.f.q = t.dataset.staff; S.tab = 'day'; return render(); }
       const a = t.dataset.or, d = new Date(); if (a === 'expand') { const tb = Q('#otrBody table.otr-t'); if (tb && window.tableExpandOpen) tableExpandOpen(tb); return; } if (a === 'print' || a === 'excel' || a === 'mail') { const d = rep(); if (a === 'print') a2Print(d); else if (a === 'excel') a2Export(d); else a2Mail(rep); return; } if (a === 'reload') return load(true); if (a === 'clr') { S.f.mgr = ''; S.f.q = ''; return render(); }
       if (a === 'm0') { S.f.from = ymd(new Date(d.getFullYear(), d.getMonth(), 1)); S.f.to = ymd(d); } else if (a === 'm1') { S.f.from = ymd(new Date(d.getFullYear(), d.getMonth() - 1, 1)); S.f.to = ymd(new Date(d.getFullYear(), d.getMonth(), 0)); } else if (a === 'y') { S.f.from = ymd(new Date(d.getFullYear(), 0, 1)); S.f.to = ymd(d); } render(); });
-    v.addEventListener('change', e => { const el = e.target, k = el.dataset.f; if (!k || k === 'q') return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; if (k === 'loc') S.f.mgr = ''; render(); });
+    v.addEventListener('change', e => { const el = e.target, k = el.dataset.f; if (!k || k === 'q') return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; if (k === 'tol') S.f.tol = Math.max(0, +el.value || 0); if (k === 'loc') S.f.mgr = ''; render(); });
     v.addEventListener('input', e => { const el = e.target; if (el.dataset.f === 'q') { S.f.q = el.value.trim(); clearTimeout(S.tm); S.tm = setTimeout(() => { render(); const i = Q('#otrBody [data-f=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 400); } });
     const css = document.createElement('style'); css.textContent = `#view-otr .tbl-expand-bar,#view-otr .hc-bar,#view-otr .ct-bar,#view-otr .tbl-expand-inline{display:none!important}#view-otr .otr-bar0{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}#view-otr .otr-bar0 select,#view-otr .otr-bar0 input{width:auto;margin:0}#view-otr .otr-ck{display:flex;gap:5px;align-items:center;font-size:13px}#view-otr .otr-ck input{width:auto}
 #view-otr .otr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0}#view-otr .otr-k{border:1px solid var(--border);border-radius:12px;padding:8px 14px}#view-otr .otr-k span{font-size:12px;color:var(--gray-600);display:block}#view-otr .otr-k b{font-size:21px}#view-otr .otr-k small{display:block;font-size:11px;color:var(--gray-600)}
