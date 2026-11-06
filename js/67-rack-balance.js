@@ -135,4 +135,17 @@
     b.title = 'SKU and quantity in every pallet position — Excel / Print / Email'; b.addEventListener('click', plOpen); bar.appendChild(b); }
   setInterval(plBtn, 1500);
   window.plOpen = plOpen;
+  /* the same report from WHs Movements (FEFO) and Stock Movement Entry — reads the racks in the background if the 3D view was not opened yet */
+  let plBusy = false;
+  async function plOpenExt() {
+    if (plBusy) return; if (!window.w3Api) { if (typeof sectionToast === 'function') sectionToast('The 3D module is not loaded.', 'warn'); return; }
+    if (!(w3Api.slots() || []).length) { plBusy = true; if (typeof sectionToast === 'function') sectionToast('⏳ Reading the racks and stock balances…', 'ok');
+      try { w3Api.reload(); } catch (e) {} for (let i = 0; i < 160 && !(w3Api.slots() || []).length; i++) await new Promise(r => setTimeout(r, 500)); plBusy = false; }
+    PL.scope = 'all'; plOpen(); }
+  function plExtBtns() {
+    const mk = () => { const b = document.createElement('button'); b.type = 'button'; b.className = 'secondary small'; b.dataset.plx = '1'; b.textContent = '📋 Position list'; b.title = 'SKU and quantity in every pallet position, balance per SKU & batch, balance per SKU — Excel / Print / Email'; b.addEventListener('click', plOpenExt); return b; };
+    const a = Q('#smvFullBtn'); if (a && a.parentNode && !a.parentNode.querySelector('[data-plx]')) a.parentNode.insertBefore(mk(), a);
+    const w = Q('button[data-a="reload"][title="Re-read balances from SharePoint"]'); if (w && w.parentNode && !w.parentNode.querySelector('[data-plx]')) w.parentNode.insertBefore(mk(), w); }
+  setInterval(plExtBtns, 1500); plExtBtns();
+  window.plOpenExt = plOpenExt;
 })();
