@@ -468,7 +468,7 @@ function wMail_open(src) {
   let m = document.querySelector('#wMailModal');
   if (!m) {
     m = document.createElement('div'); m.id = 'wMailModal';
-    m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100030;align-items:center;justify-content:center;padding:20px;';
+    m.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483400;align-items:center;justify-content:center;padding:20px;';
     m.innerHTML = `<div class="card" style="max-width:640px;width:100%;max-height:92vh;overflow:auto;margin:0;">
       <div class="card-header"><div class="card-title" id="wMailTitle">📧 Share by email</div><button id="wMailClose" class="ghost small" type="button">✖ Close</button></div>
       <div class="form-grid">
