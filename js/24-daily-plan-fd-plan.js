@@ -150,7 +150,7 @@ document.querySelectorAll('.nav-item[data-view="dailyplan"],.nav-item[data-view=
 const FD_STATUS = ['Planned', 'Picking', 'Picked', 'Loaded', 'Dispatched'];
 const FD_DEF = { capP12: 41, capP6: 24, minUtil: 70, minShelf: 7, shelf: 0, balance: false };
 const fdKey = d => LS_BASE + '_fd_' + d;
-function fdStLoad(d) { let o = {}; try { o = JSON.parse(localStorage.getItem(fdKey(d)) || '{}'); } catch (e) {} return { cfg: Object.assign({}, FD_DEF, o.cfg || {}), batch: o.batch || {}, bl: o.bl || {}, line: o.line || {}, status: o.status || {}, meta: o.meta || {}, act: o.act || {}, actNote: o.actNote || {}, bal: o.bal || {} }; }
+function fdStLoad(d) { let o = {}; try { o = JSON.parse(localStorage.getItem(fdKey(d)) || '{}'); } catch (e) {} return { cfg: Object.assign({}, FD_DEF, o.cfg || {}), batch: o.batch || {}, bl: o.bl || {}, line: o.line || {}, status: o.status || {}, meta: o.meta || {}, act: o.act || {}, actNote: o.actNote || {}, bal: o.bal || {}, xr: o.xr || {} }; }
 function fdStSave(d, st) { try { localStorage.setItem(fdKey(d), JSON.stringify(st)); } catch (e) {} }
 const fdDayMs = d => Date.parse(d + 'T00:00:00Z');
 
@@ -186,7 +186,11 @@ function fdTrips(s, cfg, act) {
   }));
   return out;
 }
+/* an item added from the Inventory List that is not in the uploaded plan: a row with zero demand, details from the list */
+function fdXrRow(s, x) { const z = () => new Array(s.locs.length + 3).fill(0), v = { dem: {}, crt: {}, pal: {} }; s.days.forEach(d => { v.dem[d] = z(); v.crt[d] = z(); v.pal[d] = z(); });
+  return { code: x.code, item: x.item || '', brand: '', category: '', uom: x.uom || '', prodIn: '', palletType: '', pcsCrt: +x.pc || 0, crtPallet: +x.cp || 0, unitPallet: +x.upp || ((+x.pc || 0) * (+x.cp || 0)) || 0, ltrConv: +x.ltr || 0, v, inv: true }; }
 function fdModel(s) {
+  { const xr = fdStLoad(s.planDate).xr || {}, have = new Set(s.rows.map(o => o.code)), add = Object.values(xr).filter(x => x && x.code && !have.has(x.code)); if (add.length) s = Object.assign({}, s, { rows: s.rows.concat(add.map(x => fdXrRow(s, x))) }); }
   const st = fdStLoad(s.planDate), trips = fdTrips(s, st.cfg, st.act), m = { snap: s, st, trips, byId: new Map(trips.map(t => [t.id, t])), rowBy: new Map(s.rows.map(o => [o.code, o])) };
   Object.defineProperty(st, '_m', { value: m, enumerable: false, writable: true }); m.alloc = fdAlloc(m); return m;
 }
