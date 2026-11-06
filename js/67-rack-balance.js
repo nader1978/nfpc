@@ -34,7 +34,7 @@
   const css = document.createElement('style'); css.textContent = `
 .rbal{font-size:11.5px;line-height:1.35;margin-top:4px;padding:4px 7px;border-radius:7px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;max-width:340px;white-space:normal}
 .rbal.w{background:#fffbeb;color:#92400e;border-color:#fde68a}.rbal.r{background:#fef2f2;color:#991b1b;border-color:#fecaca}.rbal b{font-weight:700}
-#plBox{position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+#plBox{position:fixed;inset:0;z-index:2147482800;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px}
 #plBox .pl-c{background:var(--card,#fff);color:var(--text,#111827);border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.3);width:min(1200px,100%);height:88vh;min-width:560px;min-height:300px;max-width:99vw;max-height:98vh;resize:both;display:flex;flex-direction:column;overflow:hidden}#plBox .pl-b{flex:1;min-height:0}#plBox .pl-f{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:0 14px 8px;border-bottom:1px solid var(--border,#e5e7eb)}#plBox .pl-f input,#plBox .pl-f select{width:auto;margin:0;min-width:120px}#plBox .pl-f .pl-t{font-size:11.5px;color:var(--gray-600,#4b5563)}#plBox tbody tr[data-sku]:hover td{background:rgba(30,58,138,.07)}
 #plBox .pl-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--border,#e5e7eb)}
 #plBox .pl-h h3{margin:0 auto 0 0;font-size:16px}#plBox .pl-h input[type=search]{width:220px;margin:0}#plBox .pl-h select{width:auto;margin:0}

@@ -391,7 +391,7 @@ const VIEW_META = {
 function activeViewId() { const v = document.querySelector('.view.active'); return v ? v.id.replace(/^view-/, '') : ''; }
 function sectionToast(msg, type) {
   let t = document.querySelector('#sectionToast');
-  if (!t) { t = document.createElement('div'); t.id = 'sectionToast'; t.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:100002;padding:10px 14px;border-radius:8px;background:#1e293b;color:#fff;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:380px;'; document.body.appendChild(t); }
+  if (!t) { t = document.createElement('div'); t.id = 'sectionToast'; t.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483100;padding:10px 14px;border-radius:8px;background:#1e293b;color:#fff;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:380px;'; document.body.appendChild(t); }
   t.textContent = msg; t.style.background = type === 'warn' ? '#b45309' : type === 'error' ? '#b91c1c' : '#166534'; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 4000);
 }

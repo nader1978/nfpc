@@ -127,6 +127,8 @@
     if (a === 'stop') { stopReq = true; if (paused) { const r = paused.r; paused = null; r(); } J.log.push({ c: '#fca5a5', t: '■ stopped by the user — the rest is not saved', bad: true }); return draw(); } }
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && el && J && J.fin) close(); });
 
+  /* the progress window, the confirmation dialog and the toast messages always stay in front of every pop-up / report window of the application */
+  { const zf = document.createElement('style'); zf.textContent = '#opBack,#opAsk,#sectionToast{z-index:2147483600 !important}#opAsk{z-index:2147483640 !important}'; document.head.appendChild(zf); }
   /* ---------- confirm before writing (only for work the user started; asked once per action) ---------- */
   let asking = null, okAt = 0, noAt = 0;
   const cssC = document.createElement('style'); cssC.textContent = `#opAsk{position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;animation:opIn .12s ease-out}
