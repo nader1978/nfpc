@@ -27,7 +27,7 @@
     /* same note with a link on every SKU · UoM that has no value in the UOM list → opens the UOM editor */
     noteHtml() { const s = U.last, e = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); if (!s) return ''; if (s.skipped) return e(U.note());
       const L = [...s.unkL.values()].sort((a, b) => b.n - a.n), more = L.length > 6;
-      return e('UoM → PC: ' + s.conv.toLocaleString() + ' row(s) converted' + (s.mixed.size ? ' · ' + s.mixed.size + ' SKU(s) had mixed units' : '')) + (L.length ? ' · ⚠ no UOM value for: ' + L.slice(0, 6).map(o => `<a href="#" data-uomed="${e(o.sku)}" data-uomu="${e(o.uom)}" title="${e(o.dt)} — open the UOM values to add or change ${e(o.uom)}" style="font-weight:700;text-decoration:underline">${e(o.sku)}${o.dt ? ' ' + e(o.dt.slice(0, 26)) : ''} · ${e(o.uom)}</a> (${o.n})`).join(', ') + (more ? ` <a href="#" data-uomed="" style="font-weight:700;text-decoration:underline">+${L.length - 6} more…</a>` : '') : ''); }
+      return e('UoM → PC: ' + s.conv.toLocaleString() + ' row(s) converted' + (s.mixed.size ? ' · ' + s.mixed.size + ' SKU(s) had mixed units' : '')) + (L.length ? ' · ⚠ no UOM value for: ' + L.slice(0, 6).map(o => `<a href="#" data-uomed="${e(o.sku)}" data-uomu="${e(o.uom)}" title="${e(o.dt)} — open the UOM values to add or change ${e(o.uom)}" style="font-weight:700;text-decoration:underline">${e(o.sku)} · ${e(o.uom)}</a> (${o.n})`).join(', ') + (more ? ` <a href="#" data-uomed="" style="font-weight:700;text-decoration:underline">+${L.length - 6} more…</a>` : '') : ''); }
   };
 })();
 
