@@ -69,9 +69,9 @@ $('loginForm').addEventListener('submit', async (e) => {
     }
     if (!viaSP) {
       user = findUser(username);
-      if (!user) { errEl.textContent = spOn ? 'SharePoint could not be reached — only administrators can sign in offline.' : 'Invalid username or password.'; errEl.classList.add('visible'); return; }
+      if (!user) { errEl.textContent = spOn ? 'SharePoint could not be reached — only administrators can sign in offline.' : 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (unknown user)'); } catch (e) {} return; }
       const hash = await hashPassword(password, user.salt);
-      if (hash !== user.hash) { errEl.textContent = 'Invalid username or password.'; errEl.classList.add('visible'); return; }
+      if (hash !== user.hash) { errEl.textContent = 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (wrong password)'); } catch (e) {} return; }
       if (spOn && !(user.builtin || (lc.adm && user.role === 'admin'))) { errEl.textContent = 'SharePoint (' + lc.list + ') could not be reached — only administrators can sign in while it is offline. Try again in a moment.'; errEl.classList.add('visible'); return; }
     }
     if (user.mustChangePassword && !viaSP) {

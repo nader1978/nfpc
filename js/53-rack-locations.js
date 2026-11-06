@@ -29,3 +29,15 @@ const srkFind = code => SRK.map.get(String(code || '').trim().toUpperCase()) || 
 function srkDatalist(id) { return '<datalist id="' + id + '">' + SRK.rows.map(r => '<option value="' + escapeHtml(r.code) + '" label="' + escapeHtml([r.loc, r.area, r.cap ? 'cap ' + r.cap : ''].filter(Boolean).join(' · ')) + '">' + escapeHtml([r.loc, r.area].filter(Boolean).join(' · ')) + '</option>').join('') + '</datalist>'; }
 const srkDesc = code => { const r = srkFind(code); return r ? [r.loc, r.area, r.whs].filter(Boolean).join(' · ') : ''; };
 function srkNote() { const ids = (typeof locIds === 'function' && currentUser) ? locIds(currentUser) : []; return SRK.ok ? '📍 ' + SRK.rows.length + ' racks of ' + (ids.length ? 'Location ID ' + ids.join(', ') : 'all locations') + ' — from ' + SRK_LIST + (SRK.hidden ? ' (' + SRK.hidden + ' racks of other locations / without Location ID are hidden)' : '') : '⚠ rack list not available (' + (SRK.err || 'not loaded') + ') — location codes are not checked'; }
+
+/* ---- PLK: a pallet position that already holds stock is closed for new receipts / relocations (no over-stacking) ---- */
+window.PLK = (function () {
+  const H = () => window.WMVX && WMVX.S && WMVX.S.hist, key = (lc, p) => String(lc || '').trim().toUpperCase() + '#' + (Math.round(Number(p)) || 0);
+  const ready = () => !!H();
+  const filled = (lc, p) => { const h = H(); if (!h || !(Math.round(Number(p)) > 0)) return false; const k = key(lc, p); return (h.pocc.get(k) || 0) > 0.5 || (h.pfill && h.pfill.has(k)); };
+  const rackFull = r => { const cap = r ? Math.round(Number(r.cap)) || 0 : 0; if (!H() || !(cap > 0) || cap > 60) return false; for (let p = 1; p <= cap; p++) if (!filled(r.code, p)) return false; return true; };
+  const freeCount = r => { const cap = r ? Math.round(Number(r.cap)) || 0 : 0; if (!H() || !(cap > 0) || cap > 60) return -1; let n = 0; for (let p = 1; p <= cap; p++) if (!filled(r.code, p)) n++; return n; };
+  const datalist = (id, hideFull) => '<datalist id="' + id + '">' + SRK.rows.filter(r => !(hideFull && rackFull(r))).map(r => { const fc = hideFull ? freeCount(r) : -1; return '<option value="' + escapeHtml(r.code) + '" label="' + escapeHtml([r.loc, r.area, r.cap ? 'cap ' + r.cap : '', fc >= 0 ? fc + ' free' : ''].filter(Boolean).join(' · ')) + '">' + escapeHtml([r.loc, r.area].filter(Boolean).join(' · ')) + '</option>'; }).join('') + '</datalist>';
+  const why = (lc, p) => String(lc || '').toUpperCase() + ' P' + p + ' already holds stock — choose an empty position';
+  return { filled, rackFull, freeCount, datalist, why, ready };
+})();
