@@ -42,7 +42,24 @@
 #plBox .pl-b{overflow:auto;padding:0 14px 14px}#plBox table{width:100%;border-collapse:collapse;font-size:12.5px}
 #plBox th{position:sticky;top:0;background:var(--gray-50,#f8fafc);text-align:left;padding:6px;border-bottom:1px solid var(--border,#e5e7eb);white-space:nowrap}
 #plBox td{padding:5px 6px;border-top:1px solid var(--border,#eef0f3);vertical-align:top}#plBox td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-#plBox tr.e td{color:var(--gray-500,#9ca3af)}#plBox tr.x td.ex{color:#b91c1c;font-weight:700}#plBox tr.g td{background:rgba(30,58,138,.06);font-weight:700}`;
+#plBox tr.e td{color:var(--gray-500,#9ca3af)}#plBox tr.x td.ex{color:#b91c1c;font-weight:700}#plBox tr.g td{background:rgba(30,58,138,.06);font-weight:700}
+#plBox .pl-ft{display:none}
+@media (max-width:760px){
+#plBox{padding:0;align-items:stretch}
+#plBox .pl-c{width:100vw;max-width:100vw;min-width:0;height:100vh;height:100dvh;max-height:100dvh;border-radius:0;resize:none}
+#plBox .mdl-ctlw,#plBox .mdl-ctl{display:none !important}
+#plBox .pl-h{padding:8px 10px;gap:6px}#plBox .pl-h h3{flex:1 1 100%;font-size:15px;margin:0}
+#plBox .pl-h select,#plBox .pl-h input[type=search]{flex:1 1 46%;width:auto;min-width:0;font-size:14px;padding:7px 8px;height:auto}
+#plBox .pl-h button{flex:1 1 auto;padding:8px 6px;font-size:13px;min-height:36px}
+#plBox .pl-ft{display:inline-block}
+#plBox .pl-f{display:none;padding:6px 10px 8px;gap:6px}#plBox.fo .pl-f{display:flex}
+#plBox .pl-f input,#plBox .pl-f select{flex:1 1 46%;min-width:0;font-size:14px;padding:7px 8px}#plBox .pl-f .pl-t{flex:1 1 100%}
+#plBox .pl-k{padding:6px 10px;gap:4px 12px;font-size:12px}#plBox .pl-k b{font-size:13px}
+#plBox .pl-b{padding:0 6px 10px}#plBox table{font-size:12px}#plBox th,#plBox td{padding:6px 5px}
+#plBox th{white-space:normal;line-height:1.15}#plBox table.pl-pos td:nth-child(11){white-space:nowrap}
+#plBox table.pl-pos :is(th,td):is(:nth-child(1),:nth-child(2),:nth-child(3),:nth-child(4),:nth-child(5),:nth-child(10),:nth-child(14)){display:none}
+#plBox table.pl-pos tfoot td{display:table-cell}
+}`;
   document.head.appendChild(css);
 
   function hintFor(inp) {
@@ -102,7 +119,7 @@
     return { title: 'Pallet positions — SKU & quantity', sheet: 'Pallet positions', note: scope + ' · ' + occ.size + ' occupied position(s)' + (PL.q ? ' · search "' + PL.q + '"' : '') + plFlt() + ' · ' + new Date().toLocaleString(),
       headers: HDR, rows: R.map(x => x.r), totals: ['Total', '', '', '', '', occ.size + ' occupied', '', '', '', '', '', Math.round(tq * 100) / 100, Math.round(tp * 100) / 100, ''], _R: R, scope, tq, tp, occ: occ.size }; }
   function plDraw() {
-    const box = Q('#plBox'); if (!box) return; const d = plData();
+    const box = Q('#plBox'); if (!box) return; const d = plData(); const tb = box.querySelector('table'); if (tb) tb.className = 'pl-' + PL.rep;
     const th = box.querySelector('thead tr'); if (th) th.innerHTML = (d.headers || HDR).map(h => '<th>' + h + '</th>').join('');
     if (d._S) { const H = d.headers, di = H.indexOf('Days left'), ni = d.qi, nums = new Set([ni, ni + 1, ni + 2, di, H.indexOf('Batches')].filter(i => i >= 0));
       box.querySelector('.pl-k').innerHTML = `<span>Scope <b>${esc(d.scope || '—')}</b></span><span>${PL.rep === 'sku' ? 'SKUs' : 'SKU / batch lines'} <b>${fmt(d.n)}</b></span><span>Quantity <b>${fmt(d.tq)}</b></span><span>Pallets <b>${fmt(d.tp)}</b></span><span>Occupied positions <b>${fmt(d.occ)}</b></span>`;
@@ -132,7 +149,7 @@
       <input type="search" data-pl="q" placeholder="🔍 Position, SKU, batch…" value="${esc(PL.q)}">
       <select data-pl="only" data-nosearch="1"><option value="all">All positions</option><option value="occ">Occupied only</option><option value="empty">Empty only</option></select>
       <select data-pl="scope" data-nosearch="1"><option value="view">As filtered on the 3D</option><option value="all">All my warehouses</option></select>
-      <button class="secondary small" type="button" data-pl="xl">📊 Excel</button><button class="secondary small" type="button" data-pl="pr">🖨 Print</button><button class="secondary small" type="button" data-pl="ml">✉ Email</button><button class="ghost small" type="button" data-pl="x">✕ Close</button></div>
+      <button class="secondary small pl-ft" type="button" data-pl="ft">🔎 Filters</button><button class="secondary small" type="button" data-pl="xl">📊 Excel</button><button class="secondary small" type="button" data-pl="pr">🖨 Print</button><button class="secondary small" type="button" data-pl="ml">✉ Email</button><button class="ghost small" type="button" data-pl="x">✕ Close</button></div>
       <div class="pl-f"><span class="pl-t">Filter</span><select data-pl="fz" data-nosearch="1" title="Warehouse"><option value="">All warehouses</option>${[...new Set((w3Api.slots() || []).map(x => x.zone))].sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })).map(z => `<option value="${esc(z)}">${esc(z)}</option>`).join('')}</select>
         <input data-pl="fs" list="plSkuDl" placeholder="SKU / description" value="${esc(PL.fs)}"><datalist id="plSkuDl">${[...new Set((w3Api.slots() || []).flatMap(x => (x.lines || []).map(l => l.sku)))].sort().map(k => `<option value="${esc(k)}">`).join('')}</datalist>
         <input data-pl="fb" placeholder="Batch" value="${esc(PL.fb)}" style="min-width:100px"><input data-pl="fr" placeholder="Rack / position code" value="${esc(PL.fr)}">
@@ -140,8 +157,8 @@
       <div class="pl-k"></div><div class="pl-b"><table><thead><tr>${HDR.map(h => '<th>' + h + '</th>').join('')}</tr></thead><tbody></tbody><tfoot></tfoot></table></div></div>`;
     document.body.appendChild(box); box.querySelector('[data-pl="rep"]').value = PL.rep; box.querySelector('[data-pl="rep"]').dispatchEvent(new Event('change', { bubbles: true })); box.querySelector('[data-pl="only"]').value = PL.only; box.querySelector('[data-pl="scope"]').value = PL.scope; box.querySelector('[data-pl="fz"]').value = PL.fz; plUp(); plDraw();
     box.addEventListener('click', e => { if (e.target === box) return box.remove(); const b = e.target.closest('button[data-pl]'); if (!b) return; const a = b.dataset.pl, d = () => { const x = plData(); delete x._R; return x; };
-      if (a === 'up') plGo(plPop()); else if (a === 'clr') { PL.fz = PL.fs = PL.fb = PL.fr = PL.q = ''; PL.stack = []; plSync(); plDraw(); } else if (a === 'x') box.remove(); else if (a === 'xl') a2Export(d()); else if (a === 'pr') a2Print(d()); else if (a === 'ml') a2Mail(d); });
-    box.addEventListener('dblclick', e => { const tr = e.target.closest('tbody tr[data-sku]'); if (tr) { window.getSelection && window.getSelection().removeAllRanges(); plDrill(tr); } });
+      if (a === 'ft') box.classList.toggle('fo'); else if (a === 'up') plGo(plPop()); else if (a === 'clr') { PL.fz = PL.fs = PL.fb = PL.fr = PL.q = ''; PL.stack = []; plSync(); plDraw(); } else if (a === 'x') box.remove(); else if (a === 'xl') a2Export(d()); else if (a === 'pr') a2Print(d()); else if (a === 'ml') a2Mail(d); });
+    let tapT = 0, tapR = null; box.addEventListener('click', e => { const tr = e.target.closest('tbody tr[data-sku]'); if (!tr) return; const n = Date.now(); if (tapR === tr && n - tapT < 450) { tapR = null; try { window.getSelection().removeAllRanges(); } catch (x) {} plDrill(tr); } else { tapR = tr; tapT = n; } });   /* double click / double tap */
     box.addEventListener('input', e => { const k = e.target.dataset.pl; if (k === 'q' || k === 'fs' || k === 'fb' || k === 'fr') { PL[k] = e.target.value; plDraw(); } });
     box.addEventListener('change', e => { const k = e.target.dataset.pl; if (k === 'fz') { PL.fz = e.target.value; return plDraw(); } if (k === 'only' || k === 'scope' || k === 'rep') { PL[k] = e.target.value; if (k === 'rep') { const t = box.querySelector('[data-pl="ttl"]'); if (t) t.textContent = { pos: 'Pallet positions — SKU & quantity', batch: 'Stock balance per SKU & batch', sku: 'Stock balance per SKU' }[PL.rep]; const o = box.querySelector('[data-pl="only"]'); if (o) o.disabled = PL.rep !== 'pos'; } plDraw(); } });
   }
