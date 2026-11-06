@@ -467,12 +467,13 @@ function wUom_mapKey() { return LS_BASE + '_wuom_map_' + wUomState.listName; }
 function wUom_saveMap() { if (wUomState.source !== 'list' || !wUomState.listName) return; try { localStorage.setItem(wUom_mapKey(), JSON.stringify({ layout: wUomState.layout, palletMode: wUomState.palletMode, map: wUomState.map, cartonPref: $('wUomCartonPref').value })); } catch (e) {} }
 function wUom_rebuild() {
   const m = wUomState.map, t = new Map(), long = wUomState.layout === 'long'; let dup = 0;
+  const dcol = (wUomState.headers || []).find(h => /^uom[_ ]?desc/i.test(String(h)) || /^uom[_ ]?desc/i.test(String((wUomState.labels || {})[h] || ''))) || '';   /* the UoM description column (PC / OT / PLT) is preferred over a numeric UOM code column */
   const setF = (e, u, f) => { if (e.factors.has(u) && e.factors.get(u) !== f) dup++; e.factors.set(u, f); };
   for (const r of wUomState.rows) {
     const sku = wUomNorm(r[m.sku]); if (!sku) continue;
     let e = t.get(sku); if (!e) { e = { factors: new Map(), labels: new Map(), carton: null, pallet: null, cartonUom: '', desc: '' }; t.set(sku, e); }
     if (m.desc && !e.desc) { const dv = String(r[m.desc] ?? '').trim(); if (dv) e.desc = dv; }
-    if (long) { const isN = v => /^[\d.,\s]+$/.test(String(v ?? '').trim()), c1 = m.text ? String(r[m.text] ?? '').trim() : '', c2 = m.uom ? String(r[m.uom] ?? '').trim() : '', tx = (c1 && !isN(c1)) ? c1 : ((c2 && !isN(c2)) ? c2 : ''), u = wUomCanon(tx || c1 || c2), f = u_toNumber(r[m.factor]); if (u && f > 0) { setF(e, u, f); if (tx) e.labels.set(u, tx); } }
+    if (long) { const isN = v => /^[\d.,\s]+$/.test(String(v ?? '').trim()), c1 = m.text ? String(r[m.text] ?? '').trim() : '', c2 = m.uom ? String(r[m.uom] ?? '').trim() : '', c3 = dcol ? String(r[dcol] ?? '').trim() : '', tx = (c3 && !isN(c3)) ? c3 : (c1 && !isN(c1)) ? c1 : ((c2 && !isN(c2)) ? c2 : ''), u = wUomCanon(tx || c1 || c2), f = u_toNumber(r[m.factor]); if (u && f > 0) { setF(e, u, f); if (tx) e.labels.set(u, tx); } }
     else {
       const c = m.carton ? u_toNumber(r[m.carton]) : null, p = m.pallet ? u_toNumber(r[m.pallet]) : null;
       if (c > 0) setF(e, 'ct', c);
