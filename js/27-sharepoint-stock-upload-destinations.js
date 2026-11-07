@@ -281,7 +281,7 @@ async function utPush(id, rows, keyFn, onProg) {   // rows: array of objects key
   const active = Object.entries(cfg.map).filter(([, v]) => v && v !== SKIP_VALUE); if (!active.length) throw new Error('The upload destination has no field mapping — an administrator must map the fields in Upload Destinations.');
   if (!token || !site) throw new Error('Configure the Site URL and sign-in first.'); const { siteId, listId } = await resolveIds(site, cfg.list, token); let ok = 0, fail = 0, done = 0, next = 0; const errors = [];
   const worker = async () => { while (next < rows.length) { const r = rows[next++], fields = {}; active.forEach(([k, col]) => { if (k === CURRENT_USER_FIELD_KEY) { fields[col] = getCurrentUserValue(); return; } if (k === LOC_FIELD_KEY) { const lv = locOne(); if (lv) fields[col] = lv; return; } const v = r[k]; if (v === '' || v == null) return; fields[col] = v; });
-    if (!Object.keys(fields).length) fail++; else { try { await createItem(siteId, listId, fields, token); ok++; } catch (err) { fail++; if (errors.length < 5) errors.push(`${keyFn ? keyFn(r) : ''}: ${err.message}`); } } done++; if (onProg) onProg(done, rows.length); } };
+    if (!Object.keys(fields).length) fail++; else { try { await createItem(siteId, listId, fields, token); ok++; } catch (err) { fail++; if (errors.length < 30) errors.push(`${keyFn ? keyFn(r) : ''}: ${err.message}`); } } done++; if (onProg) onProg(done, rows.length); } };
   await Promise.all(Array.from({ length: 4 }, worker)); return { ok, fail, errors, list: cfg.list };
 }
 
