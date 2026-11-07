@@ -24,7 +24,9 @@
   /* each window is its own section ("md-inv", "md-emp" …) so the administrator can give every window to different users */
   const canOpen = k => typeof acLevel === 'function' ? acLevel('md-' + k) !== 'none' : true;
   const canEdit = k => typeof acLevel === 'function' ? acLevel('md-' + k) === 'full' : true;
-  const hk = e => LS_BASE + '_mdhide_' + uname() + '_' + e.k, lk = e => LS_BASE + '_mdlist_' + e.k;
+  const hk = e => LS_BASE + '_mdhide_' + uname() + '_' + e.k, lk = e => LS_BASE + '_mdlist_' + e.k, ordk = e => LS_BASE + '_mdord_' + uname() + '_' + e.k;
+  /* the columns in the order this user arranged them (saved per user and per window); new columns stay at the end */
+  const ordered = W => { const o = rd(ordk(W.e), []), ix = n => { const i = o.indexOf(n); return i < 0 ? 1e6 + W.cols.findIndex(c => c.name === n) : i; }; return W.cols.slice().sort((a, b) => ix(a.name) - ix(b.name)); };
   const rd = (k, d) => { try { const j = JSON.parse(localStorage.getItem(k) || 'null'); return j == null ? d : j; } catch (x) { return d; } };
   const wr = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (x) {} };
   const listOf = e => rd(lk(e), null) || e.list;
@@ -71,7 +73,7 @@
     document.body.appendChild(ov); win(ov, 1100, 720); W.ov = ov; const R = n => ov.querySelector('[data-r="' + n + '"]');
     const say = (t, w) => { R('msg').textContent = t; R('msg').style.color = w ? '#b45309' : ''; };
     const hidden = () => new Set(rd(hk(e), []));
-    const vis = () => { const h = hidden(); return W.cols.filter(c => c.req || !h.has(c.name)); };
+    const vis = () => { const h = hidden(); return ordered(W).filter(c => c.req || !h.has(c.name)); };
     W.vis = vis; W.say = say;
     async function load(force) {
       say('Reading ' + listOf(e) + '…'); try { const S = await schema(e, force); W.S = S; W.cols = S.cols; const it = await fetchAllItems(S.ids.siteId, S.ids.listId, S.token, n => say('Reading ' + listOf(e) + '… ' + n)); W.items = it.map(x => ({ id: x.id, f: x.fields || {} })); draw(); }
@@ -100,10 +102,13 @@
   /* ---------- show / hide fields (remembered per user) ---------- */
   function fieldsPanel(W, after) {
     const e = W.e, h = new Set(rd(hk(e), [])), p = document.createElement('div'); p.className = 'md-ov'; p.dataset.nohc = '1'; p.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.35);display:flex;align-items:center;justify-content:center'; p.style.setProperty('z-index', 2147483300, 'important');
-    p.innerHTML = `<div class="md-box"><div class="md-hd">${brand()}<span class="md-sep"></span><b>Show or hide fields</b><i></i><button class="md-hb" data-a="x">Done</button></div><div style="padding:12px 16px;overflow:auto"><div class="md-sub" style="color:#64748b;margin-bottom:8px">Saved for you (${esc(uname() || 'this user')}) on this browser. Required fields cannot be hidden.</div>
-      ${W.cols.map(c => `<label class="md-ck"><input type="checkbox" data-n="${esc(c.name)}"${c.req ? ' disabled checked' : !h.has(c.name) ? ' checked' : ''}> ${esc(c.label)}${c.req ? ' <small>required</small>' : ''}</label>`).join('')}<div style="margin-top:10px"><button class="md-b" data-a="all">Show all</button></div></div></div>`;
+    p.innerHTML = `<div class="md-box"><div class="md-hd">${brand()}<span class="md-sep"></span><b>Show, hide and arrange fields</b><i></i><button class="md-hb" data-a="x">Done</button></div><div style="padding:12px 16px;overflow:auto"><div class="md-sub" style="color:#64748b;margin-bottom:8px">Saved for you (${esc(uname() || 'this user')}) on this browser. Tick to show, use ▲ ▼ to change the order. Required fields cannot be hidden.</div>
+      ${ordered(W).map(c => `<label class="md-ck" data-nm="${esc(c.name)}"><input type="checkbox" data-n="${esc(c.name)}"${c.req ? ' disabled checked' : !h.has(c.name) ? ' checked' : ''}> <span style="flex:1">${esc(c.label)}${c.req ? ' <small>required</small>' : ''}</span><span class="md-mv"><button type="button" data-mv="-1" title="Move up">▲</button><button type="button" data-mv="1" title="Move down">▼</button></span></label>`).join('')}<div style="margin-top:10px;display:flex;gap:8px"><button class="md-b" data-a="all">Show all</button><button class="md-b" data-a="rord">Reset order</button></div></div></div>`;
     document.body.appendChild(p); win(p, 440, 560); const save = () => { const hid = [...p.querySelectorAll('input[data-n]')].filter(i => !i.checked && !i.disabled).map(i => i.dataset.n); wr(hk(e), hid); W.draw(); if (after) after(); };
-    p.addEventListener('change', save); p.addEventListener('click', ev => { const a = ev.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'x') p.remove(); else { p.querySelectorAll('input[data-n]').forEach(i => { i.checked = true; }); save(); } });
+    const saveOrd = () => { wr(ordk(e), [...p.querySelectorAll('label[data-nm]')].map(l => l.dataset.nm)); W.draw(); if (after) after(); };
+    p.addEventListener('change', save);
+    p.addEventListener('click', ev => { const mv = ev.target.closest('[data-mv]'); if (mv) { const l = mv.closest('label'), up = mv.dataset.mv === '-1', o = up ? l.previousElementSibling : l.nextElementSibling; if (o && o.matches('label[data-nm]')) { if (up) l.parentNode.insertBefore(l, o); else l.parentNode.insertBefore(o, l); saveOrd(); } return; }
+      const a = ev.target.closest('[data-a]'); if (!a) return; if (a.dataset.a === 'x') p.remove(); else if (a.dataset.a === 'rord') { try { localStorage.removeItem(ordk(e)); } catch (x) {} p.remove(); W.draw(); if (after) after(); } else { p.querySelectorAll('input[data-n]').forEach(i => { i.checked = true; }); save(); } });
   }
 
   /* ---------- add / edit dialog ---------- */
@@ -111,20 +116,31 @@
     const e = W.e, isNew = !rec, ro = !canEdit(W.e.k), V = W.vis(), sc = stCol(W.cols), f = rec ? rec.f : Object.assign({}, W.prefill || {}, pre || {}), z = 2147483000 + zc * 4;
     const d = document.createElement('div'); d.className = 'md-ov'; d.dataset.nohc = '1'; d.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:18px'; d.style.setProperty('z-index', z, 'important');
     const val = (c, v) => c.type === 'date' ? (v ? String(v).slice(0, 10) : '') : v == null ? '' : v;
-    const inp = c => { const v = val(c, f[c.name]), n = esc(c.name), dis = ro ? ' disabled' : '';
+    /* every text / number field offers the values already used in the same column (most used first) — pick one or type a new value */
+    const hist = c => { if (ro || c.uniq || ['choice', 'bool', 'long', 'date'].includes(c.type)) return []; const m = new Map(); W.items.forEach(r => { const x = r.f[c.name]; if (x == null || x === '' || typeof x === 'object') return; const t = String(x); m.set(t, (m.get(t) || 0) + 1); });
+      return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], undefined, { numeric: true })).slice(0, 400).map(x => x[0]); };
+    const inp = c => { const v = val(c, f[c.name]), n = esc(c.name), dis = ro ? ' disabled' : '', H = hist(c), lid = 'mdl' + zc + '_' + c.name.replace(/\W/g, '_');
       if (c.type === 'choice') return `<select data-f="${n}"${dis}><option value=""></option>${(c.choices || []).concat(v && !(c.choices || []).includes(v) ? [v] : []).map(o => `<option${o === v ? ' selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
       if (c.type === 'bool') return `<select data-f="${n}"${dis}><option value=""></option><option value="1"${v === true ? ' selected' : ''}>Yes</option><option value="0"${v === false ? ' selected' : ''}>No</option></select>`;
       if (c.type === 'long') return `<textarea data-f="${n}" rows="3"${dis}>${esc(v)}</textarea>`;
-      return `<input data-f="${n}" type="${c.type === 'number' ? 'number' : c.type === 'date' ? 'date' : 'text'}"${c.type === 'number' ? ' step="any"' : ''}${c.max ? ' maxlength="' + c.max + '"' : ''} value="${esc(v)}"${dis}>`; };
-    const sec = (t, L) => L.length ? `<div class="md-sec"><div class="md-sh"><span>${t}</span><span>${L.length} field(s)</span></div><div class="md-sb">${L.map(c => `<div${c.type === 'long' ? ' style="grid-column:1/-1"' : ''}><label>${esc(c.label)}${c.req ? ' <b style="color:#b91c1c">*</b>' : ''}</label>${inp(c)}</div>`).join('')}</div></div>` : '';
+      return `<input data-f="${n}" type="${c.type === 'number' ? 'number' : c.type === 'date' ? 'date' : 'text'}"${c.type === 'number' ? ' step="any"' : ''}${c.max ? ' maxlength="' + c.max + '"' : ''}${H.length ? ' list="' + lid + '" autocomplete="off"' : ''} value="${esc(v)}"${dis}>${H.length ? '<datalist id="' + lid + '">' + H.map(o => '<option value="' + esc(o) + '"></option>').join('') + '</datalist>' : ''}`; };
+    const sec = (t, L) => L.length ? `<div class="md-sec"><div class="md-sh"><span>${t}</span><span>${L.length} field(s)</span></div><div class="md-sb">${L.map(c => `<div data-fn="${esc(c.name)}"${c.type === 'long' ? ' style="grid-column:1/-1"' : ''}><label>${esc(c.label)}${c.req ? ' <b style="color:#b91c1c">*</b>' : ''}</label>${inp(c)}</div>`).join('')}</div></div>` : '';
     const main = V.filter(c => c.type !== 'long'), notes = V.filter(c => c.type === 'long'), key = rec ? (rec.f.Title || '') : '';
     const empKey = () => { const c = W.cols.find(c => /file|(emp|staff).*(no|nr|id|num|code)|(_|\\s)(no|nr)$/i.test(c.name + ' ' + c.label) && c.name !== 'Title'); return String(rec && (c ? rec.f[c.name] : '') || rec && rec.f.Title || '').trim(); };
     d.innerHTML = `<div class="md-box"><div class="md-hd">${brand()}<span class="md-sep"></span><b>${isNew ? 'New' : ro ? 'View' : 'Edit'} · ${esc(e.t)}${key ? ' · ' + esc(key) : ''}</b><span class="md-sub">${esc(listOf(e))}${rec ? ' · ID ' + rec.id : ''}</span><i></i><button class="md-hb" data-a="x">Close</button></div>
       <div style="display:flex;flex:1;min-height:0"><div style="flex:1;padding:14px 18px;overflow:auto">${sec('Details', main)}${sec('Notes', notes)}${V.length < W.cols.length ? `<div class="md-sec"><div class="md-sh"><span>Hidden fields</span><span>${W.cols.length - V.length} hidden</span></div></div>` : ''}<div class="md-err" data-r="err"></div></div>
-      <div class="md-side"><b>Show or hide fields</b><div class="md-sub" style="margin:4px 0 8px;color:#64748b">Remembered per user. Required fields stay on.</div><button class="md-b" data-a="fields">Choose fields…</button>
+      <div class="md-side"><b>Show or hide fields</b><div class="md-sub" style="margin:4px 0 8px;color:#64748b">Remembered per user. Required fields stay on.</div><button class="md-b" data-a="fields">Choose fields…</button><button class="md-b" data-a="arr" style="margin-top:8px">↕ Arrange fields</button><div class="md-sub" style="margin-top:6px;color:#64748b;font-size:11.5px">Press “Arrange fields”, then drag a field onto the place you want. Saved for you.</div>
       <div style="margin-top:16px;font-weight:700">Quick actions</div><div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">${rec && !ro ? '<button class="md-b" data-a="copy">Copy as new</button>' : ''}${e.k === 'emp' && rec ? '<button class="md-b" data-a="hist">🕘 History (Employees_RRF_History)</button>' : ''}${rec && !ro && sc ? '<button class="md-b" data-a="off" style="color:#b91c1c;border-color:#f0b4b4">Deactivate</button>' : ''}</div></div></div>
       <div class="md-ft">${ro ? '' : '<button class="md-b md-ok" data-a="save">Save</button><button class="md-b md-p" data-a="savenew">Save and add another</button>'}<button class="md-b" data-a="x">Cancel</button><i></i><span class="md-sub" data-r="s"></span></div></div>`;
     document.body.appendChild(d); win(d, 980, 708); const R = n => d.querySelector('[data-r="' + n + '"]');
+    /* arrange mode: drag a field onto another one to move it there (the order is saved per user and also orders the table columns) */
+    const setArr = on => { d.classList.toggle('md-arr', on); d.querySelectorAll('.md-sb > div[data-fn]').forEach(x => { x.draggable = on; }); const b = d.querySelector('[data-a="arr"]'); if (b) b.textContent = on ? '✔ Done arranging' : '↕ Arrange fields'; };
+    let drag = null; if (W.arrNext) { W.arrNext = false; setArr(true); }
+    d.addEventListener('dragstart', ev => { const x = ev.target.closest && ev.target.closest('div[data-fn]'); if (!x) return; drag = x.dataset.fn; try { ev.dataTransfer.setData('text/plain', drag); ev.dataTransfer.effectAllowed = 'move'; } catch (q) {} });
+    d.addEventListener('dragover', ev => { const x = ev.target.closest && ev.target.closest('div[data-fn]'); if (!x || !drag) return; ev.preventDefault(); d.querySelectorAll('.md-over').forEach(y => y.classList.remove('md-over')); x.classList.add('md-over'); });
+    d.addEventListener('drop', ev => { const x = ev.target.closest && ev.target.closest('div[data-fn]'); if (!x || !drag) return; ev.preventDefault(); const to = x.dataset.fn, from = drag; drag = null; if (to === from) return;
+      const names = ordered(W).map(c => c.name), i = names.indexOf(from), ti = names.indexOf(to); names.splice(i, 1); names.splice(names.indexOf(to) + (i < ti ? 1 : 0), 0, from); wr(ordk(e), names); W.draw();
+      const cur = collect(); d.remove(); W.arrNext = true; editor(W, rec ? Object.assign(rec, { f: Object.assign(rec.f, cur) }) : null, rec ? null : cur); });
     const collect = () => { const o = {}; d.querySelectorAll('[data-f]').forEach(el => { const c = W.cols.find(x => x.name === el.dataset.f); let v = el.value; if (c.type === 'bool') v = v === '' ? null : v === '1'; else if (c.type === 'number') v = v === '' ? null : Number(v); else if (c.type === 'date') v = v === '' ? null : v; o[c.name] = v; }); return o; };
     async function persist(next) { const o = collect(), miss = V.filter(c => c.req && (o[c.name] == null || o[c.name] === '')).map(c => c.label); if (miss.length) { R('err').textContent = 'Required: ' + miss.join(', '); return; }
       const uc = W.cols.find(c => c.uniq || c.name === 'Title' || c.req); if (isNew && uc && o[uc.name] && !d._dup && W.items.some(r => String(r.f[uc.name] || '').trim().toLowerCase() === String(o[uc.name]).trim().toLowerCase())) { d._dup = 1; R('err').textContent = 'Another record already has ' + uc.label + ' “' + o[uc.name] + '”. Press Save again to add it anyway.'; return; }
@@ -135,6 +151,7 @@
     d.addEventListener('click', ev => { const a = ev.target.closest('[data-a]'); if (!a) return; const t = a.dataset.a;
       if (t === 'x') d.remove(); else if (t === 'save') persist(false); else if (t === 'savenew') persist(true);
       else if (t === 'fields') fieldsPanel(W, () => { const cur = collect(); d.remove(); editor(W, rec ? Object.assign(rec, { f: Object.assign(rec.f, cur) }) : null, rec ? null : cur); });
+      else if (t === 'arr') setArr(!d.classList.contains('md-arr'));
       else if (t === 'copy') { const o = collect(); d.remove(); const keep = {}; Object.keys(o).forEach(n => { const c = W.cols.find(x => x.name === n); if (c && !c.uniq && n !== 'Title') keep[n] = o[n]; }); editor(W, null, keep); }
       else if (t === 'hist') { const k = empKey(), pf = {}; const H = ENT.find(x => x.k === 'eh'); Object.keys(f).forEach(n => { if (n !== 'Title' || true) pf[n] = f[n]; }); open('eh', { q: k, prefill: pf }); }
       else if (t === 'off') { const S = W.S, v = sc.type === 'bool' ? false : ((sc.choices || []).find(o => /inactive|disabled|closed|blocked/i.test(o)) || 'Inactive'); R('s').textContent = 'Saving…';
@@ -155,6 +172,9 @@
 .md-sec{border:1px solid #dbe3f1;border-radius:12px;margin-bottom:12px;overflow:hidden}.md-sh{padding:9px 14px;background:#eef2fa;font-weight:700;color:#1f3b73;display:flex;justify-content:space-between}.md-sb{padding:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 14px}.md-sb label{display:block;font-size:11.5px;font-weight:600;color:#475569;margin-bottom:4px}.md-sb input,.md-sb select,.md-sb textarea{width:100%;margin:0;border:1px solid #c5cfe0;border-radius:8px;padding:7px 10px;font:inherit;background:#fff;box-sizing:border-box}.md-sb input,.md-sb select{height:34px;padding:0 10px}
 .md-side{width:240px;border-left:1px solid #e5eaf3;background:#f6f8fc;padding:16px 14px;overflow:auto}.md-ft{display:flex;gap:10px;align-items:center;padding:12px 18px;border-top:1px solid #e5eaf3;background:#f6f8fc}.md-err{color:#b91c1c;font-weight:600;padding:4px 2px}.md-ck{display:flex;gap:8px;align-items:center;padding:5px 0}.md-ck input{width:auto;margin:0}.md-ck small{color:#64748b}
 .md-hub{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:10px}.md-card{border:1px solid #d5deee;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:6px;background:#fff}.md-ct{font-weight:700;color:#1f3b73;font-size:15px}.md-cs{font-size:12px;color:#64748b}.md-cd{color:#334155;line-height:1.4;flex:1;min-height:38px}.md-card .md-b{align-self:flex-start;margin-top:6px}
+.md-sb input[list]{padding-right:26px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2364748b' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 9px center}.md-sb input[list]::-webkit-calendar-picker-indicator{opacity:0;width:26px;margin:0;cursor:pointer}.md-sb>div{position:relative}
+.md-mv{display:inline-flex;gap:4px}.md-mv button{width:28px;height:24px;padding:0;margin:0;border:1px solid #c5cfe0;border-radius:6px;background:#fff;color:#1f3b73;cursor:pointer;font-size:11px}
+.md-arr .md-sb>div[data-fn]{cursor:grab;outline:1px dashed #94a3b8;outline-offset:2px;border-radius:8px;background:#f8fafc}.md-arr .md-sb input,.md-arr .md-sb select,.md-arr .md-sb textarea{pointer-events:none}.md-arr .md-over{outline:2px solid #1f4ea8;background:#e8effc}
 @media(max-width:820px){.md-sb{grid-template-columns:1fr 1fr}.md-side{display:none}}`; document.head.appendChild(css);
     document.addEventListener('click', ev => { const b = ev.target.closest('[data-md]'); if (b && b.closest('[id^="view-md-"]')) open(b.dataset.md); });
   }

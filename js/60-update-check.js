@@ -1,5 +1,5 @@
 /* ---------- new-version check: the page compares its own build with version.json (never cached) and offers a one-click refresh ---------- */
-const APP_BUILD = '220', APP_START = '01.10.26', APP_SERIAL = APP_START + '.' + APP_BUILD; // version = fixed start date + build number (only the build changes)
+const APP_BUILD = '223', APP_START = '01.10.26', APP_SERIAL = APP_START + '.' + APP_BUILD; // version = fixed start date + build number (only the build changes)
 (function () { const put = () => { const e = document.getElementById('sbBuild'); if (e) e.textContent = 'ORBIT · version ' + APP_SERIAL; }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put(); })();
 (function () {
   if (location.protocol === 'file:') return; let shown = false; const SK = 'orbUpd';
