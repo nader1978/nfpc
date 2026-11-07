@@ -9,7 +9,7 @@
   const pad = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
   const h1 = v => { const n = Math.round((+v || 0) * 100) / 100; return n ? n.toLocaleString(undefined, { maximumFractionDigits: 2 }) : ''; };
-  const now = new Date(), S = { loaded: false, loading: false, err: '', tab: 'loc', D: { hdr: [], ln: [], st: [], up: [] },
+  const now = new Date(), S = { ids: {}, loaded: false, loading: false, err: '', tab: 'loc', D: { hdr: [], ln: [], st: [], up: [] },
     f: { from: ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: ymd(now), loc: '', mgr: '', q: '', status: 'appr', open: false, bad: false, tol: 0.5 } };
   const say = (t, w) => { const e = Q('#otrStatus'); if (e) { e.textContent = t; e.style.color = w ? '#b45309' : ''; } };
   const rec = it => { const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); K.id = +it.id; return K; };
@@ -17,13 +17,13 @@
   const dt = v => { if (!v) return ''; const d = new Date(v); return isNaN(d) ? '' : ymd(d); };
 
   async function load(force) {
-    if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; render();
+    if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; render(); try { apRender(); } catch (x) {}
     try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
-      for (const k of Object.keys(LS)) { say('Reading ' + LS[k] + '…'); const ids = await resolveIds(site, LS[k], token), it = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LS[k] + '… ' + n)); S.D[k] = it.map(rec); }
+      for (const k of Object.keys(LS)) { say('Reading ' + LS[k] + '…'); const ids = await resolveIds(site, LS[k], token); S.ids[k] = ids; const it = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LS[k] + '… ' + n)); S.D[k] = it.map(rec); }
       const mine = (typeof locScoped === 'function' && locScoped()) ? new Set(locIds(currentUser).map(x => String(+x))) : null;
       if (mine) { const ok = v => mine.has(String(+v)); S.D.st = S.D.st.filter(r => ok(r.locationid)); S.D.up = S.D.up.filter(r => ok(r.locationid)); S.D.hdr = S.D.hdr.filter(r => ok(r.locationlink)); }
       S.loaded = true; say('✔ ' + S.D.st.length + ' staff OT line(s) · ' + S.D.hdr.length + ' request(s) · ' + S.D.up.length + ' day-off update(s) · ' + new Date().toLocaleTimeString());
-    } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
+    } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render(); try { apRender(); } catch (x) {}
   }
 
   /* ---------- model ---------- */
@@ -135,5 +135,98 @@
   }
   const nav = Q('.nav-item[data-view="otr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'otr') { e.stopImmediatePropagation(); load(true); } }, true);
-  window.OTR = { S, load, render };
+
+  /* ============================================================
+     OT APPROVALS — approve / reject the OT requests (same function as the mobile app, professional layout)
+     header + lines get Approval_ActionBy / Approval_ActionTimeStamp / Approval_Status (+ Approval_Remarks on the header);
+     "Replaced Day Off" also creates one OT_Staff_List_Data_tbl row per staff file no. (status Open), like the mobile app
+     ============================================================ */
+  const AP = { sel: null, dlg: '', instr: '', rem: '', busy: false, err: '', f: { st: 'pend', loc: '', q: '', from: ymd(new Date(now.getFullYear(), now.getMonth() - 2, 1)), to: ymd(now) } };
+  const apLvl = () => typeof acLevel === 'function' ? acLevel('otapp') : 'full', apCan = () => apLvl() === 'full';
+  const gk = (o, re) => { for (const k in o) if (re.test(k) && o[k] != null && o[k] !== '') return o[k]; return ''; };
+  const stOf = h => { const s = String(h.approvalstatus || ''); return /reject/i.test(s) ? 'rej' : /approv|actual/i.test(s) ? 'ok' : 'pend'; };
+  const hrsF = v => h1(v) || '0', nf = v => Math.round(v * 100) / 100;
+  const fmtTs = v => { if (!v) return ''; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString([], { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+  const LNm = () => { const m = new Map(); S.D.ln.forEach(l => { const k = num(l.headerlink); if (!m.has(k)) m.set(k, []); m.get(k).push(l); }); return m; };
+  function apReqs() {
+    const L = LNm(), q = AP.f.q.toLowerCase();
+    return S.D.hdr.map(h => { const ls = (L.get(h.id) || []).map(l => ({ id: l.id, type: String(gk(l, /^stafftype/) || ''), hc: num(gk(l, /^nrofrqrdhc/)), per: num(gk(l, /^rqrdhrsper/)) || (num(gk(l, /^nrofrqrdhc/)) ? num(gk(l, /^totalrqrdhrs/)) / num(gk(l, /^nrofrqrdhc/)) : 0), tot: num(gk(l, /^totalrqrdhrs/)), files: String(l.stafffilenr || ''), why: String(l.activityreasons || ''), dept: String(l.deptlink || ''), rem: String(l.requestremarks || ''), st: String(l.approvalstatus || '') }));
+      const staff = num(h.totalreqrdstaff) || ls.reduce((a, l) => a + l.hc, 0), hrs = num(h.totalrqrdhrs) || ls.reduce((a, l) => a + l.tot, 0), kg = num(gk(h, /^rqstvoul.*kgs/)), plt = num(gk(h, /^rqstvoul.*plt/));
+      return { id: h.id, date: dt(h.requestdate), loc: String(h.whsdesc || ''), by: String(h.username || ''), type: String(h.ottype || ''), st: stOf(h), stTxt: String(h.approvalstatus || ''), hrs, staff, kg, plt, avg: num(gk(h, /^avrgworking/)) || (staff ? hrs / staff : 0), why: String(h.activityreasons || '') || [...new Set(ls.map(l => l.why).filter(Boolean))].join(', '), dept: String(h.deptlink || '') || [...new Set(ls.map(l => l.dept).filter(Boolean))].join(', '), by2: String(h.approvalactionby || ''), at: String(h.approvalactiontimestamp || ''), rem: String(h.approvalremarks || ''), ls, h }; })
+      .filter(r => (!r.date || (r.date >= AP.f.from && r.date <= AP.f.to)) && (!AP.f.loc || r.loc === AP.f.loc) && (AP.f.st === 'all' || r.st === AP.f.st) && (!q || (r.loc + ' ' + r.by + ' ' + r.type + ' ' + r.id + ' ' + r.why).toLowerCase().includes(q)))
+      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
+  }
+  const PILL = { pend: ['#fef3c7', '#92400e', 'Pending approval'], ok: ['#dcfce7', '#166534', 'Approved'], rej: ['#fee2e2', '#991b1b', 'Rejected'] };
+  const apPill = r => `<span class="ap-pill" style="background:${PILL[r.st][0]};color:${PILL[r.st][1]}">${r.st === 'ok' && /actual/i.test(r.stTxt) ? 'Approved · actuals in' : PILL[r.st][2]}</span>`;
+  function apRender() {
+    const v = Q('#view-otapp'); if (!v) return; const all = S.D.hdr, locs = [...new Set(all.map(r => String(r.whsdesc || '').trim()).filter(Boolean))].sort();
+    if (!apLvl() || apLvl() === 'none') { v.innerHTML = '<div class="card"><div class="card-desc">OT Approvals is not enabled for your user. Ask the administrator (Admin Console → Module access).</div></div>'; return; }
+    const R = S.loaded ? apReqs() : [], cur = AP.sel == null || !S.loaded ? null : (R.find(r => r.id === AP.sel) || apAll().find(r => r.id === AP.sel)), P = S.loaded ? S.D.hdr.map(h => ({ st: stOf(h), hrs: num(h.totalrqrdhrs) })) : [];
+    const kp = (t, val, s, c) => `<div class="ap-k" style="border-top:3px solid ${c}"><span>${t}</span><b>${val}</b><small>${s}</small></div>`, cnt = s => P.filter(x => x.st === s).length, hh = s => P.filter(x => x.st === s).reduce((a, x) => a + x.hrs, 0);
+    const pills = [['pend', 'Pending'], ['ok', 'Approved'], ['rej', 'Rejected'], ['all', 'All']].map(([k, t]) => `<button type="button" class="${AP.f.st === k ? 'on' : ''}" data-ap="st" data-v="${k}">${t}</button>`).join('');
+    v.innerHTML = `<div class="ap-wrap"><div class="ap-top"><div><div class="ap-h1">OT Approvals</div><div class="ap-sub">Review the overtime requests sent by the locations, then approve or reject with remarks${apCan() ? '' : ' · <b>view only</b>'}</div></div><div class="ap-actions"><span id="apStatus" class="ap-sub">${esc(Q('#otrStatus') ? Q('#otrStatus').textContent : '')}</span><button type="button" class="ap-btn" data-ap="reload">🔄 Reload</button></div></div>
+      ${S.loaded ? `<div class="ap-kpis">${kp('Waiting for approval', cnt('pend'), hrsF(hh('pend')) + ' requested hours', '#d97706')}${kp('Approved', cnt('ok'), hrsF(hh('ok')) + ' hours', '#16a34a')}${kp('Rejected', cnt('rej'), hrsF(hh('rej')) + ' hours', '#dc2626')}${kp('Shown now', R.length, hrsF(R.reduce((a, r) => a + r.hrs, 0)) + ' hours · ' + AP.f.from.slice(5) + ' to ' + AP.f.to.slice(5), '#1f4ea8')}</div>` : ''}
+      <div class="ap-bar"><div class="ap-seg">${pills}</div><select data-apf="loc" class="ap-in"><option value="">All locations</option>${locs.map(l => `<option${l === AP.f.loc ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select><input type="date" data-apf="from" class="ap-in" value="${AP.f.from}"><input type="date" data-apf="to" class="ap-in" value="${AP.f.to}"><input type="search" data-apf="q" class="ap-in" placeholder="Search location, requester, ID" value="${esc(AP.f.q)}"></div>
+      ${!S.loaded ? `<div class="ap-empty">${S.loading ? 'Reading the OT lists…' : S.err ? '⚠ ' + esc(S.err) : 'Press Reload to read the OT requests.'}</div>` : `<div class="ap-grid"><div class="ap-list">${R.map(r => `<div class="ap-item${r.id === AP.sel ? ' sel' : ''}" data-ap="sel" data-id="${r.id}"><div class="ap-r1"><b>${esc(r.loc || '(no location)')}</b>${apPill(r)}</div><div class="ap-r2">${esc(r.type)} · ${esc(dmy(r.date))}</div><div class="ap-r3"><span>${esc(r.by)}</span><span><b>${hrsF(r.hrs)} h</b> · ${r.staff} staff</span></div></div>`).join('') || '<div class="ap-empty">No requests for this selection.</div>'}</div><div class="ap-det">${cur ? apDetail(cur) : '<div class="ap-empty">Select a request on the left to review it.</div>'}</div></div>`}</div>`;
+  }
+  function apDetail(r) {
+    const T = (t, val, s) => `<div class="ap-tile"><span>${t}</span><b>${val}</b>${s ? `<small>${s}</small>` : ''}</div>`, pend = r.st === 'pend';
+    const dec = !pend ? `<div class="ap-done ${r.st}"><b>${r.st === 'rej' ? 'Rejected' : 'Approved'}</b> by ${esc(r.by2 || '—')}${r.at ? ' · ' + esc(fmtTs(r.at)) : ''}${r.rem ? `<div class="ap-rem">“${esc(r.rem)}”</div>` : ''}</div>`
+      : !apCan() ? '<div class="ap-done">Waiting for an approver. You have view-only access.</div>'
+      : AP.dlg ? `<div class="ap-dlg ${AP.dlg}"><div class="ap-dt">${AP.dlg === 'ok' ? '✅ Approve this request' : '⛔ Reject this request'}</div>
+        ${AP.dlg === 'ok' ? `<label>Instruction</label><select data-apf="instr" class="ap-in"><option value="">No special instruction</option><option${AP.instr === 'Replaced Day Off' ? ' selected' : ''}>Replaced Day Off</option><option${AP.instr === 'Other Instructions' ? ' selected' : ''}>Other Instructions</option></select>${AP.instr === 'Replaced Day Off' ? '<div class="ap-note">The staff on this request will be added to the OT staff list with the day off status <b>Open</b> (to be replaced).</div>' : ''}` : ''}
+        <label>${AP.dlg === 'ok' ? 'Remarks along with the approval' : 'Reasons for rejecting (required)'}</label><textarea data-apf="rem" class="ap-in" rows="3" placeholder="Enter remarks">${esc(AP.rem)}</textarea>
+        ${AP.err ? `<div class="ap-err">${esc(AP.err)}</div>` : ''}<div class="ap-btns"><button type="button" class="ap-btn" data-ap="cancel"${AP.busy ? ' disabled' : ''}>Cancel</button><button type="button" class="ap-btn ${AP.dlg === 'ok' ? 'ap-ok' : 'ap-no'}" data-ap="confirm"${AP.busy ? ' disabled' : ''}>${AP.busy ? 'Saving…' : AP.dlg === 'ok' ? 'Confirm approval' : 'Confirm rejection'}</button></div></div>`
+      : `<div class="ap-btns"><button type="button" class="ap-btn ap-ok" data-ap="dlg" data-v="ok">✔ Approve</button><button type="button" class="ap-btn ap-no" data-ap="dlg" data-v="rej">✖ Reject</button></div>`;
+    return `<div class="ap-dh"><div><div class="ap-h2">Request #${r.id} · ${esc(r.type)}</div><div class="ap-sub">${esc(r.loc)} · requested by <b>${esc(r.by)}</b> · ${esc(dmy(r.date))}</div></div>${apPill(r)}</div>
+      <div class="ap-tiles">${T('Staff required', r.staff)}${T('Total hours', hrsF(r.hrs))}${T('Avg hours / staff', hrsF(nf(r.avg)))}${T('Volume Kgs / Ltrs', r.kg ? r.kg.toLocaleString() : '—')}${T('Volume pallets', r.plt ? r.plt.toLocaleString() : '—')}${T('Per head (Kg/Ltr)', r.staff && r.kg ? (Math.round(r.kg / r.staff * 100) / 100).toLocaleString() : '—')}${T('Per hour (Kg/Ltr)', r.hrs && r.kg ? (Math.round(r.kg / r.hrs * 100) / 100).toLocaleString() : '—')}</div>
+      <div class="ap-kv"><div><span>Activity reasons</span>${esc(r.why) || '—'}</div><div><span>Department link</span>${esc(r.dept) || '—'}</div></div>
+      <div class="ap-sec">Request details</div><div class="ap-tw"><table class="ap-t"><thead><tr><th>Staff type</th><th class="n">Req. HC</th><th class="n">Hrs / staff</th><th class="n">Total hrs</th><th>Staff file no.</th><th>Activities</th><th>Remarks</th></tr></thead><tbody>${r.ls.map(l => `<tr><td><b>${esc(l.type)}</b></td><td class="n">${l.hc}</td><td class="n">${hrsF(l.per)}</td><td class="n">${hrsF(l.tot)}</td><td>${esc(l.files)}</td><td>${esc(l.why)}</td><td>${esc(l.rem)}</td></tr>`).join('') || '<tr><td colspan="7" class="ap-empty">No detail lines.</td></tr>'}</tbody></table></div>
+      <div class="ap-sec">Decision</div>${dec}`;
+  }
+  async function apDecide() {
+    const r = apAll().find(x => x.id === AP.sel); if (!r) return;
+    const rej = AP.dlg === 'rej', rem = AP.rem.trim(); if (rej && !rem) { AP.err = 'Please enter the reasons for rejecting.'; return apRender(); }
+    AP.busy = true; AP.err = ''; apRender(); const me = (typeof getCurrentUserValue === 'function' ? getCurrentUserValue() : '') || (currentUser && currentUser.username) || '', ts = new Date().toISOString(), status = rej ? 'Reject' : 'Approved';
+    try { const token = getGlobalAccessToken(), I = S.ids, sf = (k, id, f) => updateItem(I[k].siteId, I[k].listId, id, spCoerceFields(I[k].listId, f), token);
+      await sf('hdr', r.id, { Approval_ActionBy: me, Approval_ActionTimeStamp: ts, Approval_Status: status, Approval_Remarks: rem });
+      for (const l of r.ls) await sf('ln', l.id, { Approval_ActionBy: me, Approval_ActionTimeStamp: ts, Approval_Status: status });
+      let made = 0;
+      if (!rej && AP.instr === 'Replaced Day Off') { made = await apStaff(r, rem, token); }
+      r.h.approvalstatus = status; r.h.approvalactionby = me; r.h.approvalactiontimestamp = ts; r.h.approvalremarks = rem; S.D.ln.forEach(l => { if (num(l.headerlink) === r.id) { l.approvalstatus = status; l.approvalactionby = me; } });
+      sectionToast('✔ Request #' + r.id + (rej ? ' rejected' : ' approved') + (made ? ' · ' + made + ' staff row(s) added to the OT staff list' : ''), 'success'); AP.dlg = ''; AP.rem = ''; AP.instr = '';
+    } catch (e) { AP.err = '⚠ ' + e.message + ' (some updates may already be saved — reload to check)'; }
+    AP.busy = false; render(); apRender();
+  }
+  const apAll = () => { const q = AP.f.q, st = AP.f.st, fr = AP.f.from; AP.f.q = ''; AP.f.st = 'all'; AP.f.from = '2000-01-01'; AP.f.loc = AP.f.loc; const o = apReqs(); AP.f.q = q; AP.f.st = st; AP.f.from = fr; return o; };
+  async function apStaff(r, rem, token) {
+    const I = S.ids, ex = new Set(S.D.st.filter(x => num(x.headerlink) === r.id).map(x => String(+x.stafffilenr || ''))), E = new Map();
+    try { const ids = await resolveIds(getGlobalSiteUrl(), 'Employees_tbl', token); (await fetchAllItems(ids.siteId, ids.listId, token)).forEach(it => { const k = rec(it); E.set(String(+k.filenr || k.filenr || ''), k); }); } catch (e) {}
+    try { await fetchColumns(I.st.siteId, I.st.listId, token); } catch (e) {} let n = 0;
+    for (const l of r.ls) for (const tok of String(l.files).split(/[,;\n]/)) { const m = /\d{3,}/.exec(tok); if (!m) continue; const fn = String(+m[0]); if (ex.has(fn)) continue; ex.add(fn); const e = E.get(fn) || {};
+      await createItem(I.st.siteId, I.st.listId, spCoerceFields(I.st.listId, { OT_WorkDate: r.date, Header_Link: r.id, Staff_FileNr: +fn, Staff_Name: e.employeename || (tok.split('-')[1] || '').trim(), Staf_Title: e.jobrole || '', WHs_Desc: r.loc, Location_ID: num(r.h.locationlink) || undefined, Working_VolumeKgs: r.kg, Working_VolumePlts: r.plt, Staff_Line_Mngr: r.by, HOD_Remarks: rem, OT_Hours: nf(r.avg), Rplcd_Day_Status: 'Open' }), token); n++; }
+    return n;
+  }
+  function apInit() {
+    const v = Q('#view-otapp'); if (!v || v._i) return; v._i = 1;
+    v.addEventListener('click', e => { const t = e.target.closest('[data-ap]'); if (!t) return; const a = t.dataset.ap;
+      if (a === 'sel') { AP.sel = +t.dataset.id; AP.dlg = ''; AP.rem = ''; AP.instr = ''; AP.err = ''; } else if (a === 'st') AP.f.st = t.dataset.v; else if (a === 'reload') return load(true);
+      else if (a === 'dlg') { AP.dlg = t.dataset.v; AP.err = ''; } else if (a === 'cancel') { AP.dlg = ''; AP.err = ''; } else if (a === 'confirm') return apDecide(); apRender(); });
+    v.addEventListener('change', e => { const k = e.target.dataset.apf; if (!k || k === 'q' || k === 'rem') return; if (k === 'instr') AP.instr = e.target.value; else AP.f[k] = e.target.value; apRender(); });
+    v.addEventListener('input', e => { const k = e.target.dataset.apf; if (k === 'rem') AP.rem = e.target.value; else if (k === 'q') { AP.f.q = e.target.value.trim(); clearTimeout(AP.tm); AP.tm = setTimeout(() => { apRender(); const i = Q('#view-otapp [data-apf=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
+    const css = document.createElement('style'); css.textContent = `#view-otapp .ap-wrap{font-size:13px;color:#1b2533}#view-otapp .ap-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}#view-otapp .ap-h1{font-size:22px;font-weight:700;color:#14274e}#view-otapp .ap-sub{color:#64748b;font-size:12.5px}#view-otapp .ap-actions{display:flex;gap:10px;align-items:center}
+#view-otapp .ap-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:12px}#view-otapp .ap-k{background:#fff;border:1px solid #dfe6f2;border-radius:12px;padding:10px 14px}#view-otapp .ap-k span{display:block;font-size:12px;color:#64748b}#view-otapp .ap-k b{font-size:24px;color:#14274e}#view-otapp .ap-k small{display:block;color:#64748b;font-size:11.5px}
+#view-otapp .ap-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}#view-otapp .ap-seg{display:inline-flex;border:1px solid #c5cfe0;border-radius:10px;overflow:hidden}#view-otapp .ap-seg button{border:0;background:#fff;padding:8px 14px;font-weight:600;color:#475569;cursor:pointer;width:auto;margin:0;border-radius:0}#view-otapp .ap-seg button.on{background:#1f4ea8;color:#fff}
+#view-otapp .ap-in{height:36px;border:1px solid #c5cfe0;border-radius:8px;padding:0 10px;background:#fff;font:inherit;width:auto;margin:0}#view-otapp textarea.ap-in{height:auto;padding:8px 10px;width:100%;box-sizing:border-box}#view-otapp .ap-btn{height:36px;padding:0 16px;border-radius:8px;border:1px solid #c5cfe0;background:#fff;color:#1f3b73;font-weight:600;cursor:pointer;width:auto;margin:0}#view-otapp .ap-ok{background:#15803d;border-color:#15803d;color:#fff}#view-otapp .ap-no{background:#fff;border-color:#dc2626;color:#b91c1c}#view-otapp .ap-btn:disabled{opacity:.6}
+#view-otapp .ap-grid{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:14px;align-items:start}#view-otapp .ap-list{display:flex;flex-direction:column;gap:8px;max-height:74vh;overflow:auto;padding-right:2px}#view-otapp .ap-item{background:#fff;border:1px solid #dfe6f2;border-radius:12px;padding:11px 13px;cursor:pointer}#view-otapp .ap-item:hover{border-color:#9db8ea}#view-otapp .ap-item.sel{border-color:#1f4ea8;box-shadow:0 0 0 2px #dbe6fb}#view-otapp .ap-r1,#view-otapp .ap-r3{display:flex;justify-content:space-between;gap:8px;align-items:center}#view-otapp .ap-r2{color:#64748b;margin:3px 0}#view-otapp .ap-r3{color:#334155}
+#view-otapp .ap-pill{border-radius:999px;padding:2px 10px;font-size:11px;font-weight:700;white-space:nowrap}#view-otapp .ap-det{background:#fff;border:1px solid #dfe6f2;border-radius:14px;padding:18px 20px;min-height:300px}#view-otapp .ap-dh{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}#view-otapp .ap-h2{font-size:17px;font-weight:700;color:#14274e}
+#view-otapp .ap-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}#view-otapp .ap-tile{background:#f4f7fc;border-radius:10px;padding:9px 12px}#view-otapp .ap-tile span{display:block;font-size:11px;color:#64748b}#view-otapp .ap-tile b{font-size:17px;color:#14274e}#view-otapp .ap-kv{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px}#view-otapp .ap-kv span{display:block;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.04em}
+#view-otapp .ap-sec{font-weight:700;color:#1f3b73;margin:14px 0 6px;border-bottom:1px solid #e5eaf3;padding-bottom:4px}#view-otapp .ap-tw{overflow:auto;border:1px solid #e5eaf3;border-radius:10px}#view-otapp .ap-t{border-collapse:collapse;width:100%;font-size:12.5px}#view-otapp .ap-t th{background:#eef2fa;padding:7px 9px;text-align:left;white-space:nowrap}#view-otapp .ap-t td{padding:7px 9px;border-top:1px solid #e5eaf3;vertical-align:top}#view-otapp .n{text-align:right}
+#view-otapp .ap-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}#view-otapp .ap-dlg{border:1px solid #dfe6f2;border-radius:12px;padding:14px 16px;background:#f9fbfe}#view-otapp .ap-dlg.ok{border-left:4px solid #16a34a}#view-otapp .ap-dlg.rej{border-left:4px solid #dc2626}#view-otapp .ap-dt{font-weight:700;margin-bottom:8px}#view-otapp .ap-dlg label{display:block;font-size:11.5px;font-weight:600;color:#475569;margin:8px 0 4px}#view-otapp .ap-note{font-size:12px;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 10px;margin-top:8px}#view-otapp .ap-err{color:#b91c1c;font-weight:600;margin-top:8px}
+#view-otapp .ap-done{border-radius:12px;padding:12px 14px;background:#f4f7fc;color:#334155}#view-otapp .ap-done.ok{background:#ecfdf3}#view-otapp .ap-done.rej{background:#fef2f2}#view-otapp .ap-rem{margin-top:6px;font-style:italic}#view-otapp .ap-empty{color:#64748b;padding:24px;text-align:center}
+@media(max-width:860px){#view-otapp .ap-grid{grid-template-columns:1fr}#view-otapp .ap-kv{grid-template-columns:1fr}}`; document.head.appendChild(css); apRender();
+  }
+  const navA = Q('.nav-item[data-view="otapp"]'); if (navA) navA.addEventListener('click', () => { apInit(); apRender(); setTimeout(() => load(false), 50); });
+
+  window.OTR = { S, load, render, apRender };
 })();
