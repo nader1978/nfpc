@@ -343,6 +343,8 @@ const VIEW_META = {
   admin: { title: 'Admin Console', sub: 'Decide which sections each user sees, and read the sign-ins and activity of every user' },
   wh3d: { title: '3D Warehouse View', sub: 'Racks and pallet storage visualised in 3D — colour by expiry, fill or SKU' },
   mdata: { title: 'Master Data', sub: 'Add or edit inventory items, UoM, users, forklifts, RMPM items, trucks, trailers and employees' },
+  otreq: { title: 'OT Request', sub: 'Submit the overtime you need for approval — staff, hours and volume' },
+  otrep: { title: 'OT Replacement', sub: 'Days off given back for overtime — hours are deducted from each staff balance' },
   otapp: { title: 'OT Approvals', sub: 'Review the overtime requests of the locations — approve or reject with remarks' },
   otr: { title: 'OT Approved vs Recovered', sub: 'Approved OT hours vs the hours given back as days off — by location, in-charge and staff' },
   rkc: { title: 'Rack Hits & Damages', sub: 'Rack inspections from the mobile app — racks × dates per location, shown on the 3D' },
