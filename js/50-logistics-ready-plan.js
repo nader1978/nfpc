@@ -26,8 +26,8 @@
   inp.addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) run(f); });
   window.lpReadyRun = run;
   /* ---------- in transit: the file is staged here first — edit, untick or delete rows, then ☁ Upload (or ✖ Clear) ---------- */
-  const SK = LS_BASE + '_lp_stage', ST = (() => { try { return JSON.parse(localStorage.getItem(SK) || 'null') || { rows: [] }; } catch (e) { return { rows: [] }; } })();
-  const stSave = () => { try { localStorage.setItem(SK, JSON.stringify(ST)); } catch (e) {} };
+  const SK = LS_BASE + '_lp_stage', ST = (() => { try { const o = JSON.parse(localStorage.getItem(SK) || 'null') || { rows: [] }; o.busy = false; return o; } catch (e) { return { rows: [] }; } })();
+  const stSave = () => { try { localStorage.setItem(SK, JSON.stringify(Object.assign({}, ST, { busy: false }))); } catch (e) {} };
   const gv = (o, k) => { const h = Object.keys(o).find(x => N(x) === k); return h ? o[h] : undefined; }, yes = v => /^(true|yes|y|1|-1|✔)$/i.test(String(v == null ? '' : v).trim());
   const COLS = [['Plan_Date', 'Plan date', 'date', 120], ['User_Name', 'Driver', 'text', 130], ['Driver_FileNr', 'File no.', 'text', 80], ['Unit_Nr', 'Unit no.', 'text', 90], ['Trailer_Nr', 'Trailer no.', 'text', 90], ['Distn_From', 'From', 'text', 130], ['Loaction_From', 'Loc. from', 'text', 80],
     ['Distn_To', 'To', 'text', 130], ['Location_To', 'Loc. to', 'text', 80], ['Nr_of_Plts', 'Pallets', 'num', 64], ['Loaded_Mtrl_Type', 'Material', 'text', 100], ['Remarks', 'Remarks / instructions', 'text', 180]];
