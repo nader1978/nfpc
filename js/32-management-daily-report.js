@@ -15,7 +15,7 @@ function atRefresh(keepFilters) {
 function atTabsRender() { PLQ('#atTabs').innerHTML = AT_TABS.map(t => `<button type="button" data-t="${t[0]}" class="${at.tab === t[0] ? 'on' : ''}" ${t[0] !== 'up' && !at.rows.length ? 'disabled style="opacity:.45"' : ''}>${t[1]}</button>`).join(''); }
 
 /* ---------- attendance data kept in SharePoint (JSON file) ---------- */
-const AT_SP_KEY = LS_BASE + '_atsp', AT_SP_DEF = { on: true, folder: 'AttendanceData', file: 'attendance.json', mod: '' };
+const AT_SP_KEY = LS_BASE + '_atsp', AT_SP_DEF = { on: true, mode: 'list', list: 'Attendance_Data_tbl', folder: 'AttendanceData', file: 'attendance.json', mod: '' };
 const atSpCfg = () => { try { return Object.assign({}, AT_SP_DEF, JSON.parse(localStorage.getItem(AT_SP_KEY) || '{}')); } catch (e) { return Object.assign({}, AT_SP_DEF); } };
 const atSpCfgSave = o => { try { localStorage.setItem(AT_SP_KEY, JSON.stringify(Object.assign(atSpCfg(), o))); } catch (e) {} };
 const atSpOk = () => !!(getGlobalAccessToken() && getGlobalSiteUrl());
@@ -63,18 +63,19 @@ async function atSpSync(quiet) {
   } catch (e) { atSpMsg('✘ SharePoint: ' + e.message, 'err'); } finally { atSpSync.busy = false; }
 }
 function atSpInit() {
+  setTimeout(atListUi, 0);
   const q = PLQ, c = atSpCfg(); q('#atSpOn').checked = !!c.on; q('#atSpFolder').value = c.folder; q('#atSpFile').value = c.file;
   q('#atSpOn').addEventListener('change', e => { atSpCfgSave({ on: e.target.checked }); if (e.target.checked) atSpSync(); });
   q('#atSpFolder').addEventListener('change', e => atSpCfgSave({ folder: e.target.value.trim() || AT_SP_DEF.folder, mod: '' })); q('#atSpFile').addEventListener('change', e => { let v = e.target.value.trim() || AT_SP_DEF.file; if (!/\.json$/i.test(v)) v += '.json'; e.target.value = v; atSpCfgSave({ file: v, mod: '' }); });
   q('#atSpSave').addEventListener('click', async () => { if (!at.rows.length) { sectionToast('No attendance data to save yet.', 'warn'); return; } if (!atSpOk()) { sectionToast('Connect the SharePoint site first.', 'warn'); return; } const on = atSpCfg().on; atSpCfgSave({ on: true }); await atSpAuto(); atSpCfgSave({ on }); });
-  q('#atSpLoad').addEventListener('click', async () => { if (!atSpOk()) { sectionToast('Connect the SharePoint site first.', 'warn'); return; } atSpMsg('Looking for the file…'); try { const m = await atSpRemote(); if (!m) { atSpMsg('No attendance JSON found in that folder yet.', 'err'); return; } if (at.rows.length && !confirm('Replace the ' + plF(at.rows.length) + ' attendance record(s) in this browser with the SharePoint copy?')) { atSpMsg(''); return; } const n = await atSpLoad(m); atSpMsg(`✓ Loaded ${plF(n)} record(s) from SharePoint.`, 'ok'); atRefresh(); } catch (e) { atSpMsg('✘ ' + e.message, 'err'); } });
+  q('#atSpLoad').addEventListener('click', async () => { if (atSpCfg().mode !== 'file') return atListLoadBtn(); if (!atSpOk()) { sectionToast('Connect the SharePoint site first.', 'warn'); return; } atSpMsg('Looking for the file…'); try { const m = await atSpRemote(); if (!m) { atSpMsg('No attendance JSON found in that folder yet.', 'err'); return; } if (at.rows.length && !confirm('Replace the ' + plF(at.rows.length) + ' attendance record(s) in this browser with the SharePoint copy?')) { atSpMsg(''); return; } const n = await atSpLoad(m); atSpMsg(`✓ Loaded ${plF(n)} record(s) from SharePoint.`, 'ok'); atRefresh(); } catch (e) { atSpMsg('✘ ' + e.message, 'err'); } });
 }
 async function atUpload(file) {
   const msg = PLQ('#atUpMsg'); msg.className = 'status-msg'; msg.textContent = 'Reading “' + file.name + '”…';
   try {
     const P = await atReadFile(file), mode = PLQ('#atMode').value; let added = 0, upd = 0;
     if (mode === 'replace') { at.rows = P.rows; added = P.rows.length; } else { const idx = new Map(at.rows.map((r, i) => [r.date + '|' + atKey(r.id), i])); P.rows.forEach(r => { const k = r.date + '|' + atKey(r.id); if (idx.has(k)) { at.rows[idx.get(k)] = r; upd++; } else { at.rows.push(r); idx.set(k, at.rows.length - 1); added++; } }); }
-    at.file = file.name; at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; at.sort = { cm: null, rc: null }; at.cmRes = ''; atSave(); atSpAuto();
+    at.file = file.name; at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; at.sort = { cm: null, rc: null }; at.cmRes = ''; atSave(); atSpAuto(P.rows);
     msg.className = 'status-msg ok'; msg.textContent = `✓ ${plF(added)} record(s) added${upd ? `, ${plF(upd)} updated` : ''}${P.skipped ? ` · ${P.skipped} non-data row(s) skipped (totals / blanks)` : ''}.`;
     addActivity('upload', 'Attendance report loaded: ' + file.name); if (typeof a2AfterUpload === 'function') { try { a2AfterUpload(msg); } catch (e2) { console.error(e2); } } at.tab = 'dash'; atRefresh();
   } catch (e) { msg.className = 'status-msg err'; msg.textContent = '✘ ' + e.message; }
@@ -484,3 +485,91 @@ const BRAND_ORIG = { name: 'ORBIT', tag: 'Operations · Racks · Batches · Inve
   }
   apply(); wire(); document.addEventListener('click', () => setTimeout(wire, 200)); setTimeout(wire, 1000);
 })();
+
+/* ============================================================
+   ATTENDANCE IN A SHARePoint LIST — one row per employee per day (list "Attendance_Data_tbl" by default)
+   Title = "yyyy-mm-dd|EmployeeNo" (the key) · saved in batches of 20 · only the uploaded rows are written after an upload
+   (the JSON-file option above stays available: "Store as" → JSON file)
+   ============================================================ */
+const AT_LCOLS = ['Title', 'Att_Date', 'Emp_No', 'Emp_Name', 'In_Time', 'Out_Time', 'Req_Hours', 'Work_Hours', 'Position', 'Payroll_Location', 'Work_Location', 'Job_Function', 'Department', 'Section', 'Supervisor', 'Total_NOT', 'Total_FOT', 'Total_ROT', 'Total_HOT', 'OT_Total', 'Emp_Status', 'Emp_Group', 'Emp_Category', 'Shift_Code', 'Remarks', 'Source_File', 'Uploaded_By'];
+const atListName = () => String(atSpCfg().list || 'Attendance_Data_tbl').trim() || 'Attendance_Data_tbl';
+const atLKey = r => r.date + '|' + atKey(r.id);
+function atRowFields(r, upd) {
+  const nn = v => v == null || v === '' || (typeof v === 'number' && !isFinite(v)) ? null : v, o = {
+    Title: atLKey(r), Att_Date: r.date, Emp_No: String(r.id), Emp_Name: r.name, In_Time: r.inT == null ? null : atHM(r.inT), Out_Time: r.outT == null ? null : atHM(r.outT), Req_Hours: nn(r.req), Work_Hours: nn(r.work), Position: r.pos, Payroll_Location: r.payLoc, Work_Location: r.loc, Job_Function: r.func, Department: r.dept, Section: r.sec, Supervisor: r.sup,
+    Total_NOT: nn(r.not), Total_FOT: nn(r.fot), Total_ROT: nn(r.rot), Total_HOT: nn(r.hot), OT_Total: nn(r.ot), Emp_Status: r.empSt, Emp_Group: r.grp, Emp_Category: r.cat, Shift_Code: r.shift, Remarks: r.rem, Source_File: at.file || '', Uploaded_By: (typeof getCurrentUserValue === 'function' ? getCurrentUserValue() : '') || '' };
+  Object.keys(o).forEach(k => { if (o[k] == null || o[k] === '') { if (upd) o[k] = null; else delete o[k]; } }); return o;
+}
+function atFieldsRow(f) {
+  const n = v => v == null || v === '' ? null : +v;
+  return atNormRow({ date: String(f.Att_Date || '').slice(0, 10), id: f.Emp_No, name: f.Emp_Name || '', inT: atMin(f.In_Time), outT: atMin(f.Out_Time), req: +f.Req_Hours || 0, work: +f.Work_Hours || 0, pos: f.Position || '', payLoc: f.Payroll_Location || '', loc: f.Work_Location || '', func: f.Job_Function || '', dept: f.Department || '', sec: f.Section || '', sup: f.Supervisor || '',
+    not: +f.Total_NOT || 0, fot: +f.Total_FOT || 0, rot: +f.Total_ROT || 0, hot: +f.Total_HOT || 0, ot: +f.OT_Total || 0, empSt: f.Emp_Status || '', grp: f.Emp_Group || '', cat: f.Emp_Category || '', shift: f.Shift_Code || '', rem: f.Remarks || '' });
+}
+async function atListCtx() {
+  const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('connect the SharePoint site first');
+  let ids; try { ids = await resolveIds(site, atListName(), token); } catch (e) { throw new Error('the list “' + atListName() + '” was not found — create it first (see the column list in the instructions), or change the name'); }
+  const cols = await fetchColumns(ids.siteId, ids.listId, token), have = new Set(cols.map(c => c.name)), miss = AT_LCOLS.filter(c => !have.has(c));
+  if (miss.length) throw new Error('the list “' + atListName() + '” is missing column(s): ' + miss.join(', '));
+  return { ids, token };
+}
+const atListHdr = t => ({ Authorization: 'Bearer ' + t, Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' });
+async function atListRead(C, say, keysOnly) {
+  const out = []; let url = `https://graph.microsoft.com/v1.0/sites/${C.ids.siteId}/lists/${C.ids.listId}/items?$top=999&$expand=fields` + (keysOnly ? '($select=Title)' : '');
+  while (url) { const r = await fetchWithRetry(url, { headers: atListHdr(C.token) }, 'read attendance list'); if (!r.ok) throw await atSpErr(r); const d = await r.json(); (d.value || []).forEach(x => out.push({ id: x.id, f: x.fields || {} })); url = d['@odata.nextLink']; if (say) say(out.length); } return out;
+}
+async function atListRemoteMod(C) {
+  try { const r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${C.ids.siteId}/lists/${C.ids.listId}/items?$top=1&$orderby=lastModifiedDateTime desc&$select=id`, { headers: atListHdr(C.token) }, 'check attendance list'); if (!r.ok) return null; const d = await r.json(); return d.value && d.value[0] ? (d.value[0].lastModifiedDateTime || '') : ''; } catch (e) { return null; }
+}
+async function atListBatch(C, ops, say) {
+  const fail = [], made = new Map(), root = 'https://graph.microsoft.com/v1.0/', S = C.ids.siteId, L = C.ids.listId; let done = 0;
+  for (let i = 0; i < ops.length; i += 20) {
+    let todo = ops.slice(i, i + 20).map((o, j) => Object.assign({ j }, o)), tries = 0;
+    while (todo.length && tries < 5) {
+      const body = { requests: todo.map(o => o.id ? { id: String(o.j), method: 'PATCH', url: `/sites/${S}/lists/${L}/items/${o.id}/fields`, headers: { 'Content-Type': 'application/json' }, body: spCoerceFields(L, o.f) } : { id: String(o.j), method: 'POST', url: `/sites/${S}/lists/${L}/items`, headers: { 'Content-Type': 'application/json' }, body: { fields: spCoerceFields(L, o.f) } }) };
+      const r = await fetchWithRetry(root + '$' + 'batch', { method: 'POST', headers: { Authorization: 'Bearer ' + C.token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, 'save attendance'); if (!r.ok) throw await atSpErr(r);
+      const res = (await r.json()).responses || [], by = new Map(res.map(x => [String(x.id), x])), again = []; let wait = 0;
+      todo.forEach(o => { const x = by.get(String(o.j)); if (x && x.status >= 200 && x.status < 300) { done++; if (!o.id && x.body && x.body.id) made.set(o.f.Title, x.body.id); } else if (!x || [429, 503, 504].includes(x.status)) { again.push(o); wait = Math.max(wait, +(x && x.headers && x.headers['Retry-After']) || 2 * (tries + 1)); } else fail.push((o.f.Title || '') + ': ' + ((x.body && x.body.error && x.body.error.message) || 'HTTP ' + x.status)); });
+      todo = again; tries++; if (todo.length) await new Promise(rs => setTimeout(rs, Math.min(wait, 30) * 1000));
+    }
+    todo.forEach(o => fail.push((o.f.Title || '') + ': still throttled after 5 tries')); if (say) say(Math.min(i + 20, ops.length), ops.length);
+  }
+  return { done, fail, made };
+}
+async function atListSave(R) {
+  const C = await atListCtx(), say = (n, t) => atSpMsg(t ? `Saving to SharePoint… ${plF(n)} of ${plF(t)}` : `Reading the keys already in the list… ${plF(n)}`);
+  const have = new Map((await atListRead(C, n => say(n), true)).map(x => [String(x.f.Title || ''), x.id])), ops = R.map(r => { const f = atRowFields(r, have.has(atLKey(r))), id = have.get(atLKey(r)); return id ? { id, f } : { f }; });
+  const x = await atListBatch(C, ops, say); if (x.fail.length) throw new Error(plF(x.fail.length) + ' row(s) were refused, e.g. ' + x.fail.slice(0, 2).join(' · '));
+  const mod = await atListRemoteMod(C); atSpCfgSave({ mod: mod || '' }); return { n: R.length, created: x.made.size, updated: R.length - x.made.size };
+}
+async function atListLoad(C) {
+  C = C || await atListCtx(); const items = await atListRead(C, n => atSpMsg('Reading the attendance list… ' + plF(n))), rows = items.map(x => x.f).filter(f => f.Att_Date && f.Emp_No).map(atFieldsRow);
+  at.rows = rows; at.file = 'SharePoint list ' + atListName(); at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; atSave(); atSpCfgSave({ mod: (await atListRemoteMod(C)) || '' }); a2Bump(); return rows.length;
+}
+const _atSpAutoFile = atSpAuto, _atSpSyncFile = atSpSync;
+atSpAuto = async function (rows) {
+  if (atSpCfg().mode === 'file') return _atSpAutoFile();
+  const c = atSpCfg(); if (!c.on) return; if (!atSpOk()) { atSpMsg('Not saved to SharePoint — connect the site first (Settings).', 'err'); return; }
+  const R = rows && rows.length ? rows : at.rows; atSpMsg('Saving to SharePoint…');
+  try { const x = await atListSave(R); atSpMsg(`✓ Saved ${plF(x.n)} record(s) to the SharePoint list ${atListName()} (${plF(x.created)} new, ${plF(x.updated)} updated).`, 'ok'); sectionToast('Attendance data saved to SharePoint.', 'success'); addActivity('upload', 'Attendance saved to SharePoint list'); }
+  catch (e) { atSpMsg('✘ Could not save to SharePoint: ' + e.message, 'err'); }
+};
+atSpSync = async function (quiet) {
+  if (atSpCfg().mode === 'file') return _atSpSyncFile(quiet);
+  const c = atSpCfg(); if (!c.on || !atSpOk() || atSpSync.busy) return; atSpSync.busy = true;
+  try { const C = await atListCtx(), mod = await atListRemoteMod(C);
+    if (!at.rows.length) {
+      if (mod === '') { const m = await atSpRemote().catch(() => null); if (m) { atSpMsg('The list is empty — moving the data from the old JSON file into it…'); await atSpLoad(m); atRefresh(); await atSpAuto(); } return; }
+      atSpMsg('Loading the attendance data from SharePoint…'); const n = await atListLoad(C); if (at.tab === 'up') at.tab = 'dash'; atSpMsg(`✓ Loaded ${plF(n)} record(s) from the SharePoint list.`, 'ok'); if (!quiet) sectionToast('Attendance data loaded from SharePoint.', 'success'); atRefresh(); return; }
+    if (mod === '') { await atSpAuto(); return; }
+    if (mod && c.mod && mod !== c.mod) { atSpMsg('Someone saved newer attendance data — loading it…'); const n = await atListLoad(C); atSpMsg(`✓ Loaded ${plF(n)} record(s) from the SharePoint list.`, 'ok'); atRefresh(); }
+  } catch (e) { atSpMsg('✘ SharePoint: ' + e.message, 'err'); } finally { atSpSync.busy = false; }
+};
+async function atListLoadBtn() {
+  if (!atSpOk()) { sectionToast('Connect the SharePoint site first.', 'warn'); return; } atSpMsg('Reading the list…');
+  try { const C = await atListCtx(); if (at.rows.length && !confirm('Replace the ' + plF(at.rows.length) + ' attendance record(s) in this browser with the SharePoint list?')) { atSpMsg(''); return; } const n = await atListLoad(C); atSpMsg(`✓ Loaded ${plF(n)} record(s) from the SharePoint list.`, 'ok'); atRefresh(); } catch (e) { atSpMsg('✘ ' + e.message, 'err'); }
+}
+function atListUi() {
+  const q = PLQ, c = atSpCfg(), m = q('#atSpMode'), l = q('#atSpList'); if (!m || !l) return; m.value = c.mode === 'file' ? 'file' : 'list'; l.value = c.list || 'Attendance_Data_tbl';
+  const tog = () => { const f = m.value === 'file'; document.querySelectorAll('.atsp-file').forEach(e => { e.style.display = f ? '' : 'none'; }); document.querySelectorAll('.atsp-list').forEach(e => { e.style.display = f ? 'none' : ''; }); }; tog();
+  m.addEventListener('change', () => { atSpCfgSave({ mode: m.value, mod: '' }); tog(); if (q('#atSpOn').checked) atSpSync(); }); l.addEventListener('change', () => { atSpCfgSave({ list: l.value.trim() || 'Attendance_Data_tbl', mod: '' }); });
+}

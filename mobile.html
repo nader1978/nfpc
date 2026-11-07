@@ -9,10 +9,10 @@
 <script>window.ORBIT_MOBILE = 1;   /* mobile.html = the ORBIT mobile app entry page (same files as index.html) */</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=208">
-<link rel="stylesheet" href="css/02-mobile.css?v=208">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=208">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=208">
+<link rel="stylesheet" href="css/01-base.css?v=211">
+<link rel="stylesheet" href="css/02-mobile.css?v=211">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=211">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=211">
 </head>
 <body>
 
@@ -126,7 +126,17 @@
       <div class="nav-item" data-view="profiles" data-perm="profiles"><span class="icon">👤</span><span>Profiles</span><span class="badge" id="navProfilesBadge">1</span></div>
       <div class="nav-item" data-view="users" data-perm="users"><span class="icon">🔑</span><span>Users & Roles</span></div>
       <div class="nav-item" data-view="admin" data-perm="users"><span class="icon">🛡</span><span>Admin Console</span><span class="badge new">ADMIN</span></div>
-      <div class="nav-item" data-view="mdata" data-perm="mdata"><span class="icon">🗂</span><span>Master Data</span><span class="badge new">NEW</span></div>
+      <div class="nav-section-label">Master Data</div>
+      <div class="nav-item" data-view="md-inv" data-perm="md_inv"><span class="icon">📦</span><span>Inventory items</span></div>
+      <div class="nav-item" data-view="md-uom" data-perm="md_uom"><span class="icon">⚖</span><span>Item UoM</span></div>
+      <div class="nav-item" data-view="md-usr" data-perm="md_usr"><span class="icon">🔑</span><span>Login users</span></div>
+      <div class="nav-item" data-view="md-fk" data-perm="md_fk"><span class="icon">🏗</span><span>Forklift units</span></div>
+      <div class="nav-item" data-view="md-rmi" data-perm="md_rmi"><span class="icon">🧪</span><span>RMPM items</span></div>
+      <div class="nav-item" data-view="md-rmu" data-perm="md_rmu"><span class="icon">⚖</span><span>RMPM UoM</span></div>
+      <div class="nav-item" data-view="md-trk" data-perm="md_trk"><span class="icon">🚚</span><span>Trucks</span></div>
+      <div class="nav-item" data-view="md-trl" data-perm="md_trl"><span class="icon">🚛</span><span>Trailers</span></div>
+      <div class="nav-item" data-view="md-emp" data-perm="md_emp"><span class="icon">👥</span><span>Employees</span></div>
+      <div class="nav-item" data-view="md-eh" data-perm="md_eh"><span class="icon">🕘</span><span>Employee history</span></div>
       <div class="nav-item" data-view="notifications" data-perm="notifications"><span class="icon">📧</span><span>Notifications</span></div>
       <div class="nav-item" data-view="uploaddest" data-perm="uploaddest"><span class="icon">📤</span><span>Upload Destinations &amp; Sources</span><span class="badge new">ADMIN</span></div>
       <div class="nav-item" data-view="settings" data-perm="settings"><span class="icon">⚙</span><span>Settings</span></div>
@@ -250,7 +260,16 @@
         <div class="pl-grid" id="whuGrid" style="margin-top:12px;"></div>
         <div class="card" id="whuTblCard" style="margin-top:12px;"><div class="card-header"><div class="card-title">📋 By storage area <span class="text-sm" style="font-weight:400;">— average over the date filter and on the To date</span></div></div><div id="whuTbl"></div></div>
       </div>
-      <div class="view" id="view-mdata"></div>
+      <div class="view" id="view-md-inv"></div>
+      <div class="view" id="view-md-uom"></div>
+      <div class="view" id="view-md-usr"></div>
+      <div class="view" id="view-md-fk"></div>
+      <div class="view" id="view-md-rmi"></div>
+      <div class="view" id="view-md-rmu"></div>
+      <div class="view" id="view-md-trk"></div>
+      <div class="view" id="view-md-trl"></div>
+      <div class="view" id="view-md-emp"></div>
+      <div class="view" id="view-md-eh"></div>
       <div class="view" id="view-otapp"></div>
       <div class="view" id="view-otr">
         <div class="card" id="otrCard">
@@ -1699,8 +1718,9 @@
           <label class="text-sm" style="display:flex;gap:6px;align-items:center;margin-top:8px;"><input type="checkbox" id="atSyncRo" style="width:auto" checked> Update the <strong>👷 Staff Roster</strong> from this file automatically — adds new staff (job role, store, shift, week-off), and fills every day’s availability from the real IN / OUT</label>
           <div class="btn-row" style="margin-top:6px;"><button id="atSyncNow" class="ghost small" type="button">👷 Update the Staff Roster now from the loaded attendance</button></div>
           <div class="ro-card" id="atSpBox" style="margin-top:10px;">
-            <label class="text-sm" style="display:flex;gap:6px;align-items:flex-start;"><input type="checkbox" id="atSpOn" style="width:auto;margin-top:3px"> <span>☁ <strong>Keep the attendance data in SharePoint</strong> as a JSON file — saved automatically after every upload, shared by everyone, and loaded again if this browser is empty or someone else uploaded newer data.</span></label>
-            <div class="form-grid three" style="margin-top:8px;"><div class="form-group"><label>Folder <span class="hint">in the site’s Documents library</span></label><input type="text" id="atSpFolder" placeholder="AttendanceData"></div><div class="form-group"><label>File name</label><input type="text" id="atSpFile" placeholder="attendance.json"></div><div class="form-group"><label>&nbsp;</label><div class="btn-row"><button id="atSpSave" class="secondary small" type="button">☁ Save to SharePoint now</button><button id="atSpLoad" class="ghost small" type="button">⬇ Load from SharePoint</button></div></div></div>
+            <label class="text-sm" style="display:flex;gap:6px;align-items:flex-start;"><input type="checkbox" id="atSpOn" style="width:auto;margin-top:3px"> <span>☁ <strong>Keep the attendance data in SharePoint</strong> — saved automatically after every upload (one row per employee per day), shared by everyone, and loaded again if this browser is empty or someone else uploaded newer data.</span></label>
+            <div class="form-grid three" style="margin-top:8px;"><div class="form-group"><label>Store as</label><select id="atSpMode"><option value="list">SharePoint list (recommended)</option><option value="file">JSON file in Documents</option></select></div><div class="form-group atsp-list"><label>List name <span class="hint">columns: see the instructions</span></label><input type="text" id="atSpList" placeholder="Attendance_Data_tbl"></div><div class="form-group"><label>&nbsp;</label><div class="btn-row"><button id="atSpSave" class="secondary small" type="button">☁ Save to SharePoint now</button><button id="atSpLoad" class="ghost small" type="button">⬇ Load from SharePoint</button></div></div></div>
+            <div class="form-grid three atsp-file" style="margin-top:8px;"><div class="form-group"><label>Folder <span class="hint">in the site’s Documents library</span></label><input type="text" id="atSpFolder" placeholder="AttendanceData"></div><div class="form-group"><label>File name</label><input type="text" id="atSpFile" placeholder="attendance.json"></div></div>
             <div id="atSpMsg" class="status-msg"></div>
           </div>
           <div id="atUpMsg" class="status-msg"></div>
@@ -2970,97 +2990,97 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=208"></script>
-<script src="js/01-core-constants-helpers.js?v=208"></script>
-<script src="js/02-users-and-roles-ui.js?v=208"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=208"></script>
-<script src="js/04-confirm-combo-csv.js?v=208"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=208"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=208"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=208"></script>
-<script src="js/08-uom-tracker-attachments.js?v=208"></script>
-<script src="js/08b-uom-normalise.js?v=208"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=208"></script>
-<script src="js/10-refresh-all-good-return.js?v=208"></script>
-<script src="js/11-fefo-filter-engine.js?v=208"></script>
-<script src="js/12-uploader-main-lookup.js?v=208"></script>
-<script src="js/13-uploader-key-computation.js?v=208"></script>
-<script src="js/14-exporter-prefilters.js?v=208"></script>
-<script src="js/15-value-cache-record-editor.js?v=208"></script>
-<script src="js/16-data-editor-download.js?v=208"></script>
-<script src="js/17-mapping-sample-check.js?v=208"></script>
-<script src="js/18-schedules-notifications-settings.js?v=208"></script>
-<script src="js/19-email-results.js?v=208"></script>
-<script src="js/20-prefilters-compose.js?v=208"></script>
-<script src="js/21-planning-filters-charts.js?v=208"></script>
-<script src="js/22-planning-dept.js?v=208"></script>
-<script src="js/23-daily-plan-model-charts.js?v=208"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=208"></script>
-<script src="js/25-fd-plan-trips.js?v=208"></script>
-<script src="js/26-production-vs-distribution.js?v=208"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=208"></script>
-<script src="js/28-oasis-prism-signboards.js?v=208"></script>
-<script src="js/29-staff-roster.js?v=208"></script>
-<script src="js/30-roster-edits-templates.js?v=208"></script>
-<script src="js/31-attendance-leave-planner.js?v=208"></script>
-<script src="js/32-management-daily-report.js?v=208"></script>
-<script src="js/33-logistics-trip-planning.js?v=208"></script>
-<script src="js/34-filter-fields-expand-window.js?v=208"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=208"></script>
-<script src="js/36-attendance-ot-calc.js?v=208"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=208"></script>
-<script src="js/38-mod-switchboard.js?v=208"></script>
-<script src="js/39-mod-tab-hide.js?v=208"></script>
-<script src="js/40-mod-activity-archive.js?v=208"></script>
-<script src="js/40b-create-popup.js?v=208"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=208"></script>
-<script src="js/42-mod-relogin-button.js?v=208"></script>
-<script src="js/43-mod-project-progress.js?v=208"></script>
-<script src="js/44-mod-fleet-management.js?v=208"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=208"></script>
-<script src="js/45c-pick-transit.js?v=208"></script>
-<script src="js/45a-combobox.js?v=208"></script>
-<script src="js/45d-pallet-relocation.js?v=208"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=208"></script>
-<script src="js/46b-rmpm-mobile.js?v=208"></script>
-<script src="js/47-foc-release-voucher.js?v=208"></script>
-<script src="js/47b-foc-stock-link.js?v=208"></script>
-<script src="js/48-list-analytics.js?v=208"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=208"></script>
-<script src="js/50-logistics-ready-plan.js?v=208"></script>
-<script src="js/51-location-scope.js?v=208"></script>
-<script src="js/52-title-profiles.js?v=208"></script>
-<script src="js/52a-nav-central.js?v=208"></script>
-<script src="js/52b-brand-central.js?v=208"></script>
-<script src="js/53-rack-locations.js?v=208"></script>
-<script src="js/55-central-config.js?v=208"></script>
-<script src="js/58-session-renew.js?v=208"></script>
-<script src="js/59-mod-warehouse-3d.js?v=208"></script>
-<script src="js/59b-wh3d-rack-setup.js?v=208"></script>
-<script src="js/59d-rack-labels.js?v=208"></script>
-<script src="js/59c-wh3d-picks-link.js?v=208"></script>
-<script src="js/60-update-check.js?v=208"></script>
-<script src="js/56-mod-equipment-workshop.js?v=208"></script>
-<script src="js/61-col-tools.js?v=208"></script>
-<script src="js/62-mod-rack-condition.js?v=208"></script>
-<script src="js/63-mod-ot-recovery.js?v=208"></script>
-<script src="js/64-smv-mobile.js?v=208"></script>
-<script src="js/65-select-search.js?v=208"></script>
-<script src="js/66-orbit-brand.js?v=208"></script>
-<script src="js/67-rack-balance.js?v=208"></script>
-<script src="js/68-movement-report.js?v=208"></script>
-<script src="js/68-whs-utilization.js?v=208"></script>
-<script src="js/69-progress-popup.js?v=208"></script>
-<script src="js/70-chart-motion.js?v=208"></script>
-<script src="js/71-mobile-app.js?v=208"></script>
-<script src="js/72-mgw-shared-utilization.js?v=208"></script>
-<script src="js/73-fd-weekly-transfer.js?v=208"></script>
-<script src="js/75-driver-compliance.js?v=208"></script>
-<script src="js/74-popup-front.js?v=208"></script>
-<script src="js/76-batch-code.js?v=208"></script>
-<script src="js/77-admin-console.js?v=208"></script>
-<script src="js/78-master-data.js?v=208"></script>
-<script src="js/99-boot.js?v=208"></script>
+<script src="js/00-users-data.js?v=211"></script>
+<script src="js/01-core-constants-helpers.js?v=211"></script>
+<script src="js/02-users-and-roles-ui.js?v=211"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=211"></script>
+<script src="js/04-confirm-combo-csv.js?v=211"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=211"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=211"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=211"></script>
+<script src="js/08-uom-tracker-attachments.js?v=211"></script>
+<script src="js/08b-uom-normalise.js?v=211"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=211"></script>
+<script src="js/10-refresh-all-good-return.js?v=211"></script>
+<script src="js/11-fefo-filter-engine.js?v=211"></script>
+<script src="js/12-uploader-main-lookup.js?v=211"></script>
+<script src="js/13-uploader-key-computation.js?v=211"></script>
+<script src="js/14-exporter-prefilters.js?v=211"></script>
+<script src="js/15-value-cache-record-editor.js?v=211"></script>
+<script src="js/16-data-editor-download.js?v=211"></script>
+<script src="js/17-mapping-sample-check.js?v=211"></script>
+<script src="js/18-schedules-notifications-settings.js?v=211"></script>
+<script src="js/19-email-results.js?v=211"></script>
+<script src="js/20-prefilters-compose.js?v=211"></script>
+<script src="js/21-planning-filters-charts.js?v=211"></script>
+<script src="js/22-planning-dept.js?v=211"></script>
+<script src="js/23-daily-plan-model-charts.js?v=211"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=211"></script>
+<script src="js/25-fd-plan-trips.js?v=211"></script>
+<script src="js/26-production-vs-distribution.js?v=211"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=211"></script>
+<script src="js/28-oasis-prism-signboards.js?v=211"></script>
+<script src="js/29-staff-roster.js?v=211"></script>
+<script src="js/30-roster-edits-templates.js?v=211"></script>
+<script src="js/31-attendance-leave-planner.js?v=211"></script>
+<script src="js/32-management-daily-report.js?v=211"></script>
+<script src="js/33-logistics-trip-planning.js?v=211"></script>
+<script src="js/34-filter-fields-expand-window.js?v=211"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=211"></script>
+<script src="js/36-attendance-ot-calc.js?v=211"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=211"></script>
+<script src="js/38-mod-switchboard.js?v=211"></script>
+<script src="js/39-mod-tab-hide.js?v=211"></script>
+<script src="js/40-mod-activity-archive.js?v=211"></script>
+<script src="js/40b-create-popup.js?v=211"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=211"></script>
+<script src="js/42-mod-relogin-button.js?v=211"></script>
+<script src="js/43-mod-project-progress.js?v=211"></script>
+<script src="js/44-mod-fleet-management.js?v=211"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=211"></script>
+<script src="js/45c-pick-transit.js?v=211"></script>
+<script src="js/45a-combobox.js?v=211"></script>
+<script src="js/45d-pallet-relocation.js?v=211"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=211"></script>
+<script src="js/46b-rmpm-mobile.js?v=211"></script>
+<script src="js/47-foc-release-voucher.js?v=211"></script>
+<script src="js/47b-foc-stock-link.js?v=211"></script>
+<script src="js/48-list-analytics.js?v=211"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=211"></script>
+<script src="js/50-logistics-ready-plan.js?v=211"></script>
+<script src="js/51-location-scope.js?v=211"></script>
+<script src="js/52-title-profiles.js?v=211"></script>
+<script src="js/52a-nav-central.js?v=211"></script>
+<script src="js/52b-brand-central.js?v=211"></script>
+<script src="js/53-rack-locations.js?v=211"></script>
+<script src="js/55-central-config.js?v=211"></script>
+<script src="js/58-session-renew.js?v=211"></script>
+<script src="js/59-mod-warehouse-3d.js?v=211"></script>
+<script src="js/59b-wh3d-rack-setup.js?v=211"></script>
+<script src="js/59d-rack-labels.js?v=211"></script>
+<script src="js/59c-wh3d-picks-link.js?v=211"></script>
+<script src="js/60-update-check.js?v=211"></script>
+<script src="js/56-mod-equipment-workshop.js?v=211"></script>
+<script src="js/61-col-tools.js?v=211"></script>
+<script src="js/62-mod-rack-condition.js?v=211"></script>
+<script src="js/63-mod-ot-recovery.js?v=211"></script>
+<script src="js/64-smv-mobile.js?v=211"></script>
+<script src="js/65-select-search.js?v=211"></script>
+<script src="js/66-orbit-brand.js?v=211"></script>
+<script src="js/67-rack-balance.js?v=211"></script>
+<script src="js/68-movement-report.js?v=211"></script>
+<script src="js/68-whs-utilization.js?v=211"></script>
+<script src="js/69-progress-popup.js?v=211"></script>
+<script src="js/70-chart-motion.js?v=211"></script>
+<script src="js/71-mobile-app.js?v=211"></script>
+<script src="js/72-mgw-shared-utilization.js?v=211"></script>
+<script src="js/73-fd-weekly-transfer.js?v=211"></script>
+<script src="js/75-driver-compliance.js?v=211"></script>
+<script src="js/74-popup-front.js?v=211"></script>
+<script src="js/76-batch-code.js?v=211"></script>
+<script src="js/77-admin-console.js?v=211"></script>
+<script src="js/78-master-data.js?v=211"></script>
+<script src="js/99-boot.js?v=211"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {
