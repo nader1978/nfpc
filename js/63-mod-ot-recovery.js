@@ -207,14 +207,8 @@
       await createItem(I.st.siteId, I.st.listId, spCoerceFields(I.st.listId, { OT_WorkDate: r.date, Header_Link: r.id, Staff_FileNr: +fn, Staff_Name: e.employeename || (tok.split('-')[1] || '').trim(), Staf_Title: e.jobrole || '', WHs_Desc: r.loc, Location_ID: num(r.h.locationlink) || undefined, Working_VolumeKgs: r.kg, Working_VolumePlts: r.plt, Staff_Line_Mngr: r.by, HOD_Remarks: rem, OT_Hours: nf(r.avg), Rplcd_Day_Status: 'Open' }), token); n++; }
     return n;
   }
-  function apInit() {
-    const v = Q('#view-otapp'); if (!v || v._i) return; v._i = 1;
-    v.addEventListener('click', e => { const t = e.target.closest('[data-ap]'); if (!t) return; const a = t.dataset.ap;
-      if (a === 'sel') { AP.sel = +t.dataset.id; AP.dlg = ''; AP.rem = ''; AP.instr = ''; AP.err = ''; } else if (a === 'st') AP.f.st = t.dataset.v; else if (a === 'reload') return load(true);
-      else if (a === 'dlg') { AP.dlg = t.dataset.v; AP.err = ''; } else if (a === 'cancel') { AP.dlg = ''; AP.err = ''; } else if (a === 'confirm') return apDecide(); apRender(); });
-    v.addEventListener('change', e => { const k = e.target.dataset.apf; if (!k || k === 'q' || k === 'rem') return; if (k === 'instr') AP.instr = e.target.value; else AP.f[k] = e.target.value; apRender(); });
-    v.addEventListener('input', e => { const k = e.target.dataset.apf; if (k === 'rem') AP.rem = e.target.value; else if (k === 'q') { AP.f.q = e.target.value.trim(); clearTimeout(AP.tm); AP.tm = setTimeout(() => { apRender(); const i = Q('#view-otapp [data-apf=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
-    const css = document.createElement('style'); css.textContent = `#view-otapp .ap-wrap{font-size:13px;color:#1b2533}#view-otapp .ap-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}#view-otapp .ap-h1{font-size:22px;font-weight:700;color:#14274e}#view-otapp .ap-sub{color:#64748b;font-size:12.5px}#view-otapp .ap-actions{display:flex;gap:10px;align-items:center}
+  function apCss() { if (document.getElementById('apCss')) return;
+    const css = document.createElement('style'); css.id = 'apCss'; css.textContent = `#view-otapp .ap-wrap{font-size:13px;color:#1b2533}#view-otapp .ap-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px}#view-otapp .ap-h1{font-size:22px;font-weight:700;color:#14274e}#view-otapp .ap-sub{color:#64748b;font-size:12.5px}#view-otapp .ap-actions{display:flex;gap:10px;align-items:center}
 #view-otapp .ap-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:12px}#view-otapp .ap-k{background:#fff;border:1px solid #dfe6f2;border-radius:12px;padding:10px 14px}#view-otapp .ap-k span{display:block;font-size:12px;color:#64748b}#view-otapp .ap-k b{font-size:24px;color:#14274e}#view-otapp .ap-k small{display:block;color:#64748b;font-size:11.5px}
 #view-otapp .ap-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}#view-otapp .ap-seg{display:inline-flex;border:1px solid #c5cfe0;border-radius:10px;overflow:hidden}#view-otapp .ap-seg button{border:0;background:#fff;padding:8px 14px;font-weight:600;color:#475569;cursor:pointer;width:auto;margin:0;border-radius:0}#view-otapp .ap-seg button.on{background:#1f4ea8;color:#fff}
 #view-otapp .ap-in{height:36px;border:1px solid #c5cfe0;border-radius:8px;padding:0 10px;background:#fff;font:inherit;width:auto;margin:0}#view-otapp textarea.ap-in{height:auto;padding:8px 10px;width:100%;box-sizing:border-box}#view-otapp .ap-btn{height:36px;padding:0 16px;border-radius:8px;border:1px solid #c5cfe0;background:#fff;color:#1f3b73;font-weight:600;cursor:pointer;width:auto;margin:0}#view-otapp .ap-ok{background:#15803d;border-color:#15803d;color:#fff}#view-otapp .ap-no{background:#fff;border-color:#dc2626;color:#b91c1c}#view-otapp .ap-btn:disabled{opacity:.6}
@@ -224,7 +218,15 @@
 #view-otapp .ap-sec{font-weight:700;color:#1f3b73;margin:14px 0 6px;border-bottom:1px solid #e5eaf3;padding-bottom:4px}#view-otapp .ap-tw{overflow:auto;border:1px solid #e5eaf3;border-radius:10px}#view-otapp .ap-t{border-collapse:collapse;width:100%;font-size:12.5px}#view-otapp .ap-t th{background:#eef2fa;padding:7px 9px;text-align:left;white-space:nowrap}#view-otapp .ap-t td{padding:7px 9px;border-top:1px solid #e5eaf3;vertical-align:top}#view-otapp .n{text-align:right}
 #view-otapp .ap-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:10px}#view-otapp .ap-dlg{border:1px solid #dfe6f2;border-radius:12px;padding:14px 16px;background:#f9fbfe}#view-otapp .ap-dlg.ok{border-left:4px solid #16a34a}#view-otapp .ap-dlg.rej{border-left:4px solid #dc2626}#view-otapp .ap-dt{font-weight:700;margin-bottom:8px}#view-otapp .ap-dlg label{display:block;font-size:11.5px;font-weight:600;color:#475569;margin:8px 0 4px}#view-otapp .ap-note{font-size:12px;color:#92400e;background:#fef3c7;border-radius:8px;padding:6px 10px;margin-top:8px}#view-otapp .ap-err{color:#b91c1c;font-weight:600;margin-top:8px}
 #view-otapp .ap-done{border-radius:12px;padding:12px 14px;background:#f4f7fc;color:#334155}#view-otapp .ap-done.ok{background:#ecfdf3}#view-otapp .ap-done.rej{background:#fef2f2}#view-otapp .ap-rem{margin-top:6px;font-style:italic}#view-otapp .ap-empty{color:#64748b;padding:24px;text-align:center}
-@media(max-width:860px){#view-otapp .ap-grid{grid-template-columns:1fr}#view-otapp .ap-kv{grid-template-columns:1fr}}`; document.head.appendChild(css); apRender();
+@media(max-width:860px){#view-otapp .ap-grid{grid-template-columns:1fr}#view-otapp .ap-kv{grid-template-columns:1fr}}`; css.textContent = css.textContent.replace(/([^{}]+)\{/g, (m, sel) => /^\s*@/.test(sel) ? m : sel.split(',').map(x => /^\s*#view-otapp /.test(x) ? x + ',' + x.replace('#view-otapp', '#view-otreq') + ',' + x.replace('#view-otapp', '#view-otrep') : x).join(',') + '{'); document.head.appendChild(css); }
+  function apInit() {
+    const v = Q('#view-otapp'); if (!v || v._i) return; v._i = 1;
+    v.addEventListener('click', e => { const t = e.target.closest('[data-ap]'); if (!t) return; const a = t.dataset.ap;
+      if (a === 'sel') { AP.sel = +t.dataset.id; AP.dlg = ''; AP.rem = ''; AP.instr = ''; AP.err = ''; } else if (a === 'st') AP.f.st = t.dataset.v; else if (a === 'reload') return load(true);
+      else if (a === 'dlg') { AP.dlg = t.dataset.v; AP.err = ''; } else if (a === 'cancel') { AP.dlg = ''; AP.err = ''; } else if (a === 'confirm') return apDecide(); apRender(); });
+    v.addEventListener('change', e => { const k = e.target.dataset.apf; if (!k || k === 'q' || k === 'rem') return; if (k === 'instr') AP.instr = e.target.value; else AP.f[k] = e.target.value; apRender(); });
+    v.addEventListener('input', e => { const k = e.target.dataset.apf; if (k === 'rem') AP.rem = e.target.value; else if (k === 'q') { AP.f.q = e.target.value.trim(); clearTimeout(AP.tm); AP.tm = setTimeout(() => { apRender(); const i = Q('#view-otapp [data-apf=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
+    apCss(); apRender();
   }
   const navA = Q('.nav-item[data-view="otapp"]'); if (navA) navA.addEventListener('click', () => { apInit(); apRender(); setTimeout(() => load(false), 50); });
 
@@ -309,7 +311,7 @@
     } catch (e) { RQ.busy = false; RQ.err = '⚠ ' + e.message; rqRender(); }
   }
   function rqInit() {
-    const v = Q('#view-otreq'); if (!v || v._i) return; v._i = 1;
+    apCss(); const v = Q('#view-otreq'); if (!v || v._i) return; v._i = 1;
     v.addEventListener('click', e => { const t = e.target.closest('[data-rq]'); if (!t) return; const a = t.dataset.rq, val = t.dataset.v;
       if (a === 'tab') RQ.tab = val; else if (a === 'reload') { X.loaded = false; S.loaded = false; xLoad(); return load(true); } else if (a === 'dept') { const i = RQ.depts.indexOf(val); if (i < 0) RQ.depts.push(val); else RQ.depts.splice(i, 1); }
       else if (a === 'addline') { if (!RQ.loc) { RQ.err = 'Choose the location first.'; } else RQ.dlg = { type: ROLES_OT[0], hrs: '', cnt: '', sel: new Set(), reason: RQ.reason, rem: '', q: '', err: '' }; } else if (a === 'canceld') RQ.dlg = null;
@@ -364,7 +366,7 @@
     } catch (e) { RP.busy = false; RP.err = '⚠ ' + e.message; rpRender(); }
   }
   function rpInit() {
-    const v = Q('#view-otrep'); if (!v || v._i) return; v._i = 1;
+    apCss(); const v = Q('#view-otrep'); if (!v || v._i) return; v._i = 1;
     v.addEventListener('click', e => { const t = e.target.closest('[data-rp]'); if (!t) return; const a = t.dataset.rp;
       if (a === 'tab') RP.tab = t.dataset.v; else if (a === 'reload') return load(true); else if (a === 'cancel') { RP.dlg = null; RP.err = ''; } else if (a === 'save') return rpSave();
       else if (a === 'upd') { const r = rpRows().find(x => x.id === +t.dataset.v); if (r) { RP.dlg = { r, method: '', hrs: r.bal, date: ymd(new Date()), rep: '', rem: '' }; RP.err = ''; } } rpRender(); });
@@ -373,6 +375,8 @@
     rpRender();
   }
   const css2 = document.createElement('style'); css2.textContent = `#view-otreq .rq-g,#view-otrep .rq-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:10px}#view-otreq label,#view-otrep label{display:block;font-size:11.5px;font-weight:600;color:#475569;margin:6px 0 4px}#view-otreq .rq-fx{height:36px;display:flex;align-items:center;padding:0 10px;background:#f4f7fc;border-radius:8px}#view-otreq .rq-chips{display:flex;flex-wrap:wrap;gap:8px}#view-otreq .rq-chips button{border:1px solid #c5cfe0;background:#fff;border-radius:999px;padding:6px 14px;font-weight:600;color:#475569;cursor:pointer;width:auto;margin:0}#view-otreq .rq-chips button.on{background:#1f4ea8;border-color:#1f4ea8;color:#fff}#view-otreq .rq-staff{max-height:190px;overflow:auto;border:1px solid #e5eaf3;border-radius:10px;padding:6px 10px;margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:0 12px;background:#fff}#view-otreq .rq-staff label{display:flex;gap:8px;align-items:center;margin:0;padding:4px 0;font-weight:500;color:#1b2533;font-size:13px}#view-otreq .rq-staff input{width:auto;margin:0}#view-otreq .rq-staff small{color:#64748b}#view-otreq tr[data-rq=row]:hover{background:#e8effc}`;
+
+  css2.textContent += ['#view-otreq','#view-otrep'].map(v => `${v} .ap-wrap{max-width:1500px;margin:0 auto;padding:4px 2px 24px}${v} .ap-h1{font-size:22px;font-weight:800;color:#14274e;letter-spacing:-.2px}${v} .ap-sub{color:#64748b;margin-top:2px}${v} .ap-t th.n,${v} .ap-t td.n{text-align:right;font-variant-numeric:tabular-nums}${v} .ap-t th{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#475569;position:sticky;top:0}${v} .ap-t td{vertical-align:middle}${v} .ap-t tbody tr:hover td{background:#f4f8ff}${v} .ap-t tfoot td{background:#f4f7fc;border-top:2px solid #cfd9ea}${v} .ap-det{box-shadow:0 1px 3px rgba(20,40,90,.06)}${v} .ap-tile{border:1px solid #e3eaf5}${v} .ap-tile b{display:block;margin-top:2px}${v} .ap-k{padding:12px 16px;box-shadow:0 1px 3px rgba(20,40,90,.06)}${v} .ap-bar{background:#fff;border:1px solid #e3eaf5;border-radius:12px;padding:8px 12px}${v} .ap-btn:focus-visible,${v} .ap-in:focus{outline:2px solid #1f4ea8;outline-offset:1px}`).join('');
   document.head.appendChild(css2);
   [['otreq', rqInit, rqRender], ['otrep', rpInit, rpRender]].forEach(([k, ini, rend]) => { const n2 = Q('.nav-item[data-view="' + k + '"]'); if (n2) n2.addEventListener('click', () => { ini(); rend(); setTimeout(() => { load(false); xLoad(); }, 50); }); });
 
