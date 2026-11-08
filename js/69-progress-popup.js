@@ -190,7 +190,7 @@
       d.addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (b) fin(b.dataset.q === '1'); else if (e.target === d) fin(false); }); }); }
   window.orbAsk = box;
   /* the older upload question (spAsk, used by 13 screens) now opens this same dialog (design A); "Yes" counts as the confirmation for the save that follows */
-  if (typeof spAsk === 'function') { const sp = function (text, title) { text = String(text == null ? '' : text) + (sp.extra || ''); sp.extra = '';
+  if (typeof spAsk === 'function') { const sp = function (text, title) { if (window.__orbSched > 0 && Date.now() - lastUser > 3000) return Promise.resolve(true); text = String(text == null ? '' : text) + (sp.extra || ''); sp.extra = '';
       const L = text.split('\n').map(x => x.trim()).filter(Boolean), first = (L[0] || 'Upload the data').replace(/\?\s*$/, ''), rows = [], html = [];
       L.slice(1).forEach(l => { const m = l.match(/^([^:⚠✔✖]{2,32}):\s*(.+)$/); if (m) rows.push([m[1].trim(), m[2].trim()]); else html.push(esc(l)); });
       const del = /\b(delete|remove|clear|wipe)\b/i.test(first);
@@ -198,6 +198,7 @@
         .then(v => { const t = Date.now() + 400; if (v) okAt = t; else noAt = t; return v; }); };
     sp.extra = ''; spAsk = sp; }
   window.confirm = function (msg) {
+    if (window.__orbSched > 0 && Date.now() - lastUser > 3000) return true;   /* a schedule is running — nobody to ask */
     msg = String(msg == null ? '' : msg); const now = Date.now(); okMsgs.forEach((t, k) => { if (now - t > 12000) okMsgs.delete(k); });
     if (okMsgs.has(msg)) { okMsgs.delete(msg); okAt = now + 4000; return true; }
     const a = lastAct; if (boxOpen || !a || now - a.t > 4000 || !a.el || !a.el.isConnected) return nativeConfirm(msg);
@@ -214,10 +215,12 @@
     const ok = await ask(c, j); if (ok && !j.fin) { j.t0 = Date.now(); j.shown = true; draw(); } return ok; }
 
   /* ---------- the watcher ---------- */
+  const bgNow = () => window.__orbBg > 0 && Date.now() - lastUser > 3000 && !(J && !J.fin && J.user);   /* a running user job keeps being tracked */
   const F0 = window.fetch.bind(window);
   window.fetch = async function (input, init) {
     const url = typeof input === 'string' ? input : input && input.url, method = (init && init.method) || (input && input.method) || 'GET', c = classify(url, method);
     if (!c) return F0(input, init);
+    if (bgNow()) return F0(input, init);   /* timer / schedule work: no progress window, no question */
     /* background system-log writes (Admin Console) are silent: no question, no progress window */
     if (window.__orbQuiet && c.k !== 'mail') { let sl = ''; try { sl = String((utGet('syslog') || {}).list || '').toLowerCase(); } catch (x) {} const ln = String(listName(c.list) || c.list || '').toLowerCase(); if (!c.list || (sl && (ln === sl || String(c.list).toLowerCase() === sl))) return F0(input, init); }
     const j = begin(); if (c.k === 'meta') { j.meta++; } else if (c.list) j.lists.add(c.list);

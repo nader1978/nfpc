@@ -28,7 +28,7 @@ async function runScheduleOnce(s) {
   const siteUrl = getGlobalSiteUrl();
   if (!token || !siteUrl) { addActivity('error', `Schedule "${s.name}" skipped`); return; }
   if (!isListVisible(s.listName)) { addActivity('error', `Schedule "${s.name}" skipped — no permission`); return; }
-  s.running = true; renderSchedules();
+  s.running = true; renderSchedules(); window.__orbBg++; window.__orbSched++;
   try {
     const { siteId, listId } = await resolveIds(siteUrl, s.listName, token);
     const cols = await fetchColumns(siteId, listId, token);
@@ -50,7 +50,7 @@ async function runScheduleOnce(s) {
     s.lastRun = Date.now();
     addActivity('schedule', `Schedule "${s.name}" ran — ${filtered.length} rows`);
   } catch (err) { addActivity('error', `Schedule "${s.name}" failed: ${err.message}`); if (s.notifyOnFailure) notifyFailure(`Schedule Failed — ${s.name}`, err.message); }
-  finally { s.running = false; renderSchedules(); }
+  finally { s.running = false; window.__orbBg = Math.max(0, window.__orbBg - 1); window.__orbSched = Math.max(0, window.__orbSched - 1); renderSchedules(); }
 }
 function updateTimersUI() {
   const c = $('timersList');
@@ -109,7 +109,7 @@ function stopUploadSchedule(s) { if (s.timer) clearInterval(s.timer); s.timer = 
 async function runUploadScheduleOnce(s) {
   const token = getGlobalAccessToken();
   if (!token) { addActivity('error', `Upload schedule "${s.name}" skipped`); return; }
-  s.running = true; spUp.quiet++; renderUploadSchedules();
+  s.running = true; spUp.quiet++; window.__orbBg++; window.__orbSched++; renderUploadSchedules();
   try {
     let rows;
     if (s.dataSource === 'url') rows = await fetchDataFromUrl(s.sourceUrl);
@@ -124,7 +124,7 @@ async function runUploadScheduleOnce(s) {
     if (totalFailed === 0) addActivity('upload', `Upload schedule "${s.name}" — ${totalSuccess} created`);
     else { addActivity('error', `Upload schedule "${s.name}": ${totalFailed} failed`); if (s.notifyOnFailure) notifyFailure(`Upload Schedule Failed — ${s.name}`, `${totalFailed} failures.\n\n${errors.slice(0, 5).join('\n')}`); }
   } catch (err) { addActivity('error', `Upload schedule "${s.name}" failed: ${err.message}`); if (s.notifyOnFailure) notifyFailure(`Upload Schedule Failed — ${s.name}`, err.message); }
-  finally { s.running = false; setTimeout(() => { spUp.quiet = Math.max(0, spUp.quiet - 1); }, 4000); renderUploadSchedules(); }
+  finally { s.running = false; window.__orbBg = Math.max(0, window.__orbBg - 1); window.__orbSched = Math.max(0, window.__orbSched - 1); setTimeout(() => { spUp.quiet = Math.max(0, spUp.quiet - 1); }, 4000); renderUploadSchedules(); }
 }
 function updateUploadTimersUI() {
   const c = $('uploadTimersList');

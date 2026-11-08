@@ -1,3 +1,13 @@
+/* BACKGROUND WORK — everything started by a timer (setInterval) or a schedule runs silently:
+   window.__orbBg counts the background jobs running; js/69 then shows no progress window and asks no question for their SharePoint requests
+   (unless the user touched the screen in the last 3 s, so a user's own action is never hidden). */
+(function () {
+  window.__orbBg = 0; window.__orbSched = 0;
+  window.orbBackground = function (fn) { return function () { window.__orbBg++; let r; try { r = fn.apply(this, arguments); } catch (e) { window.__orbBg--; throw e; }
+    if (r && typeof r.then === 'function') { const d = () => { window.__orbBg = Math.max(0, window.__orbBg - 1); }; r.then(d, d); } else window.__orbBg = Math.max(0, window.__orbBg - 1);
+    return r; }; };
+  const SI = window.setInterval; window.setInterval = function (fn) { if (typeof fn === 'function') { const a = Array.prototype.slice.call(arguments); a[0] = window.orbBackground(fn); return SI.apply(window, a); } return SI.apply(window, arguments); };
+})();
 
 /* ============================================================
    SAFETY NET — install BEFORE any other code runs.
