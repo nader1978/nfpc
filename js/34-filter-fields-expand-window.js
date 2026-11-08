@@ -89,7 +89,7 @@ function ffScan() {
     '.mdl-ctlw{position:sticky;top:0;height:0;z-index:60;text-align:right;overflow:visible}',
     '.mdl-ctlw>.mdl-ctl{position:absolute;right:0;top:0;margin:0;background:' + GR + ';border-radius:0 10px 0 8px;overflow:hidden}',
     '.mdl-min{background:transparent !important;pointer-events:none !important;align-items:flex-end !important;justify-content:flex-start !important;padding:0 0 10px 10px !important}',
-    '.mdl-min>[data-mdl]{pointer-events:auto !important;width:auto !important;min-width:250px;max-width:320px !important;height:auto !important;max-height:none !important;transform:none !important;overflow:hidden !important;border-radius:10px !important;background:' + GR + ' !important}',
+    '.mdl-min>[data-mdl]{pointer-events:auto !important;width:auto !important;min-width:250px !important;min-height:0 !important;max-width:320px !important;height:auto !important;max-height:none !important;resize:none !important;margin-top:0 !important;transform:none !important;overflow:hidden !important;border-radius:10px !important;background:' + GR + ' !important}',
     '.mdl-min>[data-mdl]>*:not(.mdl-ctlw):not(.mdl-chip){display:none !important}',
     '.mdl-min.mdl-min>[data-mdl][data-mdl]>:is(.tm-head,.card-header,.modal-header,.mdl-bar){display:flex !important;padding:0 !important;margin:0 !important;background:none !important;flex-wrap:nowrap !important;border:0 !important}',
     '.mdl-min.mdl-min>[data-mdl][data-mdl]>:is(.tm-head,.card-header,.modal-header,.mdl-bar)>*:not(.mdl-ctl){display:none !important}',
