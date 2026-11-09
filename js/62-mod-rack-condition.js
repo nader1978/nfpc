@@ -143,3 +143,129 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'rkc') { e.stopImmediatePropagation(); load(true); } }, true);
   window.RKC = { S, load, render, upd3d };
 })();
+
+/* ============================================================
+   FORKLIFT RECEIVING — FLOprt_CheckList_tbl (every "Receive Unit" / "Park Unit" entered in the mobile app)
+   · unit summary with the condition reported by the users · what changed against the previous inspection of the same unit
+   · units × dates matrix · full receiving log (19-point checklist, status toggles, scratches, ODO)
+   ============================================================ */
+(function () {
+  const Q = s => document.querySelector(s), esc = escapeHtml, LIST = 'FLOprt_CheckList_tbl';
+  const nz = x => String(x || '').toLowerCase().replace(/_x[0-9a-f]{4}_/g, '').replace(/[^a-z0-9]/g, '');
+  const pad = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
+  const dShift = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+  const S = { rows: [], loaded: false, loading: false, err: '', tab: 'sum', f: { from: ymd(dShift(new Date(), -30)), to: ymd(new Date()), type: '', unit: '', q: '', onlyIssue: false } };
+  /* the eight Yes/No switches of the "Receive Unit" screen — Yes = in good condition */
+  const TG = [['oil', 'Engine oil', 'engoillevel'], ['wat', 'Engine water', 'engwaterlevel'], ['brk', 'Brakes', 'breakstatus'], ['tir', 'Tires', 'tiresstatus'], ['cln', 'Cleaning', 'cleaningstatus'], ['wrk', 'Working', 'workingstatus'], ['hyd', 'Hydraulic', 'hydraulicstatus'], ['hse', 'HSE records', 'hserecordsupdate']];
+  const SC = [['f', 'Front', /front/], ['r', 'Rear', /(rare|rear)/], ['l', 'Left', /left/], ['t', 'Right', /right/]];
+  const bo = v => { if (v && typeof v === 'object') v = v.Value; if (v === true || v === false) return v; const s = String(v == null ? '' : v).trim().toLowerCase(); if (!s) return null; if (/^(true|yes|ok|good|1|y|✓)/.test(s)) return true; if (/^(false|no|not|bad|0|n|✗)/.test(s)) return false; return null; };
+  const say = (t, w) => { const e = Q('#flrStatus'); if (e) { e.textContent = t; e.style.color = w ? '#b45309' : ''; } };
+
+  function parse(it) {
+    const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; });
+    const g = (...ks) => { for (const k of ks) if (K[k] != null && K[k] !== '') return K[k]; return ''; };
+    const unit = String(g('flcode', 'title')).trim(); if (!unit) return null;
+    let rt = g('recordtype'); if (rt && typeof rt === 'object') rt = rt.Value; rt = String(rt || '').trim();
+    const dv = g('transdate'); let date = ''; if (dv) { const d = new Date(dv); if (!isNaN(d)) date = ymd(d); } if (!date && it.createdDateTime) date = ymd(new Date(it.createdDateTime));
+    const tsv = g('timestamp'), ts = tsv ? new Date(tsv).getTime() || 0 : new Date(it.createdDateTime || 0).getTime() || 0;
+    const rem = String(g('remarks')).trim(), cm = rem.match(/\[Checklist\s+(\d+)\s*\/\s*(\d+)\s*OK([^\]]*)\]?/i);
+    const nokM = cm && cm[3].match(/NOT OK:\s*([^|\]]*)/i), naM = cm && cm[3].match(/N\/A:\s*#?([\d,\s]+)/i);
+    const nok = nokM ? nokM[1].split(';').map(x => x.trim()).filter(Boolean) : [];
+    const r = { id: +it.id || 0, unit, uk: unit.toUpperCase(), type: rt, rcv: /receive/i.test(rt), date, ts, odo: num(g('odoreading')), prv: num(g('prvsodo')), km: num(g('totalkms')), by: String(g('username')).trim(), appr: String(g('approvallnmngr')).trim(),
+      ok: cm ? +cm[1] : null, tot: cm ? +cm[2] : null, nok, na: naM ? naM[1].split(',').map(x => x.trim()).filter(Boolean).length : 0, note: String(cm ? rem.slice(0, cm.index) : rem).trim(), rem, tg: {}, sc: { f: 0, r: 0, l: 0, t: 0 } };
+    TG.forEach(([k, , fk]) => { r.tg[k] = bo(g(fk)); });
+    Object.keys(K).forEach(k => { if (!/scratch/.test(k)) return; SC.forEach(([c, , re]) => { if (re.test(k)) r.sc[c] = Math.max(r.sc[c], num(K[k])); }); });
+    r.scN = r.sc.f + r.sc.r + r.sc.l + r.sc.t;
+    /* issues reported by the user on this entry (key → text) */
+    r.iss = new Map(); TG.forEach(([k, t]) => { if (r.tg[k] === false) r.iss.set('t_' + k, t + ' not OK'); }); r.nok.forEach(t => r.iss.set('c_' + t.toLowerCase().replace(/[^a-z0-9]/g, ''), t));
+    r.n = r.iss.size + (r.scN ? 1 : 0); r.crit = r.tg.brk === false || r.tg.hyd === false || r.n >= 4; r.cond = r.n === 0 ? 'Good' : r.crit ? 'Critical' : 'Watch';
+    return r;
+  }
+  async function load(force) {
+    if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; say('Reading ' + LIST + '…');
+    try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
+      const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
+      S.rows = items.map(parse).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || a.ts - b.ts || a.id - b.id);
+      const by = new Map(); S.rows.forEach(r => { r.prev = by.get(r.uk) || null; by.set(r.uk, r); r.d = diff(r); });
+      S.loaded = true; say('✔ ' + S.rows.length + ' receiving record(s) read · ' + new Date().toLocaleTimeString());
+    } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
+  }
+  /* what changed against the previous record of the same unit */
+  function diff(r) {
+    const p = r.prev; if (!p) return { first: true, st: 'First record', news: [], gone: [], scUp: [], scDn: [], odo: [] };
+    const news = [], gone = [], scUp = [], scDn = [], odo = [];
+    r.iss.forEach((t, k) => { if (!p.iss.has(k)) news.push(t); }); p.iss.forEach((t, k) => { if (!r.iss.has(k)) gone.push(t); });
+    SC.forEach(([c, n]) => { if (r.sc[c] > p.sc[c]) scUp.push(n + ' +' + (r.sc[c] - p.sc[c])); else if (r.sc[c] < p.sc[c]) scDn.push(n + ' −' + (p.sc[c] - r.sc[c])); });
+    if (r.odo && p.odo && r.odo < p.odo) odo.push('ODO ' + r.odo + ' is lower than the last record (' + p.odo + ')'); else if (r.prv && p.odo && Math.abs(r.prv - p.odo) > 0.5) odo.push('Previous ODO reported ' + r.prv + ' but the last record was ' + p.odo);
+    const st = news.length || scUp.length ? 'Worse' : gone.length || scDn.length ? 'Improved' : 'Same';
+    return { first: false, st, news, gone, scUp, scDn, odo };
+  }
+  const sel = () => S.rows.filter(r => r.date >= S.f.from && r.date <= S.f.to && (!S.f.type || (S.f.type === 'R' ? r.rcv : !r.rcv)) && (!S.f.unit || r.uk === S.f.unit) && (!S.f.q || r.uk.includes(S.f.q.toUpperCase()) || r.by.toUpperCase().includes(S.f.q.toUpperCase())) && (!S.f.onlyIssue || r.n > 0 || r.d.st === 'Worse'));
+  const units = () => [...new Set(S.rows.map(r => r.uk))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const pill = c => `<span class="flr-p ${c === 'Good' ? 'g' : c === 'Watch' ? 'o' : 'r'}">${c}</span>`;
+  const chg = d => d.first ? '<span class="flr-p n">First record</span>' : d.st === 'Worse' ? '<span class="flr-p r">▲ Worse</span>' : d.st === 'Improved' ? '<span class="flr-p g">▼ Improved</span>' : '<span class="flr-p n">= Same</span>';
+  const chgTxt = d => [d.news.length && 'NEW: ' + d.news.join(', '), d.scUp.length && 'Scratches: ' + d.scUp.join(', '), d.gone.length && 'Fixed: ' + d.gone.join(', '), d.scDn.length && 'Scratches fewer: ' + d.scDn.join(', '), ...d.odo.map(x => '⚠ ' + x)].filter(Boolean).join(' · ');
+  const issTxt = r => [...r.iss.values()].concat(r.scN ? ['Scratches F' + r.sc.f + ' R' + r.sc.r + ' L' + r.sc.l + ' Rt' + r.sc.t] : []).join(', ');
+  const tt = r => `${dmy(r.date)} · ${r.type} · ${r.by}\n${r.n ? issTxt(r) : 'No issues reported'}${r.note ? '\nNote: ' + r.note : ''}`;
+
+  function kpis(R) {
+    const K = (t, v, s) => `<div class="flr-k"><span>${t}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`, us = new Set(R.map(r => r.uk));
+    const lastOf = new Map(); R.forEach(r => lastOf.set(r.uk, r)); const L = [...lastOf.values()];
+    return `<div class="flr-kpis">${K('Records', R.length, R.filter(r => r.rcv).length + ' received · ' + R.filter(r => !r.rcv).length + ' parked')}${K('Units', us.size)}${K('Units worse than before', L.filter(r => r.d.st === 'Worse').length, 'latest record vs the previous one')}${K('Units improved', L.filter(r => r.d.st === 'Improved').length)}${K('Records with issues', R.filter(r => r.n).length, R.filter(r => r.crit).length + ' critical')}${K('Checklist NOT OK', R.filter(r => r.nok.length).length, 'records')}</div>`;
+  }
+  function summary() {
+    const R = sel(), by = new Map(); R.forEach(r => { let x = by.get(r.uk); if (!x) by.set(r.uk, x = { u: r.unit, uk: r.uk, n: 0, iss: 0, last: null }); x.n++; if (r.n) x.iss++; x.last = r; });
+    const L = [...by.values()].sort((a, b) => ({ Critical: 0, Watch: 1, Good: 2 }[a.last.cond] - { Critical: 0, Watch: 1, Good: 2 }[b.last.cond]) || (b.last.d.st === 'Worse') - (a.last.d.st === 'Worse') || a.u.localeCompare(b.u, undefined, { numeric: true }));
+    if (!L.length) return '<div class="flr-hint">No receiving records for this selection.</div>';
+    return `<div class="flr-hint">One line per unit — the <b>latest</b> record in the period, with what changed against the unit's previous inspection (any date). Hover a row for the user's note.</div><div class="flr-wrap"><table class="flr-t"><thead><tr><th>Unit</th><th>Last record</th><th>Type</th><th>By</th><th class="c">ODO</th><th class="c">KM since previous</th><th>Condition now</th><th>Issues reported now</th><th>Change vs previous</th><th>What changed</th><th class="c">Records</th><th class="c">With issues</th><th>User note</th></tr></thead><tbody>
+      ${L.map(x => { const r = x.last; return `<tr title="${esc(tt(r))}"><td><b>${esc(x.u)}</b></td><td>${esc(dmy(r.date))}</td><td>${esc(r.type)}</td><td>${esc(r.by)}</td><td class="c">${r.odo || ''}</td><td class="c">${r.km || ''}</td><td>${pill(r.cond)}</td><td>${esc(issTxt(r)) || '—'}</td><td>${chg(r.d)}${r.prev ? `<br><small>vs ${esc(dmy(r.prev.date))} · ${esc(r.prev.type)}</small>` : ''}</td><td>${esc(chgTxt(r.d)) || '—'}</td><td class="c">${x.n}</td><td class="c">${x.iss || ''}</td><td>${esc(r.note)}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function changes() {
+    const R = sel().filter(r => !r.d.first && (r.d.st !== 'Same' || r.d.odo.length)).sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts);
+    if (!R.length) return '<div class="flr-hint">No changes against the previous inspection in this selection.</div>';
+    return `<div class="flr-hint">Every record whose reported condition differs from the previous record of the same unit (a receive is compared with the last park, and the other way round).</div><div class="flr-wrap"><table class="flr-t"><thead><tr><th>Date</th><th>Unit</th><th>Type</th><th>By</th><th>Compared with</th><th>Change</th><th>New issues</th><th>Scratches</th><th>Fixed</th><th>ODO</th><th>User note</th></tr></thead><tbody>
+      ${R.map(r => { const d = r.d; return `<tr class="${d.st === 'Worse' ? 'hr' : ''}"><td>${esc(dmy(r.date))}</td><td><b>${esc(r.unit)}</b></td><td>${esc(r.type)}</td><td>${esc(r.by)}</td><td>${esc(dmy(r.prev.date))} · ${esc(r.prev.type)}</td><td>${chg(d)}</td><td>${esc(d.news.join(', '))}</td><td>${esc(d.scUp.join(', '))}${d.scDn.length ? ' (' + esc(d.scDn.join(', ')) + ')' : ''}</td><td>${esc(d.gone.join(', '))}</td><td>${esc(d.odo.join(' · '))}</td><td>${esc(r.note)}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function matrix() {
+    const R = sel(); if (!R.length) return '<div class="flr-hint">No receiving records for this selection.</div>';
+    const us = [...new Set(R.map(r => r.uk))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), ds = [...new Set(R.map(r => r.date))].sort().reverse(), by = new Map(); R.forEach(r => { const k = r.date + '|' + r.uk; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+    const cell = L => { if (!L.length) return '<td></td>'; const n = Math.max(...L.map(r => r.n)), w = L.some(r => r.d.st === 'Worse'), t = L.map(tt).join('\n\n'); return n ? `<td class="${L.some(r => r.crit) ? 'h2' : 'h1'}" title="${esc(t)}">🔴 ${n}${w ? '▲' : ''}</td>` : `<td class="${w ? 'h1' : 'ok'}" title="${esc(t)}">${w ? '▲' : '✓'}</td>`; };
+    return `<div class="flr-hint">✓ = received/parked, no issue reported · 🔴 n = issues reported that day (▲ = worse than the previous inspection) · empty = no record. Hover a cell for the details.</div><div class="flr-wrap"><table class="flr-t flr-mx"><thead><tr><th class="st">Date \\ Unit</th>${us.map(u => `<th>${esc(u)}</th>`).join('')}</tr></thead><tbody>
+      ${ds.map(d => `<tr><td class="st"><b>${esc(dmy(d))}</b></td>${us.map(u => cell(by.get(d + '|' + u) || [])).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function log() {
+    const R = sel().slice().sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts || b.id - a.id), ok = v => v === true ? '✓' : v === false ? '<b style="color:#b91c1c">✗</b>' : '';
+    return `<div class="flr-wrap"><table class="flr-t"><thead><tr><th>Date</th><th>Unit</th><th>Type</th><th>By</th><th class="c">ODO</th><th class="c">Prev ODO</th><th class="c">KM</th>${TG.map(x => `<th class="c">${esc(x[1])}</th>`).join('')}<th class="c">Checklist</th><th>NOT OK points</th><th class="c">Scratches F/R/L/Rt</th><th>Condition</th><th>Change</th><th>Approval</th><th>Note</th></tr></thead><tbody>
+      ${R.map(r => `<tr${r.n ? ' class="hr"' : ''}><td>${esc(dmy(r.date))}</td><td><b>${esc(r.unit)}</b></td><td>${esc(r.type)}</td><td>${esc(r.by)}</td><td class="c">${r.odo || ''}</td><td class="c">${r.prv || ''}</td><td class="c">${r.km || ''}</td>${TG.map(x => `<td class="c">${ok(r.tg[x[0]])}</td>`).join('')}<td class="c">${r.tot ? r.ok + '/' + r.tot : ''}</td><td>${esc(r.nok.join('; '))}</td><td class="c">${r.scN ? [r.sc.f, r.sc.r, r.sc.l, r.sc.t].join('/') : ''}</td><td>${pill(r.cond)}</td><td>${chg(r.d)}</td><td>${esc(r.appr)}</td><td>${esc(r.note)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  function render() {
+    const v = Q('#flrBody'); if (!v) return; const U = rpUI, us = units();
+    v.innerHTML = `<div class="rp-f">${U.fi('From', `<input type="date" data-f="from" value="${S.f.from}">`)}${U.fi('To', `<input type="date" data-f="to" value="${S.f.to}">`)}${U.fi('Type', `<select data-f="type"><option value="">Received + parked</option><option value="R"${S.f.type === 'R' ? ' selected' : ''}>Received only</option><option value="P"${S.f.type === 'P' ? ' selected' : ''}>Parked only</option></select>`)}${U.fi('Unit', `<select data-f="unit"><option value="">All units</option>${us.map(u => `<option${u === S.f.unit ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select>`)}${U.fi('Search', `<input type="search" data-f="q" placeholder="Unit / user…" value="${esc(S.f.q)}">`)}
+      <label class="rp-ck"><input type="checkbox" data-f="onlyIssue"${S.f.onlyIssue ? ' checked' : ''}> records with issues / worse only</label><span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-fl="per" data-d="7">7 days</button><button class="secondary small" type="button" data-fl="per" data-d="30">30 days</button><button class="secondary small" type="button" data-fl="per" data-d="90">90 days</button>')}</div>
+      ${S.loaded ? kpis(sel()) : ''}
+      ${U.tabbar([['sum', '📋 Unit summary'], ['chg', '🔄 Changes vs previous'], ['mx', '📊 Units × dates'], ['log', '🧾 Receiving log']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fl', '#flrBody')}
+      ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the receiving records.'}</div>` : S.tab === 'sum' ? summary() : S.tab === 'chg' ? changes() : S.tab === 'mx' ? matrix() : log()}`;
+  }
+  function rep() { const T = { sum: 'Forklift receiving — unit summary', chg: 'Forklift receiving — changes vs previous inspection', mx: 'Forklift receiving — units × dates', log: 'Forklift receiving log' }[S.tab];
+    const note = [dmy(S.f.from) + ' – ' + dmy(S.f.to), S.f.type === 'R' ? 'received only' : S.f.type === 'P' ? 'parked only' : '', S.f.unit && 'Unit ' + S.f.unit, S.f.onlyIssue && 'issues only', 'Printed ' + new Date().toLocaleString()].filter(Boolean).join(' · ');
+    return tblReport(Q('#flrBody table.flr-t'), T, note, T.replace(/^Forklift /, '')); }
+  function init() {
+    const v = Q('#view-flr'); if (!v || v._i) return; v._i = 1;
+    v.addEventListener('click', e => { const t = e.target.closest('[data-t],[data-fl]'); if (!t) return; if (t.dataset.t) { S.tab = t.dataset.t; return render(); } const a = t.dataset.fl;
+      if (a === 'expand') { const tb = Q('#flrBody table.flr-t'); if (tb && window.tableExpandOpen) tableExpandOpen(tb); return; } if (a === 'print' || a === 'excel' || a === 'mail') { const d = rep(); if (a === 'print') a2Print(d); else if (a === 'excel') a2Export(d); else a2Mail(rep); return; }
+      if (a === 'reload') load(true); else if (a === 'per') { S.f.to = ymd(new Date()); S.f.from = ymd(dShift(new Date(), -+t.dataset.d)); render(); } });
+    v.addEventListener('change', e => { const el = e.target, k = el.dataset.f; if (!k) return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; render(); });
+    v.addEventListener('input', e => { const el = e.target; if (el.dataset.f === 'q') { S.f.q = el.value.trim(); clearTimeout(S.tm); S.tm = setTimeout(() => { render(); const i = Q('#flrBody [data-f=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
+    const css = document.createElement('style'); css.textContent = `#view-flr .flr-hint{font-size:12px;color:var(--gray-600);margin:6px 0}#view-flr .flr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}#view-flr .flr-k{border:1px solid var(--border);border-radius:12px;padding:8px 14px}#view-flr .flr-k span{font-size:12px;color:var(--gray-600);display:block}#view-flr .flr-k b{font-size:20px}#view-flr .flr-k small{display:block;font-size:11px;color:var(--gray-600)}
+#view-flr .flr-wrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}#view-flr table.flr-t{border-collapse:collapse;font-size:12px;width:100%}#view-flr .flr-t th{background:var(--brand-light,#eef2fb);padding:7px 6px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:2}#view-flr .flr-t td{padding:6px;border-top:1px solid var(--border);vertical-align:top}#view-flr .flr-t .c{text-align:center}#view-flr tr.hr td{background:rgba(254,226,226,.45)}
+#view-flr .flr-p{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700;white-space:nowrap}#view-flr .flr-p.g{background:#dcfce7;color:#166534}#view-flr .flr-p.o{background:#fef3c7;color:#92400e}#view-flr .flr-p.r{background:#fee2e2;color:#991b1b}#view-flr .flr-p.n{background:#e5e7eb;color:#374151}
+#view-flr .flr-mx td{text-align:center;min-width:54px}#view-flr .flr-mx th{text-align:center}#view-flr .flr-mx .st{position:sticky;left:0;background:var(--card,#fff);text-align:left;z-index:1;min-width:110px}#view-flr .flr-mx thead .st{z-index:3;background:var(--brand-light,#eef2fb)}#view-flr .flr-mx td.ok{color:#15803d}#view-flr .flr-mx td.h1{background:#fed7aa;color:#9a3412;font-weight:700}#view-flr .flr-mx td.h2{background:#fecaca;color:#991b1b;font-weight:700}
+body.dark #view-flr .flr-mx .st{background:var(--card)}body.dark #view-flr .flr-mx td.h1,body.dark #view-flr .flr-mx td.h2{color:#111}`; document.head.appendChild(css);
+    render();
+  }
+  const nav = Q('.nav-item[data-view="flr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
+  const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'flr') { e.stopImmediatePropagation(); load(true); } }, true);
+  window.FLR = { S, load, render };
+})();
