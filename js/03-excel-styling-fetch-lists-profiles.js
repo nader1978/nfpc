@@ -347,6 +347,7 @@ const VIEW_META = {
   otrep: { title: 'OT Replacement', sub: 'Days off given back for overtime — hours are deducted from each staff balance' },
   otapp: { title: 'OT Approvals', sub: 'Review the overtime requests of the locations — approve or reject with remarks' },
   otr: { title: 'OT Approved vs Recovered', sub: 'Approved OT hours vs the hours given back as days off — by location, in-charge and staff' },
+  fla: { title: 'Forklift Activity', sub: 'Start / end activities of the forklift operators — by unit, by operator, units × dates and idle units' },
   flr: { title: 'Forklift Receiving', sub: 'Units received / parked in the mobile app — condition reported by the users and what changed since the previous inspection' },
   rkc: { title: 'Rack Hits & Damages', sub: 'Rack inspections from the mobile app — racks × dates per location, shown on the 3D' },
   eqw: { title: 'Marketing Equipment Workshop', sub: 'Receive equipment from sales, estimate repair vs book value, assign technicians, track KPIs and asset history' },

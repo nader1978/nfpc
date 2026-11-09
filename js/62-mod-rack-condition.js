@@ -156,7 +156,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
   const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
   const dShift = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
-  const S = { rows: [], loaded: false, loading: false, err: '', tab: 'sum', f: { from: ymd(dShift(new Date(), -30)), to: ymd(new Date()), type: '', unit: '', q: '', onlyIssue: false } };
+  const S = { rows: [], mst: [], day: ymd(new Date()), miss: 'any', loaded: false, loading: false, err: '', tab: 'sum', f: { from: ymd(dShift(new Date(), -30)), to: ymd(new Date()), type: '', unit: '', q: '', onlyIssue: false } };
   /* the eight Yes/No switches of the "Receive Unit" screen — Yes = in good condition */
   const TG = [['oil', 'Engine oil', 'engoillevel'], ['wat', 'Engine water', 'engwaterlevel'], ['brk', 'Brakes', 'breakstatus'], ['tir', 'Tires', 'tiresstatus'], ['cln', 'Cleaning', 'cleaningstatus'], ['wrk', 'Working', 'workingstatus'], ['hyd', 'Hydraulic', 'hydraulicstatus'], ['hse', 'HSE records', 'hserecordsupdate']];
   const SC = [['f', 'Front', /front/], ['r', 'Rear', /(rare|rear)/], ['l', 'Left', /left/], ['t', 'Right', /right/]];
@@ -187,6 +187,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; say('Reading ' + LIST + '…');
     try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
       const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
+      try { const u = await resolveIds(site, 'Forklift_Units_tbl', token), ui = await fetchAllItems(u.siteId, u.listId, token); S.mst = ui.map(it => { const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); const code = String(K.devicecode || K.title || '').trim(); return code ? { code, uk: code.toUpperCase(), desc: [K.devicebrand, K.devicemodel, K.energytype].filter(Boolean).join(' '), whs: String(K.devicewhs || '').trim() } : null; }).filter(Boolean); } catch (e) { S.mst = []; }
       S.rows = items.map(parse).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || a.ts - b.ts || a.id - b.id);
       const by = new Map(); S.rows.forEach(r => { r.prev = by.get(r.uk) || null; by.set(r.uk, r); r.d = diff(r); });
       S.loaded = true; say('✔ ' + S.rows.length + ' receiving record(s) read · ' + new Date().toLocaleTimeString());
@@ -203,7 +204,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     return { first: false, st, news, gone, scUp, scDn, odo };
   }
   const sel = () => S.rows.filter(r => r.date >= S.f.from && r.date <= S.f.to && (!S.f.type || (S.f.type === 'R' ? r.rcv : !r.rcv)) && (!S.f.unit || r.uk === S.f.unit) && (!S.f.q || r.uk.includes(S.f.q.toUpperCase()) || r.by.toUpperCase().includes(S.f.q.toUpperCase())) && (!S.f.onlyIssue || r.n > 0 || r.d.st === 'Worse'));
-  const units = () => [...new Set(S.rows.map(r => r.uk))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const units = () => [...new Set(S.rows.map(r => r.uk).concat(S.mst.map(m => m.uk)))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   const pill = c => `<span class="flr-p ${c === 'Good' ? 'g' : c === 'Watch' ? 'o' : 'r'}">${c}</span>`;
   const chg = d => d.first ? '<span class="flr-p n">First record</span>' : d.st === 'Worse' ? '<span class="flr-p r">▲ Worse</span>' : d.st === 'Improved' ? '<span class="flr-p g">▼ Improved</span>' : '<span class="flr-p n">= Same</span>';
   const chgTxt = d => [d.news.length && 'NEW: ' + d.news.join(', '), d.scUp.length && 'Scratches: ' + d.scUp.join(', '), d.gone.length && 'Fixed: ' + d.gone.join(', '), d.scDn.length && 'Scratches fewer: ' + d.scDn.join(', '), ...d.odo.map(x => '⚠ ' + x)].filter(Boolean).join(' · ');
@@ -235,6 +236,27 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     return `<div class="flr-hint">✓ = received/parked, no issue reported · 🔴 n = issues reported that day (▲ = worse than the previous inspection) · empty = no record. Hover a cell for the details.</div><div class="flr-wrap"><table class="flr-t flr-mx"><thead><tr><th class="st">Date \\ Unit</th>${us.map(u => `<th>${esc(u)}</th>`).join('')}</tr></thead><tbody>
       ${ds.map(d => `<tr><td class="st"><b>${esc(dmy(d))}</b></td>${us.map(u => cell(by.get(d + '|' + u) || [])).join('')}</tr>`).join('')}</tbody></table></div>`;
   }
+
+  const cellF = L => { if (!L.length) return '<td></td>'; const n = Math.max(...L.map(r => r.n)), w = L.some(r => r.d.st === 'Worse'), t = L.map(tt).join('\n\n'); return n ? `<td class="${L.some(r => r.crit) ? 'h2' : 'h1'}" title="${esc(t)}">🔴 ${n}${w ? '▲' : ''}</td>` : `<td class="${w ? 'h1' : 'ok'}" title="${esc(t)}">${w ? '▲' : '✓'}</td>`; };
+  function matrixT() {
+    const R = sel(); if (!R.length && !S.mst.length) return '<div class="flr-hint">No receiving records for this selection.</div>';
+    const us = (S.f.onlyIssue ? [...new Set(R.map(r => r.uk))] : units().filter(u => !S.f.unit || u === S.f.unit)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), ds = [...new Set(R.map(r => r.date))].sort().reverse(), by = new Map(); R.forEach(r => { const k = r.date + '|' + r.uk; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+    const sd = d => { const [y, m, dd] = d.split('-'); return dd + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1]; };
+    return `<div class="flr-hint">Units in the rows, dates in the columns. ✓ = received/parked, no issue reported · 🔴 n = issues reported (▲ = worse than the previous inspection) · empty = no record that day. Hover a cell for the details.</div><div class="flr-wrap"><table class="flr-t flr-mx"><thead><tr><th class="st">Unit \\ Date</th><th>Records</th><th>Issues</th>${ds.map(d => `<th title="${esc(dmy(d))}">${esc(sd(d))}</th>`).join('')}</tr></thead><tbody>
+      ${us.map(u => { const mine = R.filter(r => r.uk === u), m = S.mst.find(x => x.uk === u); return `<tr><td class="st" title="${esc(m ? m.desc : '')}"><b>${esc(m ? m.code : u)}</b></td><td class="c">${mine.length || ''}</td><td class="c">${mine.filter(r => r.n).length || ''}</td>${ds.map(d => cellF(by.get(d + '|' + u) || [])).join('')}</tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function missing() {
+    const day = S.day || ymd(new Date()), R = S.rows.filter(r => r.date === day), by = new Map(); R.forEach(r => { let x = by.get(r.uk); if (!x) by.set(r.uk, x = { rc: [], pk: [] }); (r.rcv ? x.rc : x.pk).push(r); });
+    const all = units().map(u => { const m = S.mst.find(x => x.uk === u), x = by.get(u) || { rc: [], pk: [] }, last = S.rows.filter(r => r.uk === u && r.date < day).pop(); return { u: m ? m.code : u, desc: m ? m.desc : '', whs: m ? m.whs : '', rc: x.rc, pk: x.pk, last, st: !x.rc.length && !x.pk.length ? 'No action' : !x.rc.length ? 'Not received' : !x.pk.length ? 'Not parked' : 'Complete' }; });
+    const L = all.filter(x => S.miss === 'all' || (S.miss === 'any' ? x.st !== 'Complete' : S.miss === 'none' ? x.st === 'No action' : S.miss === 'rcv' ? !x.rc.length : !x.pk.length)).sort((a, b) => a.u.localeCompare(b.u, undefined, { numeric: true }));
+    const tm = r => r.length ? '✓ ' + r.map(x => x.ts ? new Date(x.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '').filter(Boolean).join(', ') + (r.some(x => x.n) ? ' <span class="flr-p r">issue</span>' : '') : '<b style="color:#b91c1c">✗ none</b>';
+    const K = (t, v) => `<div class="flr-k"><span>${t}</span><b>${v}</b></div>`;
+    return `<div class="rp-f"><label class="rp-fi"><span>Date</span><input type="date" data-s="day" value="${day}"></label><label class="rp-fi"><span>Show</span><select data-s="miss"><option value="any"${S.miss === 'any' ? ' selected' : ''}>Missing receive or park</option><option value="none"${S.miss === 'none' ? ' selected' : ''}>No action at all</option><option value="rcv"${S.miss === 'rcv' ? ' selected' : ''}>Not received</option><option value="park"${S.miss === 'park' ? ' selected' : ''}>Not parked</option><option value="all"${S.miss === 'all' ? ' selected' : ''}>All units</option></select></label></div>
+      <div class="flr-kpis">${K('Units', all.length)}${K('Complete (received + parked)', all.filter(x => x.st === 'Complete').length)}${K('Not received', all.filter(x => !x.rc.length).length)}${K('Not parked', all.filter(x => !x.pk.length).length)}${K('No action at all', all.filter(x => x.st === 'No action').length)}</div>
+      ${S.mst.length ? '' : '<div class="flr-hint">⚠ Forklift_Units_tbl could not be read — only units that have records are listed.</div>'}
+      <div class="flr-wrap"><table class="flr-t"><thead><tr><th>Unit</th><th>Description</th><th>Warehouse</th><th>Received</th><th>Parked</th><th>Status</th><th>Last record before this date</th></tr></thead><tbody>
+      ${L.map(x => `<tr class="${x.st === 'Complete' ? '' : 'hr'}"><td><b>${esc(x.u)}</b></td><td>${esc(x.desc)}</td><td>${esc(x.whs)}</td><td>${tm(x.rc)}</td><td>${tm(x.pk)}</td><td><span class="flr-p ${x.st === 'Complete' ? 'g' : x.st === 'No action' ? 'r' : 'o'}">${x.st}</span></td><td>${x.last ? esc(dmy(x.last.date) + ' · ' + x.last.type + ' · ' + x.last.by) : '—'}</td></tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:16px">Nothing missing for this date 🎉</td></tr>'}</tbody></table></div>`;
+  }
   function log() {
     const R = sel().slice().sort((a, b) => b.date.localeCompare(a.date) || b.ts - a.ts || b.id - a.id), ok = v => v === true ? '✓' : v === false ? '<b style="color:#b91c1c">✗</b>' : '';
     return `<div class="flr-wrap"><table class="flr-t"><thead><tr><th>Date</th><th>Unit</th><th>Type</th><th>By</th><th class="c">ODO</th><th class="c">Prev ODO</th><th class="c">KM</th>${TG.map(x => `<th class="c">${esc(x[1])}</th>`).join('')}<th class="c">Checklist</th><th>NOT OK points</th><th class="c">Scratches F/R/L/Rt</th><th>Condition</th><th>Change</th><th>Approval</th><th>Note</th></tr></thead><tbody>
@@ -245,27 +267,124 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     v.innerHTML = `<div class="rp-f">${U.fi('From', `<input type="date" data-f="from" value="${S.f.from}">`)}${U.fi('To', `<input type="date" data-f="to" value="${S.f.to}">`)}${U.fi('Type', `<select data-f="type"><option value="">Received + parked</option><option value="R"${S.f.type === 'R' ? ' selected' : ''}>Received only</option><option value="P"${S.f.type === 'P' ? ' selected' : ''}>Parked only</option></select>`)}${U.fi('Unit', `<select data-f="unit"><option value="">All units</option>${us.map(u => `<option${u === S.f.unit ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select>`)}${U.fi('Search', `<input type="search" data-f="q" placeholder="Unit / user…" value="${esc(S.f.q)}">`)}
       <label class="rp-ck"><input type="checkbox" data-f="onlyIssue"${S.f.onlyIssue ? ' checked' : ''}> records with issues / worse only</label><span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-fl="per" data-d="7">7 days</button><button class="secondary small" type="button" data-fl="per" data-d="30">30 days</button><button class="secondary small" type="button" data-fl="per" data-d="90">90 days</button>')}</div>
       ${S.loaded ? kpis(sel()) : ''}
-      ${U.tabbar([['sum', '📋 Unit summary'], ['chg', '🔄 Changes vs previous'], ['mx', '📊 Units × dates'], ['log', '🧾 Receiving log']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fl', '#flrBody')}
-      ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the receiving records.'}</div>` : S.tab === 'sum' ? summary() : S.tab === 'chg' ? changes() : S.tab === 'mx' ? matrix() : log()}`;
+      ${U.tabbar([['sum', '📋 Unit summary'], ['chg', '🔄 Changes vs previous'], ['mx', '📊 Dates × units'], ['mxT', '📊 Units × dates'], ['miss', '🚫 Not received / parked'], ['log', '🧾 Receiving log']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fl', '#flrBody')}
+      ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the receiving records.'}</div>` : S.tab === 'sum' ? summary() : S.tab === 'chg' ? changes() : S.tab === 'mx' ? matrix() : S.tab === 'mxT' ? matrixT() : S.tab === 'miss' ? missing() : log()}`;
   }
-  function rep() { const T = { sum: 'Forklift receiving — unit summary', chg: 'Forklift receiving — changes vs previous inspection', mx: 'Forklift receiving — units × dates', log: 'Forklift receiving log' }[S.tab];
+  function rep() { const T = { sum: 'Forklift receiving — unit summary', chg: 'Forklift receiving — changes vs previous inspection', mx: 'Forklift receiving — dates × units', mxT: 'Forklift receiving — units × dates', miss: 'Forklift receiving — units without receive / park on ' + dmy(S.day), log: 'Forklift receiving log' }[S.tab];
     const note = [dmy(S.f.from) + ' – ' + dmy(S.f.to), S.f.type === 'R' ? 'received only' : S.f.type === 'P' ? 'parked only' : '', S.f.unit && 'Unit ' + S.f.unit, S.f.onlyIssue && 'issues only', 'Printed ' + new Date().toLocaleString()].filter(Boolean).join(' · ');
     return tblReport(Q('#flrBody table.flr-t'), T, note, T.replace(/^Forklift /, '')); }
+  window.flrCss = () => { if (window._flrCss) return; window._flrCss = 1;
+    const css = document.createElement('style'); css.textContent = `:is(#view-flr,#view-fla) .flr-hint{font-size:12px;color:var(--gray-600);margin:6px 0}:is(#view-flr,#view-fla) .flr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}:is(#view-flr,#view-fla) .flr-k{border:1px solid var(--border);border-radius:12px;padding:8px 14px}:is(#view-flr,#view-fla) .flr-k span{font-size:12px;color:var(--gray-600);display:block}:is(#view-flr,#view-fla) .flr-k b{font-size:20px}:is(#view-flr,#view-fla) .flr-k small{display:block;font-size:11px;color:var(--gray-600)}
+:is(#view-flr,#view-fla) .flr-wrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}:is(#view-flr,#view-fla) table.flr-t{border-collapse:collapse;font-size:12px;width:100%}:is(#view-flr,#view-fla) .flr-t th{background:var(--brand-light,#eef2fb);padding:7px 6px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:2}:is(#view-flr,#view-fla) .flr-t td{padding:6px;border-top:1px solid var(--border);vertical-align:top}:is(#view-flr,#view-fla) .flr-t .c{text-align:center}:is(#view-flr,#view-fla) tr.hr td{background:rgba(254,226,226,.45)}
+:is(#view-flr,#view-fla) .flr-p{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700;white-space:nowrap}:is(#view-flr,#view-fla) .flr-p.g{background:#dcfce7;color:#166534}:is(#view-flr,#view-fla) .flr-p.o{background:#fef3c7;color:#92400e}:is(#view-flr,#view-fla) .flr-p.r{background:#fee2e2;color:#991b1b}:is(#view-flr,#view-fla) .flr-p.n{background:#e5e7eb;color:#374151}
+:is(#view-flr,#view-fla) .flr-mx td{text-align:center;min-width:54px}:is(#view-flr,#view-fla) .flr-mx th{text-align:center}:is(#view-flr,#view-fla) .flr-mx .st{position:sticky;left:0;background:var(--card,#fff);text-align:left;z-index:1;min-width:110px}:is(#view-flr,#view-fla) .flr-mx thead .st{z-index:3;background:var(--brand-light,#eef2fb)}:is(#view-flr,#view-fla) .flr-mx td.ok{color:#15803d}:is(#view-flr,#view-fla) .flr-mx td.h1{background:#fed7aa;color:#9a3412;font-weight:700}:is(#view-flr,#view-fla) .flr-mx td.h2{background:#fecaca;color:#991b1b;font-weight:700}
+body.dark :is(#view-flr,#view-fla) .flr-mx .st{background:var(--card)}body.dark :is(#view-flr,#view-fla) .flr-mx td.h1,body.dark :is(#view-flr,#view-fla) .flr-mx td.h2{color:#111}`; document.head.appendChild(css);
+  };
   function init() {
     const v = Q('#view-flr'); if (!v || v._i) return; v._i = 1;
     v.addEventListener('click', e => { const t = e.target.closest('[data-t],[data-fl]'); if (!t) return; if (t.dataset.t) { S.tab = t.dataset.t; return render(); } const a = t.dataset.fl;
       if (a === 'expand') { const tb = Q('#flrBody table.flr-t'); if (tb && window.tableExpandOpen) tableExpandOpen(tb); return; } if (a === 'print' || a === 'excel' || a === 'mail') { const d = rep(); if (a === 'print') a2Print(d); else if (a === 'excel') a2Export(d); else a2Mail(rep); return; }
       if (a === 'reload') load(true); else if (a === 'per') { S.f.to = ymd(new Date()); S.f.from = ymd(dShift(new Date(), -+t.dataset.d)); render(); } });
-    v.addEventListener('change', e => { const el = e.target, k = el.dataset.f; if (!k) return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; render(); });
+    v.addEventListener('change', e => { const el = e.target, sk = el.dataset.s; if (sk) { S[sk] = el.value; return render(); } const k = el.dataset.f; if (!k) return; S.f[k] = el.type === 'checkbox' ? el.checked : el.value; render(); });
     v.addEventListener('input', e => { const el = e.target; if (el.dataset.f === 'q') { S.f.q = el.value.trim(); clearTimeout(S.tm); S.tm = setTimeout(() => { render(); const i = Q('#flrBody [data-f=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
-    const css = document.createElement('style'); css.textContent = `#view-flr .flr-hint{font-size:12px;color:var(--gray-600);margin:6px 0}#view-flr .flr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}#view-flr .flr-k{border:1px solid var(--border);border-radius:12px;padding:8px 14px}#view-flr .flr-k span{font-size:12px;color:var(--gray-600);display:block}#view-flr .flr-k b{font-size:20px}#view-flr .flr-k small{display:block;font-size:11px;color:var(--gray-600)}
-#view-flr .flr-wrap{overflow:auto;max-height:70vh;border:1px solid var(--border);border-radius:12px}#view-flr table.flr-t{border-collapse:collapse;font-size:12px;width:100%}#view-flr .flr-t th{background:var(--brand-light,#eef2fb);padding:7px 6px;text-align:left;white-space:nowrap;position:sticky;top:0;z-index:2}#view-flr .flr-t td{padding:6px;border-top:1px solid var(--border);vertical-align:top}#view-flr .flr-t .c{text-align:center}#view-flr tr.hr td{background:rgba(254,226,226,.45)}
-#view-flr .flr-p{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700;white-space:nowrap}#view-flr .flr-p.g{background:#dcfce7;color:#166534}#view-flr .flr-p.o{background:#fef3c7;color:#92400e}#view-flr .flr-p.r{background:#fee2e2;color:#991b1b}#view-flr .flr-p.n{background:#e5e7eb;color:#374151}
-#view-flr .flr-mx td{text-align:center;min-width:54px}#view-flr .flr-mx th{text-align:center}#view-flr .flr-mx .st{position:sticky;left:0;background:var(--card,#fff);text-align:left;z-index:1;min-width:110px}#view-flr .flr-mx thead .st{z-index:3;background:var(--brand-light,#eef2fb)}#view-flr .flr-mx td.ok{color:#15803d}#view-flr .flr-mx td.h1{background:#fed7aa;color:#9a3412;font-weight:700}#view-flr .flr-mx td.h2{background:#fecaca;color:#991b1b;font-weight:700}
-body.dark #view-flr .flr-mx .st{background:var(--card)}body.dark #view-flr .flr-mx td.h1,body.dark #view-flr .flr-mx td.h2{color:#111}`; document.head.appendChild(css);
+    window.flrCss();
     render();
   }
   const nav = Q('.nav-item[data-view="flr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'flr') { e.stopImmediatePropagation(); load(true); } }, true);
   window.FLR = { S, load, render };
+})();
+
+/* ============================================================
+   FORKLIFT ACTIVITY — FLO_Daily_Activity_tbl (the Start / End activity entries of the forklift operators)
+   · log · by unit · by operator · units × dates · units with no activity on a chosen date
+   ============================================================ */
+(function () {
+  const Q = s => document.querySelector(s), esc = escapeHtml, LIST = 'FLO_Daily_Activity_tbl';
+  const nz = x => String(x || '').toLowerCase().replace(/_x[0-9a-f]{4}_/g, '').replace(/[^a-z0-9]/g, '');
+  const pad = n => String(n).padStart(2, '0'), ymd = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
+  const dShift = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+  const hm = h => { if (!h) return ''; const m = Math.round(h * 60); return Math.floor(m / 60) + 'h ' + pad(m % 60) + 'm'; };
+  const tm = t => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const S = { rows: [], loaded: false, loading: false, err: '', tab: 'log', day: ymd(new Date()), f: { from: ymd(dShift(new Date(), -7)), to: ymd(new Date()), unit: '', op: '', task: '', q: '' } };
+  const say = (t, w) => { const e = Q('#flaStatus'); if (e) { e.textContent = t; e.style.color = w ? '#b45309' : ''; } };
+  const ch = v => v && typeof v === 'object' ? String(v.Value || v.LookupValue || '') : String(v == null ? '' : v);
+  function parse(it) {
+    const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; });
+    const g = (...ks) => { for (const k of ks) if (K[k] != null && K[k] !== '') return K[k]; return ''; };
+    const unit = String(g('flcode')).trim(); if (!unit) return null;
+    const dv = g('transdate'); let date = ''; if (dv) { const d = new Date(dv); if (!isNaN(d)) date = ymd(d); }
+    const st = g('starttimestamp') ? new Date(g('starttimestamp')).getTime() : 0, en = g('endtimestamp') ? new Date(g('endtimestamp')).getTime() : 0;
+    if (!date) date = st ? ymd(new Date(st)) : it.createdDateTime ? ymd(new Date(it.createdDateTime)) : '';
+    let h = st && en && en > st ? (en - st) / 36e5 : 0; if (!h) { const s = String(g('nrofhoursminuts', 'tasktimeduration')); const m = s.match(/(\d+)\s*[:h]\s*(\d+)/); h = m ? +m[1] + +m[2] / 60 : num(s) > 0 && num(s) < 24 ? num(s) : 0; }
+    return { id: +it.id || 0, uk: unit.toUpperCase(), unit, date, st: isFinite(st) ? st : 0, en: isFinite(en) ? en : 0, h, op: String(g('floname')).trim() || String(it.createdBy && it.createdBy.user && it.createdBy.user.displayName || '').trim(), task: ch(g('tasktype')), tt: ch(g('trlstasktype')), truck: ch(g('truckplatenr', 'trucknr')), plts: num(g('nrofplts')), odo: num(g('taskodo')), eodo: num(g('endodo')), rem: String(g('remarks')).trim(), closed: !!en, cid: g('closeactvtyid') };
+  }
+  async function load(force) {
+    if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; say('Reading ' + LIST + '…');
+    try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
+      const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
+      S.rows = items.map(parse).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || a.st - b.st || a.id - b.id);
+      try { if (window.FLR) await FLR.load(false); } catch (e) {}
+      S.loaded = true; say('✔ ' + S.rows.length + ' activity record(s) read · ' + new Date().toLocaleTimeString());
+    } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
+  }
+  const master = () => (window.FLR && FLR.S.mst) || [];
+  const sel = () => S.rows.filter(r => r.date >= S.f.from && r.date <= S.f.to && (!S.f.unit || r.uk === S.f.unit) && (!S.f.op || r.op === S.f.op) && (!S.f.task || r.task === S.f.task) && (!S.f.q || (r.uk + ' ' + r.op + ' ' + r.truck + ' ' + r.rem).toUpperCase().includes(S.f.q.toUpperCase())));
+  const units = () => [...new Set(S.rows.map(r => r.uk).concat(master().map(m => m.uk)))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const uName = u => { const m = master().find(x => x.uk === u); return m ? m.code : u; };
+  const f1 = n => Math.round(n * 10) / 10;
+  function kpis(R) {
+    const K = (t, v, s) => `<div class="flr-k"><span>${t}</span><b>${v}</b>${s ? `<small>${s}</small>` : ''}</div>`, us = new Set(R.map(r => r.uk)), ops = new Set(R.map(r => r.op).filter(Boolean)), h = R.reduce((a, r) => a + r.h, 0);
+    return `<div class="flr-kpis">${K('Activities', R.length, R.filter(r => !r.closed).length + ' still open (no end time)')}${K('Units used', us.size, master().length ? 'of ' + master().length + ' in the unit list' : '')}${K('Operators', ops.size)}${K('Pallets', f1(R.reduce((a, r) => a + r.plts, 0)))}${K('Hours worked', hm(h) || '—', R.length ? 'avg ' + (hm(h / R.length) || '—') + ' per activity' : '')}</div>`;
+  }
+  function log() {
+    const R = sel().slice().sort((a, b) => b.date.localeCompare(a.date) || b.st - a.st || b.id - a.id);
+    return `<div class="flr-wrap"><table class="flr-t"><thead><tr><th>Date</th><th>Unit</th><th>Operator</th><th>Task</th><th>Activity type</th><th>Truck</th><th class="c">Start</th><th class="c">End</th><th class="c">Duration</th><th class="c">Pallets</th><th class="c">Task ODO</th><th class="c">End ODO</th><th>Remarks</th></tr></thead><tbody>
+      ${R.map(r => `<tr${r.closed ? '' : ' class="hr"'}><td>${esc(dmy(r.date))}</td><td><b>${esc(r.unit)}</b></td><td>${esc(r.op)}</td><td>${esc(r.task)}</td><td>${esc(r.tt)}</td><td>${esc(r.truck)}</td><td class="c">${tm(r.st)}</td><td class="c">${r.closed ? tm(r.en) : '<span class="flr-p o">open</span>'}</td><td class="c">${hm(r.h)}</td><td class="c">${r.plts || ''}</td><td class="c">${r.odo || ''}</td><td class="c">${r.eodo || ''}</td><td>${esc(r.rem)}</td></tr>`).join('') || '<tr><td colspan="13" style="text-align:center;padding:16px">No activity for this selection.</td></tr>'}</tbody></table></div>`;
+  }
+  function group(keyf, label) {
+    const R = sel(), m = new Map(); R.forEach(r => { const k = keyf(r) || '—'; let x = m.get(k); if (!x) m.set(k, x = { k, n: 0, h: 0, p: 0, open: 0, days: new Set(), first: '', last: '', ops: new Set(), us: new Set(), o0: 0, o1: 0 }); x.n++; x.h += r.h; x.p += r.plts; if (!r.closed) x.open++; x.days.add(r.date); if (!x.first || r.date < x.first) x.first = r.date; if (r.date > x.last) x.last = r.date; if (r.op) x.ops.add(r.op); x.us.add(r.unit); const o = r.eodo || r.odo; if (o) { x.o0 = x.o0 ? Math.min(x.o0, o) : o; x.o1 = Math.max(x.o1, o); } });
+    const L = [...m.values()].sort((a, b) => b.h - a.h || b.n - a.n), byU = label === 'Unit';
+    return `<div class="flr-wrap"><table class="flr-t"><thead><tr><th>${label}</th><th class="c">Activities</th><th class="c">Days active</th><th class="c">Pallets</th><th class="c">Hours</th><th class="c">Avg / activity</th><th class="c">Open</th><th>${byU ? 'Operators' : 'Units used'}</th>${byU ? '<th class="c">ODO range</th>' : ''}<th>First</th><th>Last</th></tr></thead><tbody>
+      ${L.map(x => `<tr><td><b>${esc(byU ? uName(x.k.toUpperCase()) : x.k)}</b></td><td class="c">${x.n}</td><td class="c">${x.days.size}</td><td class="c">${f1(x.p) || ''}</td><td class="c">${hm(x.h)}</td><td class="c">${hm(x.h / x.n)}</td><td class="c">${x.open || ''}</td><td>${esc([...(byU ? x.ops : x.us)].join(', '))}</td>${byU ? `<td class="c">${x.o1 ? x.o0 + ' → ' + x.o1 : ''}</td>` : ''}<td>${esc(dmy(x.first))}</td><td>${esc(dmy(x.last))}</td></tr>`).join('') || '<tr><td colspan="11" style="text-align:center;padding:16px">No activity for this selection.</td></tr>'}</tbody></table></div>`;
+  }
+  function matrix() {
+    const R = sel(), us = (S.f.unit ? [S.f.unit] : units()), ds = [...new Set(R.map(r => r.date))].sort().reverse(), by = new Map(); R.forEach(r => { const k = r.uk + '|' + r.date; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+    const sd = d => { const [y, m, dd] = d.split('-'); return dd + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1]; };
+    if (!ds.length) return '<div class="flr-hint">No activity for this selection.</div>';
+    return `<div class="flr-hint">Units in the rows, dates in the columns — each cell shows the number of activities · hours worked. Empty = the unit did no activity that day. Hover for the operators.</div><div class="flr-wrap"><table class="flr-t flr-mx"><thead><tr><th class="st">Unit \\ Date</th><th>Activities</th><th>Hours</th><th>Days idle</th>${ds.map(d => `<th title="${esc(dmy(d))}">${esc(sd(d))}</th>`).join('')}</tr></thead><tbody>
+      ${us.map(u => { const mine = R.filter(r => r.uk === u), idle = ds.filter(d => !by.has(u + '|' + d)).length; return `<tr><td class="st"><b>${esc(uName(u))}</b></td><td class="c">${mine.length || ''}</td><td class="c">${hm(mine.reduce((a, r) => a + r.h, 0))}</td><td class="c ${idle ? 'h1' : ''}">${idle || ''}</td>${ds.map(d => { const L = by.get(u + '|' + d); if (!L) return '<td></td>'; const h = L.reduce((a, r) => a + r.h, 0); return `<td class="${L.some(r => !r.closed) ? 'h1' : 'ok'}" title="${esc(L.map(r => r.op + ' · ' + r.task + ' ' + tm(r.st) + '–' + tm(r.en)).join('\n'))}"><b>${L.length}</b>${h ? '<br><small>' + hm(h) + '</small>' : ''}</td>`; }).join('')}</tr>`; }).join('')}</tbody></table></div>`;
+  }
+  function idle() {
+    const day = S.day || ymd(new Date()), R = S.rows.filter(r => r.date === day), by = new Map(); R.forEach(r => { if (!by.has(r.uk)) by.set(r.uk, []); by.get(r.uk).push(r); });
+    const all = units().map(u => ({ u, L: by.get(u) || [], last: S.rows.filter(r => r.uk === u && r.date < day).pop() })), L = all.filter(x => !x.L.length);
+    return `<div class="rp-f"><label class="rp-fi"><span>Date</span><input type="date" data-s="day" value="${day}"></label></div>
+      <div class="flr-kpis"><div class="flr-k"><span>Units</span><b>${all.length}</b></div><div class="flr-k"><span>With activity</span><b>${all.length - L.length}</b></div><div class="flr-k"><span>No activity</span><b>${L.length}</b></div></div>
+      <div class="flr-wrap"><table class="flr-t"><thead><tr><th>Unit</th><th>Description</th><th>Warehouse</th><th>Last activity before this date</th><th>Operator</th></tr></thead><tbody>
+      ${L.map(x => { const m = master().find(y => y.uk === x.u); return `<tr class="hr"><td><b>${esc(uName(x.u))}</b></td><td>${esc(m ? m.desc : '')}</td><td>${esc(m ? m.whs : '')}</td><td>${x.last ? esc(dmy(x.last.date)) + ' · ' + esc(x.last.task) : '—'}</td><td>${x.last ? esc(x.last.op) : ''}</td></tr>`; }).join('') || '<tr><td colspan="5" style="text-align:center;padding:16px">Every unit had activity on this date.</td></tr>'}</tbody></table></div>`;
+  }
+  function render() {
+    const v = Q('#flaBody'); if (!v) return; const U = rpUI, ops = [...new Set(S.rows.map(r => r.op).filter(Boolean))].sort(), tasks = [...new Set(S.rows.map(r => r.task).filter(Boolean))].sort(), op = (a, cur) => a.map(x => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
+    v.innerHTML = `<div class="rp-f">${U.fi('From', `<input type="date" data-f="from" value="${S.f.from}">`)}${U.fi('To', `<input type="date" data-f="to" value="${S.f.to}">`)}${U.fi('Unit', `<select data-f="unit"><option value="">All units</option>${op(units(), S.f.unit)}</select>`)}${U.fi('Operator', `<select data-f="op"><option value="">All operators</option>${op(ops, S.f.op)}</select>`)}${U.fi('Task', `<select data-f="task"><option value="">All tasks</option>${op(tasks, S.f.task)}</select>`)}${U.fi('Search', `<input type="search" data-f="q" placeholder="Unit / operator / truck…" value="${esc(S.f.q)}">`)}<span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-fa="per" data-d="7">7 days</button><button class="secondary small" type="button" data-fa="per" data-d="30">30 days</button><button class="secondary small" type="button" data-fa="per" data-d="90">90 days</button>')}</div>
+      ${S.loaded ? kpis(sel()) : ''}
+      ${U.tabbar([['log', '🧾 Activity log'], ['unit', '🏗 By unit'], ['op', '👷 By operator'], ['mx', '📊 Units × dates'], ['idle', '🚫 Units with no activity']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fa', '#flaBody')}
+      ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the activities.'}</div>` : S.tab === 'log' ? log() : S.tab === 'unit' ? group(r => r.unit, 'Unit') : S.tab === 'op' ? group(r => r.op, 'Operator') : S.tab === 'mx' ? matrix() : idle()}`;
+  }
+  function rep() { const T = { log: 'Forklift activity log', unit: 'Forklift activity — by unit', op: 'Forklift activity — by operator', mx: 'Forklift activity — units × dates', idle: 'Forklift units with no activity on ' + dmy(S.day) }[S.tab];
+    const note = [dmy(S.f.from) + ' – ' + dmy(S.f.to), S.f.unit && 'Unit ' + S.f.unit, S.f.op && 'Operator ' + S.f.op, S.f.task && 'Task ' + S.f.task, 'Printed ' + new Date().toLocaleString()].filter(Boolean).join(' · ');
+    return tblReport(Q('#flaBody table.flr-t'), T, note, T.replace(/^Forklift /, '')); }
+  function init() {
+    const v = Q('#view-fla'); if (!v || v._i) return; v._i = 1; window.flrCss();
+    v.addEventListener('click', e => { const t = e.target.closest('[data-t],[data-fa]'); if (!t) return; if (t.dataset.t) { S.tab = t.dataset.t; return render(); } const a = t.dataset.fa;
+      if (a === 'expand') { const tb = Q('#flaBody table.flr-t'); if (tb && window.tableExpandOpen) tableExpandOpen(tb); return; } if (a === 'print' || a === 'excel' || a === 'mail') { const d = rep(); if (a === 'print') a2Print(d); else if (a === 'excel') a2Export(d); else a2Mail(rep); return; }
+      if (a === 'reload') { if (window.FLR) FLR.S.loaded = false; load(true); } else if (a === 'per') { S.f.to = ymd(new Date()); S.f.from = ymd(dShift(new Date(), -+t.dataset.d)); render(); } });
+    v.addEventListener('change', e => { const el = e.target; if (el.dataset.s) { S[el.dataset.s] = el.value; return render(); } const k = el.dataset.f; if (!k) return; S.f[k] = el.value; render(); });
+    v.addEventListener('input', e => { const el = e.target; if (el.dataset.f === 'q') { S.f.q = el.value.trim(); clearTimeout(S.tm); S.tm = setTimeout(() => { render(); const i = Q('#flaBody [data-f=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
+    render();
+  }
+  const nav = Q('.nav-item[data-view="fla"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
+  const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'fla') { e.stopImmediatePropagation(); load(true); } }, true);
+  window.FLA = { S, load, render };
 })();
