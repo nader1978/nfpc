@@ -156,6 +156,8 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
   const dmy = s => { if (!s) return ''; const [y, m, d] = s.split('-'); return d + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][+m - 1] + ' ' + y; };
   const dShift = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
   const num = v => { const n = parseFloat(String(v == null ? '' : v).replace(/,/g, '')); return isFinite(n) ? n : 0; };
+  const scoped = () => { try { return typeof locScoped === 'function' && locScoped(); } catch (e) { return false; } };
+  const locHint = () => { try { return scoped() ? `<div class="flr-hint">${esc(locText())} — only the forklift units of your Location ID are shown.</div>` : ''; } catch (e) { return ''; } };
   const S = { rows: [], mst: [], day: ymd(new Date()), miss: 'any', loaded: false, loading: false, err: '', tab: 'sum', f: { from: ymd(dShift(new Date(), -30)), to: ymd(new Date()), type: '', unit: '', whs: '', q: '', onlyIssue: false } };
   /* the eight Yes/No switches of the "Receive Unit" screen — Yes = in good condition */
   const TG = [['oil', 'Engine oil', 'engoillevel'], ['wat', 'Engine water', 'engwaterlevel'], ['brk', 'Brakes', 'breakstatus'], ['tir', 'Tires', 'tiresstatus'], ['cln', 'Cleaning', 'cleaningstatus'], ['wrk', 'Working', 'workingstatus'], ['hyd', 'Hydraulic', 'hydraulicstatus'], ['hse', 'HSE records', 'hserecordsupdate']];
@@ -187,8 +189,9 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     if (S.loading || (S.loaded && !force)) return; S.loading = true; S.err = ''; say('Reading ' + LIST + '…');
     try { const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('sign in first (no token / Site URL)');
       const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
-      try { const u = await resolveIds(site, 'Forklift_Units_tbl', token), ui = await fetchAllItems(u.siteId, u.listId, token); S.mst = ui.map(it => { const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); const code = String(K.devicecode || K.title || '').trim(); return code ? { code, uk: code.toUpperCase(), desc: [K.devicebrand, K.devicemodel, K.energytype].filter(Boolean).join(' '), whs: String(K.devicewhs || '').trim() } : null; }).filter(Boolean); } catch (e) { S.mst = []; }
+      try { const u = await resolveIds(site, 'Forklift_Units_tbl', token), ui = await fetchAllItems(u.siteId, u.listId, token); S.mstOk = true; S.mst = ui.map(it => { const f = it.fields || {}, K = {}; Object.keys(f).forEach(k => { K[nz(k)] = f[k]; }); const code = String(K.devicecode || K.title || '').trim(); return code ? { code, uk: code.toUpperCase(), desc: [K.devicebrand, K.devicemodel, K.energytype].filter(Boolean).join(' '), whs: String(K.devicewhs || '').trim() } : null; }).filter(Boolean); } catch (e) { S.mst = []; }
       S.rows = items.map(parse).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || a.ts - b.ts || a.id - b.id);
+      if (scoped() && S.mstOk) { const own = new Set(S.mst.map(m => m.uk)); S.rows = S.rows.filter(r => own.has(r.uk)); }
       const by = new Map(); S.rows.forEach(r => { r.prev = by.get(r.uk) || null; by.set(r.uk, r); r.d = diff(r); });
       S.loaded = true; say('✔ ' + S.rows.length + ' receiving record(s) read · ' + new Date().toLocaleTimeString());
     } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
@@ -288,7 +291,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     const v = Q('#flrBody'); if (!v) return; const U = rpUI, us = units();
     v.innerHTML = `<div class="rp-f">${U.fi('From', `<input type="date" data-f="from" value="${S.f.from}">`)}${U.fi('To', `<input type="date" data-f="to" value="${S.f.to}">`)}${U.fi('Type', `<select data-f="type"><option value="">Received + parked</option><option value="R"${S.f.type === 'R' ? ' selected' : ''}>Received only</option><option value="P"${S.f.type === 'P' ? ' selected' : ''}>Parked only</option></select>`)}${U.fi('Warehouse', `<select data-f="whs"><option value="">All warehouses</option>${whsList().map(w => `<option${w === S.f.whs ? ' selected' : ''}>${esc(w)}</option>`).join('')}</select>`)}${U.fi('Unit', `<select data-f="unit"><option value="">All units</option>${us.map(u => `<option${u === S.f.unit ? ' selected' : ''}>${esc(u)}</option>`).join('')}</select>`)}${U.fi('Search', `<input type="search" data-f="q" placeholder="Unit / user…" value="${esc(S.f.q)}">`)}
       <label class="rp-ck"><input type="checkbox" data-f="onlyIssue"${S.f.onlyIssue ? ' checked' : ''}> records with issues / worse only</label><span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-fl="per" data-d="7">7 days</button><button class="secondary small" type="button" data-fl="per" data-d="30">30 days</button><button class="secondary small" type="button" data-fl="per" data-d="90">90 days</button>')}</div>
-      ${S.loaded ? kpis(sel()) : ''}
+      ${locHint()}${S.loaded ? kpis(sel()) : ''}
       ${U.tabbar([['sum', '📋 Unit summary'], ['chg', '🔄 Changes vs previous'], ['mx', '📊 Dates × units'], ['mxT', '📊 Units × dates'], ['miss', '🚫 Not received / parked'], ['log', '🧾 Receiving log']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fl', '#flrBody')}
       ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the receiving records.'}</div>` : S.tab === 'sum' ? summary() : S.tab === 'chg' ? changes() : S.tab === 'mx' ? matrix() : S.tab === 'mxT' ? matrixT() : S.tab === 'miss' ? missing() : log()}`;
   }
@@ -315,7 +318,7 @@ body.dark :is(#view-flr,#view-fla) .flr-mx .st{background:var(--card)}body.dark 
   }
   const nav = Q('.nav-item[data-view="flr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'flr') { e.stopImmediatePropagation(); load(true); } }, true);
-  window.FLR = { S, load, render, showRec };
+  window.FLR = { S, load, render, showRec, locHint, scoped };
 })();
 
 /* ============================================================
@@ -350,6 +353,7 @@ body.dark :is(#view-flr,#view-fla) .flr-mx .st{background:var(--card)}body.dark 
       const ids = await resolveIds(site, LIST, token), items = await fetchAllItems(ids.siteId, ids.listId, token, n => say('Reading ' + LIST + '… ' + n));
       S.rows = items.map(parse).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || a.st - b.st || a.id - b.id);
       try { if (window.FLR) await FLR.load(false); } catch (e) {}
+      if (window.FLR && FLR.scoped() && FLR.S.mstOk) { const own = new Set(FLR.S.mst.map(m => m.uk)); S.rows = S.rows.filter(r => own.has(r.uk)); }
       S.loaded = true; say('✔ ' + S.rows.length + ' activity record(s) read · ' + new Date().toLocaleTimeString());
     } catch (e) { S.err = e.message; say('⚠ ' + e.message, 1); } finally { S.loading = false; } render();
   }
@@ -392,7 +396,7 @@ body.dark :is(#view-flr,#view-fla) .flr-mx .st{background:var(--card)}body.dark 
   function render() {
     const v = Q('#flaBody'); if (!v) return; const U = rpUI, ops = [...new Set(S.rows.map(r => r.op).filter(Boolean))].sort(), tasks = [...new Set(S.rows.map(r => r.task).filter(Boolean))].sort(), op = (a, cur) => a.map(x => `<option${x === cur ? ' selected' : ''}>${esc(x)}</option>`).join('');
     v.innerHTML = `<div class="rp-f">${U.fi('From', `<input type="date" data-f="from" value="${S.f.from}">`)}${U.fi('To', `<input type="date" data-f="to" value="${S.f.to}">`)}${U.fi('Warehouse', `<select data-f="whs"><option value="">All warehouses</option>${whsList().map(w => `<option${w === S.f.whs ? ' selected' : ''}>${esc(w)}</option>`).join('')}</select>`)}${U.fi('Unit', `<select data-f="unit"><option value="">All units</option>${op(units(), S.f.unit)}</select>`)}${U.fi('Operator', `<select data-f="op"><option value="">All operators</option>${op(ops, S.f.op)}</select>`)}${U.fi('Task', `<select data-f="task"><option value="">All tasks</option>${op(tasks, S.f.task)}</select>`)}${U.fi('Search', `<input type="search" data-f="q" placeholder="Unit / operator / truck…" value="${esc(S.f.q)}">`)}<span class="rp-sp"></span>${U.grp('<button class="secondary small" type="button" data-fa="per" data-d="7">7 days</button><button class="secondary small" type="button" data-fa="per" data-d="30">30 days</button><button class="secondary small" type="button" data-fa="per" data-d="90">90 days</button>')}</div>
-      ${S.loaded ? kpis(sel()) : ''}
+      ${window.FLR ? FLR.locHint() : ''}${S.loaded ? kpis(sel()) : ''}
       ${U.tabbar([['log', '🧾 Activity log'], ['unit', '🏗 By unit'], ['op', '👷 By operator'], ['mx', '📊 Units × dates'], ['idle', '🚫 Units with no activity']].map(([k, t]) => `<button type="button" class="${S.tab === k ? 'active on' : ''}" data-t="${k}">${t}</button>`).join(''), 'data-fa', '#flaBody')}
       ${S.loading && !S.loaded ? '<div class="flr-hint">Reading…</div>' : !S.loaded ? `<div class="flr-hint">${S.err ? '⚠ ' + esc(S.err) : 'Press 🔄 Reload to read the activities.'}</div>` : S.tab === 'log' ? log() : S.tab === 'unit' ? group(r => r.unit, 'Unit') : S.tab === 'op' ? group(r => r.op, 'Operator') : S.tab === 'mx' ? matrix() : idle()}`;
   }
