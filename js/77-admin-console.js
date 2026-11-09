@@ -81,7 +81,13 @@
   const KIND = { login: ['#16a34a', 'Sign-in'], logout: ['#64748b', 'Sign-out'], 'login-failed': ['#dc2626', 'Refused'], open: ['#2563eb', 'Opened'], export: ['#7c3aed', 'Export'], upload: ['#0891b2', 'Upload'], edit: ['#d97706', 'Edit'], error: ['#dc2626', 'Error'], email: ['#9333ea', 'Email'], settings: ['#475569', 'Settings'], admin: ['#be185d', 'Admin'], warehouse: ['#0d9488', 'Warehouse'] };
   const day = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const say = (t, bad) => { A.msg = t; const e = Q('#adMsg'); if (e) { e.textContent = t; e.style.color = bad ? '#b45309' : ''; } };
-  function mods() { const o = navCapture(), out = []; o.groups.forEach(g => { const items = g.items.filter(v => !SKIPV.has(v) && navMeta[v]).map(v => ({ v, n: navMeta[v].name, i: navMeta[v].icon })); if (items.length) out.push({ g: g.name, items }); }); return out; }
+  function mods() {   /* the groups & pages exactly as the users see them (admin-arranged groups / sub-groups included) + any page that appeared after the first scan */
+    navCapture(); document.querySelectorAll('.sidebar-nav .nav-item[data-view]').forEach(el => { const v = el.dataset.view; if (v && !navMeta[v]) navMeta[v] = { el, name: ((el.querySelector('span:nth-child(2)') || el).textContent || v).trim(), icon: (el.querySelector('.icon') || {}).textContent || '' }; });
+    let lay; try { lay = navLayout(); } catch (e) { lay = navCapture(); }
+    const out = [], seen = new Set(), add = (name, list) => { const items = list.filter(v => !SKIPV.has(v) && navMeta[v] && !seen.has(v)).map(v => { seen.add(v); return { v, n: navMeta[v].name, i: navMeta[v].icon }; }); if (items.length) out.push({ g: name, items }); };
+    lay.groups.forEach(g => { add(g.name, g.items || []); (g.subs || []).forEach(x => add(g.name + ' › ' + x.name, x.items || [])); });
+    add('Other', Object.keys(navMeta)); return out; }
+  { const _na = navApply; navApply = function () { const r = _na.apply(this, arguments); try { if (A.tab === 'acc' && typeof activeViewId === 'function' && activeViewId() === 'admin' && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#adQ'))) draw(); } catch (e) {} return r; }; }
   const people = () => users.list.filter(u => u.role !== 'admin').sort((a, b) => String(a.displayName || a.username).localeCompare(String(b.displayName || b.username)));
   const stateOf = (who, v) => ((A.pol.users[who] || {}).m || {})[v] || '';
   function accHtml() {
