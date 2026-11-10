@@ -395,12 +395,40 @@ const VIEW_META = {
 };
 /* ---------- Refresh button for every section ---------- */
 function activeViewId() { const v = document.querySelector('.view.active'); return v ? v.id.replace(/^view-/, '') : ''; }
-function sectionToast(msg, type) {
+function sectionToast(msg, type, opt) {
+  /* warnings and errors → a clear alert in the middle of the screen (OK to close); other messages → the small notice at the bottom */
+  if ((type === 'warn' || type === 'error') && msg) return orbAlert(msg, type, opt);
   let t = document.querySelector('#sectionToast');
   if (!t) { t = document.createElement('div'); t.id = 'sectionToast'; t.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483100;padding:10px 14px;border-radius:8px;background:#1e293b;color:#fff;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.3);max-width:380px;'; document.body.appendChild(t); }
   t.textContent = msg; t.style.background = type === 'warn' ? '#b45309' : type === 'error' ? '#b91c1c' : '#166534'; t.style.display = 'block';
   clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 4000);
 }
+/* centered alert: icon + title + message + OK. Several messages while it is open are listed in the same box. opt.focus = element to go to after OK */
+function orbAlert(msg, type, opt) {
+  opt = opt || {}; const err = type === 'error', esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  if (!document.querySelector('#orbAlertCss')) { const c = document.createElement('style'); c.id = 'orbAlertCss'; c.textContent = `
+#orbAlert{position:fixed;inset:0;z-index:2147483200;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;animation:oaIn .12s ease-out}
+#orbAlert .oa-c{background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(460px,100%);box-shadow:0 30px 70px -20px rgba(15,23,42,.6);overflow:hidden;border-top:5px solid #d97706}
+#orbAlert.err .oa-c{border-top-color:#dc2626}#orbAlert .oa-h{display:flex;gap:14px;align-items:flex-start;padding:20px 22px 8px}#orbAlert .oa-i{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:24px;background:#fef3c7}
+#orbAlert.err .oa-i{background:#fee2e2}#orbAlert .oa-t{font-size:17px;font-weight:700;margin:2px 0 6px}#orbAlert .oa-m{font-size:14px;line-height:1.5;color:var(--gray-700,#334155);white-space:pre-line;word-break:break-word}
+#orbAlert .oa-m ul{margin:6px 0 0;padding-left:18px}#orbAlert .oa-m li{margin:2px 0}#orbAlert .oa-f{display:flex;justify-content:flex-end;padding:12px 22px 18px}#orbAlert .oa-f button{min-width:110px}
+@keyframes oaIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.fld-bad,.fld-bad:focus{border-color:#dc2626!important;box-shadow:0 0 0 3px rgba(220,38,38,.18)!important;background:#fff5f5!important}`; document.head.appendChild(c); }
+  let d = document.querySelector('#orbAlert');
+  if (d) { const L = d._msgs; if (!L.includes(msg)) { L.push(msg); if (L.length > 6) L.shift(); } if (err) d.classList.add('err'); if (opt.focus) d._focus = opt.focus; draw(); return; }
+  d = document.createElement('div'); d.id = 'orbAlert'; d.dataset.nohc = '1'; d._msgs = [msg]; d._focus = opt.focus || null; if (err) d.classList.add('err'); d.setAttribute('role', 'alertdialog'); d.setAttribute('aria-modal', 'true');
+  const prev = document.activeElement;
+  function draw() { const L = d._msgs, e = d.classList.contains('err');
+    d.innerHTML = `<div class="oa-c"><div class="oa-h"><div class="oa-i">${e ? '⛔' : '⚠️'}</div><div style="flex:1;min-width:0"><div class="oa-t">${esc(opt.title || (e ? 'Something went wrong' : 'Please check'))}</div><div class="oa-m">${L.length > 1 ? '<ul>' + L.map(m => '<li>' + esc(m) + '</li>').join('') + '</ul>' : esc(L[0])}</div></div></div><div class="oa-f"><button type="button" class="${e ? 'danger' : ''}" data-oa="ok">OK</button></div></div>`;
+    const b = d.querySelector('[data-oa="ok"]'); setTimeout(() => { try { b.focus(); } catch (x) {} }, 0); }
+  const close = () => { d.remove(); document.removeEventListener('keydown', key, true); const f = d._focus; try { if (f && f.focus) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); f.focus(); } else if (prev && prev.focus) prev.focus(); } catch (x) {} };
+  const key = e => { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); close(); } };
+  d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-oa="ok"]')) close(); });
+  document.addEventListener('keydown', key, true); draw(); document.body.appendChild(d);
+}
+/* a field outlined by .fld-bad loses the outline as soon as the user fills it */
+document.addEventListener('input', e => { const t = e.target; if (t && t.classList && t.classList.contains('fld-bad') && String(t.value || '').trim()) t.classList.remove('fld-bad'); }, true);
+document.addEventListener('change', e => { const t = e.target; if (t && t.classList && t.classList.contains('fld-bad') && String(t.value || '').trim()) t.classList.remove('fld-bad'); }, true);
 const REFRESH_VIEWS = new Set(['planning', 'dailyplan', 'uploader', 'warehouse', 'dailytracker', 'incupload', 'exporter', 'emailer', 'editor', 'scheduler', 'scheduler-upload']);
 async function refreshSection(view) {
   if (view === 'planning') { plOpen.synced = false; plOpen(); sectionToast('🔄 Refreshing planning snapshots…', 'ok'); return; }

@@ -345,5 +345,8 @@
     v.addEventListener('input', e => { if (e.target.id === 'ciQ') { F.q = e.target.value; keepF(); clearTimeout(v._qt); v._qt = setTimeout(render, 250); } });
     v.addEventListener('change', e => { const t = e.target; if (t.id === 'ciDay') return openDay(t.value); if (t.id === 'trFrom') { TR.from = t.value; return render(); } if (t.id === 'trTo') { TR.to = t.value; return render(); } if (t.id === 'trM') { TR.m = t.value; return render(); } if (t.id === 'trS') { TR.sort = t.value; return render(); } if (t.id === 'ciStk') F.stock = t.value; else if (t.id === 'ciLow') F.low = Math.max(1, num(t.value) || 7); else if (t.id === 'ciHigh') F.high = Math.max(1, num(t.value) || 60); else if (t.dataset.pv) V[t.dataset.pv] = t.value; else return; keepF(); render(); }); }
   const nav = Q('.nav-item[data-view="cinv"]'); if (nav) nav.addEventListener('click', () => { wire(); setTimeout(render, 30); setTimeout(() => pull(false), 60); });
-  window.CINV = { parseUHT, parseWater, readFile, render: () => { wire(); render(); }, data: () => D, filtered, publish, pull, payload };
+  /* pallet positions per warehouse (for the WHs utilization table): every SKU in a warehouse fills ceil(CT ÷ CT per pallet) pallets */
+  function stockPal() { const W = new Map(); all().forEach(r => r.locsAll.forEach(l => { if (!(l.ct > 0)) return; const o = W.get(l.wh) || { wh: l.wh, reg: l.reg, pal: 0, ct: 0, skus: 0, noPal: 0, biz: new Set() }; o.ct += l.ct; o.skus++; o.biz.add(r.biz); if (r.ctPal > 0) o.pal += Math.ceil(l.ct / r.ctPal - 1e-9); else o.noPal++; W.set(l.wh, o); }));
+    return { date: [D.UHT && D.UHT.date, D.WAT && D.WAT.date].filter(Boolean).sort().pop() || '', wh: W }; }
+  window.CINV = { parseUHT, parseWater, readFile, render: () => { wire(); render(); }, data: () => D, filtered, publish, pull, payload, stockPal, has: () => !!(D.UHT || D.WAT) };
 })();

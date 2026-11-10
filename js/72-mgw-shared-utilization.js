@@ -18,16 +18,16 @@
   const title = x => String(((x || {}).fields || {}).Title || '').trim();
   const me = () => (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || '';
   const can = () => typeof mwSetupOk === 'function' && mwSetupOk();
-  const CEN = 'MgmtReport:mgw', UMAP = 'WHU:map';
-  const U = { days: new Map(), map: {}, read: false, err: '' };
+  const CEN = 'MgmtReport:mgw', UMAP = 'WHU:map', CIMAP = 'WHU:cimap';
+  const U = { days: new Map(), map: {}, ci: {}, read: false, err: '' };
   let pulled = 0;
 
   async function cfgRows() { const c = await tpCtx(); if (!c) throw new Error('sign in first (no Microsoft session)'); const its = await fetchAllItems(c.siteId, c.listId, c.token); return { c, its }; }
   async function upsert(t, val) { const { c, its } = await cfgRows(), ex = its.find(x => title(x) === t);
     if (ex) return updateItem(c.siteId, c.listId, ex.id, spCoerceFields(c.listId, { Config_Value: val }), c.token); return createItem(c.siteId, c.listId, { Title: t, Config_Value: val }, c.token); }
-  function readUtil(its) { U.days = new Map(); U.map = {};
+  function readUtil(its) { U.days = new Map(); U.map = {}; U.ci = {};
     its.forEach(x => { const t = title(x); if (!/^WHU:/.test(t)) return; let v = null; try { v = JSON.parse(String(x.fields.Config_Value || '')); } catch (e) {} if (!v) return;
-      if (t === UMAP) { U.map = v.map || {}; if (v.list) U.list = v.list; } else if (/^WHU:\d{4}-\d\d-\d\d$/.test(t) && Array.isArray(v.rows)) U.days.set(t.slice(4), v); });   /* older uploads kept in App_Config_tbl */
+      if (t === UMAP) { U.map = v.map || {}; if (v.list) U.list = v.list; } else if (t === CIMAP) { U.ci = v.map || {}; } else if (/^WHU:\d{4}-\d\d-\d\d$/.test(t) && Array.isArray(v.rows)) U.days.set(t.slice(4), v); });   /* older uploads kept in App_Config_tbl */
     U.read = true; }
 
   /* ---------- the utilization list in SharePoint: one row per LOC per day ---------- */
@@ -145,25 +145,56 @@
   /* ---------- report section "WHs utilization" (below Detail): one row per group of the report's "View by" ---------- */
   function whInfo() { const m = new Map(); (mw.rows || []).forEach(r => { if (r.wh && !m.has(r.wh)) m.set(r.wh, r); }); return m; }
   function secData() { const f = mw.f || {}, from = f.from || '0000-00-00', to = f.to || '9999-12-31', ds = [...U.days.keys()].sort().filter(x => x >= from && x <= to), by = mw.cfg.by || 'areareg', WI = whInfo(), key = typeof MW_BY !== 'undefined' && MW_BY[by] ? MW_BY[by] : (r => r.wh || '—');
-    const H = ['Group', 'LOCs', 'Capacity', 'Used', 'Util % (last date)', 'Avg util % (period)', 'In transit', 'Free', 'Days'];
+    const CI = ciActual(by, key, WI), H = ['Group', 'LOCs', 'Capacity', 'Used', 'Util % (last date)', 'Avg util % (period)', 'In transit', 'Free', 'Days'].concat(CI ? ['Stock pallets', 'Actual util %', 'Gap vs used'] : []);
     if (!ds.length) return { headers: H, rows: [], totals: null, ds, note: U.days.size ? 'no upload between ' + dmy(f.from || '…') + ' and ' + dmy(f.to || '…') : 'no file uploaded yet' };
     const G = new Map(), all = { locs: new Set(), day: new Map() };
     ds.forEach(d => { daySel(d).rows.forEach(x => { const wh = U.map[x.loc] || x.wh || '', w = WI.get(wh) || {}, k = !wh && !/^(day|month)$/.test(by) ? '🔗 not linked yet' : key({ area: w.area || '', region: w.region || '', wh: wh || '(not linked) ' + x.loc, date: d });
       const g = G.get(k) || { locs: new Set(), day: new Map() }; [g, all].forEach(o => { o.locs.add(x.loc); const t = o.day.get(d) || { cap: 0, used: 0, tr: 0, free: 0 }; t.cap += x.cap; t.used += x.used; t.tr += x.tr; t.free += x.free; o.day.set(d, t); }); G.set(k, g); }); });
     const row = (k, g) => { const dd = [...g.day.keys()].sort(), last = g.day.get(dd[dd.length - 1]), pc = dd.map(x => g.day.get(x)).filter(t => t.cap > 0).map(t => t.used / t.cap * 100);
-      return [k, g.locs.size, last.cap, last.used, last.cap ? Math.round(last.used / last.cap * 1000) / 10 : null, pc.length ? Math.round(pc.reduce((a, b) => a + b, 0) / pc.length * 10) / 10 : null, last.tr, last.free, dd.length]; };
+      const base = [k, g.locs.size, last.cap, last.used, last.cap ? Math.round(last.used / last.cap * 1000) / 10 : null, pc.length ? Math.round(pc.reduce((a, b) => a + b, 0) / pc.length * 10) / 10 : null, last.tr, last.free, dd.length]; if (!CI) return base;
+      const ap = k === 'TOTAL' ? CI.total : CI.g.get(k); return base.concat(ap == null ? [null, null, null] : [ap, last.cap ? Math.round(ap / last.cap * 1000) / 10 : null, ap - last.used]); };
     const rows = [...G.entries()].sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true })).map(([k, g]) => row(k, g)), t = row('TOTAL', all);
-    return { headers: H, rows, totals: t, ds, note: dmy(ds[0]) + (ds.length > 1 ? ' → ' + dmy(ds[ds.length - 1]) : '') + ' · last date ' + dmy(ds[ds.length - 1]) }; }
+    if (CI) CI.miss.forEach(k => { if (!G.has(k)) rows.push([k, 0, null, null, null, null, null, null, 0, CI.g.get(k), null, null]); });
+    return { headers: H, rows, totals: t, ds, ci: CI, note: dmy(ds[0]) + (ds.length > 1 ? ' → ' + dmy(ds[ds.length - 1]) : '') + ' · last date ' + dmy(ds[ds.length - 1]) + (CI ? ' · stock pallets from 📦 Consolidated Inventory ' + dmy(CI.date) : '') }; }
+  /* ---------- actual utilization from the 📦 Consolidated Inventory stock (pallets per warehouse → linked WHs Desc → group) ---------- */
+  function ciActual(by, key, WI) { const C = window.CINV; if (!C || !C.has || !C.has() || /^(day|month)$/.test(by)) return null; const sp = C.stockPal(), g = new Map(); let total = 0, linked = 0, unl = 0;
+    sp.wh.forEach((o, w) => { const wh = U.ci[w]; if (wh === '-') return; if (!wh) { unl++; return; } const i = WI.get(wh) || {}, k = key({ area: i.area || '', region: i.region || '', wh, date: '' }); g.set(k, (g.get(k) || 0) + o.pal); total += o.pal; linked++; });
+    if (!linked) return { g, total: null, date: sp.date, unl, miss: [], none: true };
+    return { g, total, date: sp.date, unl, miss: [...g.keys()] }; }
+  function whOpts() { const s = new Map(), WI = whInfo(), by = mw.cfg.by || 'areareg', key = typeof MW_BY !== 'undefined' && MW_BY[by] && !/^(day|month)$/.test(by) ? MW_BY[by] : MW_BY.areareg;
+    U.days.forEach(v => (v.rows || []).forEach(x => { const wh = U.map[x.loc] || x.wh || ''; if (wh && !s.has(wh)) { const i = WI.get(wh) || {}; s.set(wh, key({ area: i.area || '', region: i.region || '', wh, date: '' })); } }));
+    WI.forEach((i, wh) => { if (!s.has(wh)) s.set(wh, key({ area: i.area || '', region: i.region || '', wh, date: '' })); });
+    return [...s.entries()].map(([wh, g]) => ({ wh, g })).sort((a, b) => (a.g + a.wh).localeCompare(b.g + b.wh)); }
+  const CAN = t => { t = String(t || '').toLowerCase(); return /kizad|kzd|mega/.test(t) ? 'KZD' : /dxb|dubai/.test(t) ? 'DXB' : /fuj/.test(t) ? 'FUJ' : /\brak\b|ras al/.test(t) ? 'RAK' : /maq|muqta/.test(t) ? 'MAQ' : /mus+af|musff|mussa|\bmus\b/.test(t) ? 'MUS' : /\btrf\b|tarif/.test(t) ? 'TRF' : /\baln\b|al ain/.test(t) ? 'ALN' : /shj|sharjah|cx-?\s?\d|sterilac|main wh/.test(t) ? 'SHJ' : /auh|abu dhabi|milco/.test(t) ? 'MUS' : ''; };
+  function ciGuess(w, o, opts) { const c = CAN(w); if (!c) return ''; const m = opts.filter(x => CAN(x.g) === c || CAN(x.wh) === c); if (!m.length) return ''; if (m.length === 1) return m[0].wh;
+    const wat = o.biz.has('WAT') && !o.biz.has('UHT'), pick = m.find(x => wat ? /oasis|water/i.test(x.g + ' ' + x.wh) : !/oasis|water/i.test(x.g + ' ' + x.wh)); return (pick || m[0]).wh; }
+  function linkBox() { const C = window.CINV; if (!C || !C.has()) return toast('Open 📦 Consolidated Inventory and upload (or load) the stock reports first.', 'warn'); const sp = C.stockPal(), opts = whOpts(); if (!opts.length) return toast('No WHs utilization warehouses yet — upload a utilization file first.', 'warn');
+    const map = Object.assign({}, U.ci), L = [...sp.wh.values()].sort((a, b) => (a.reg + a.wh).localeCompare(b.reg + b.wh)); let auto = 0; L.forEach(o => { if (map[o.wh] == null) { const gq = ciGuess(o.wh, o, opts); if (gq) { map[o.wh] = gq; auto++; } } });
+    const old = Q('#mwuCiBox'); if (old) old.remove(); const d = document.createElement('div'); d.id = 'mwuCiBox'; d.dataset.nohc = '1'; d.style.cssText = 'position:fixed;inset:0;z-index:9400;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;padding:12px';
+    d.innerHTML = `<div style="background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(900px,100%);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 60px -20px rgba(15,23,42,.5)">
+      <div style="display:flex;gap:8px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border,#e2e8f0)"><b style="font-size:16px;flex:1">🔗 Link the stock warehouses to the WHs utilization warehouses</b><button type="button" class="ghost small" data-c="x">✕</button></div>
+      <div style="padding:8px 16px;font-size:12.5px;color:var(--gray-600,#64748b)">Each warehouse of the 📦 Consolidated Inventory (report ${esc(dmy(sp.date))}) counts its pallets into the utilization warehouse you pick — the table then shows the <b>actual utilization</b> = stock pallets ÷ capacity. Pallets per SKU = CT ÷ CT per pallet, rounded up. ${auto ? `<b>${auto}</b> link(s) were suggested from the names — check them.` : ''} Choose <i>— not counted —</i> for a warehouse that has no capacity in the utilization file.</div>
+      <div style="overflow:auto;padding:0 16px 8px"><table class="fd-tbl" style="width:100%"><thead><tr><th>Region</th><th>Stock warehouse</th><th class="n">SKUs</th><th class="n">CT</th><th class="n">Pallets</th><th>Counts into</th></tr></thead><tbody>
+      ${L.map(o => `<tr><td>${esc(o.reg)}</td><td><b>${esc(o.wh)}</b>${o.noPal ? `<div class="text-sm" style="color:#b45309">${o.noPal} SKU(s) without CT per pallet — not counted</div>` : ''}</td><td class="n">${fmt(o.skus)}</td><td class="n">${fmt(o.ct)}</td><td class="n"><b>${fmt(o.pal)}</b></td><td><select data-ci="${esc(o.wh)}" style="margin:0;min-width:260px"><option value="">— not linked —</option><option value="-" ${map[o.wh] === '-' ? 'selected' : ''}>— not counted —</option>${opts.map(x => `<option value="${esc(x.wh)}" ${map[o.wh] === x.wh ? 'selected' : ''}>${esc(x.g)} · ${esc(x.wh)}</option>`).join('')}</select></td></tr>`).join('')}
+      </tbody></table></div>
+      <div style="display:flex;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--border,#e2e8f0)"><span id="mwuCiMsg" class="text-sm" style="flex:1">Saved for everybody (App_Config_tbl, row ${CIMAP}).</span><button type="button" class="ghost" data-c="x">Cancel</button><button type="button" data-c="save">💾 Save links</button></div></div>`;
+    document.body.appendChild(d);
+    d.addEventListener('change', e => { const t = e.target; if (t.dataset.ci != null) { if (t.value) map[t.dataset.ci] = t.value; else delete map[t.dataset.ci]; } });
+    d.addEventListener('click', async e => { if (e.target === d) return d.remove(); const b = e.target.closest('button[data-c]'); if (!b) return; if (b.dataset.c === 'x') return d.remove();
+      const m = Q('#mwuCiMsg'); try { b.disabled = true; m.textContent = 'Saving…'; await upsert(CIMAP, JSON.stringify({ map, by: me(), at: new Date().toISOString() })); U.ci = map; d.remove(); toast('🔗 Stock warehouse links saved — the actual utilization is in the WHs utilization table.'); try { secRender(); } catch (x) {} }
+      catch (x) { b.disabled = false; m.textContent = /Cancelled/.test(x.message) ? 'Not saved.' : '⚠ Not saved: ' + x.message; m.style.color = '#c0392b'; } }); }
+  let ciAsked = 0; function ciPrime() { const C = window.CINV; if (!C || C.has() || ciAsked) return; ciAsked = 1; try { C.pull(false).then(g => { if (g) secRender(); }).catch(() => {}); } catch (e) {} }
   function secMount() { if (Q('#mwuCard')) return Q('#mwuCard'); const det = Q('#mwTable'), c0 = det && det.closest('.card'); if (!c0) return null; const c = document.createElement('div'); c.className = 'card'; c.id = 'mwuCard'; c.style.marginTop = '12px';
-    c.innerHTML = `<div class="card-header"><div class="card-title">🏭 WHs utilization <span class="text-sm" style="font-weight:400;" id="mwuSub"></span></div><div class="btn-row"><button data-w="up" class="ghost small" type="button" style="display:none">⬆ Upload file</button><button data-w="xl" class="ghost small" type="button">⬇ Excel</button><button data-w="pr" class="ghost small" type="button">🖨 Print</button></div></div><div class="fd-wrap" style="max-height:480px"><table class="fd-tbl" id="mwuTable"></table></div>`;
+    c.innerHTML = `<div class="card-header"><div class="card-title">🏭 WHs utilization <span class="text-sm" style="font-weight:400;" id="mwuSub"></span></div><div class="btn-row"><button data-w="up" class="ghost small" type="button" style="display:none">⬆ Upload file</button><button data-w="ci" class="ghost small" type="button" style="display:none" title="Link the 📦 Consolidated Inventory warehouses to these warehouses → actual utilization from the stock pallets">🔗 Stock links</button><button data-w="xl" class="ghost small" type="button">⬇ Excel</button><button data-w="pr" class="ghost small" type="button">🖨 Print</button></div></div><div class="fd-wrap" style="max-height:480px"><table class="fd-tbl" id="mwuTable"></table></div>`;
     c0.after(c); c.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; const a = b.dataset.w, D = secData();
-      if (a === 'up') return pickFile(); if (!D.rows.length) return toast('Nothing to export.', 'warn');
+      if (a === 'up') return pickFile(); if (a === 'ci') return linkBox(); if (!D.rows.length) return toast('Nothing to export.', 'warn');
       if (a === 'xl') { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([D.headers, ...D.rows, D.totals]), 'WHs utilization'); XLSX.writeFile(wb, 'WHs_Utilization_' + D.ds[D.ds.length - 1] + '.xlsx'); }
       if (a === 'pr' && typeof w_printTable === 'function') w_printTable('WHs utilization', D.note, D.headers, D.rows, D.totals); }); return c; }
-  function secRender() { const c = secMount(); if (!c) return; const up = c.querySelector('[data-w="up"]'); if (up) up.style.display = can() ? '' : 'none'; const D = secData(), t = Q('#mwuTable'), cell = (v, i) => v == null ? '' : typeof v === 'number' ? fmt(v, i === 4 || i === 5 ? 1 : 0) + (i === 4 || i === 5 ? '%' : '') : esc(v);
-    const col = (v, i) => (i === 4 || i === 5) && v != null ? ` style="font-weight:700;color:${v > 100 ? '#dc2626' : v >= 90 ? '#d97706' : 'inherit'}"` : '';
-    Q('#mwuSub').textContent = '— ' + (D.rows.length ? D.rows.length + ' group(s) · ' : '') + D.note + (U.days.size ? ' · from ' + uName() : '');
-    t.innerHTML = `<thead><tr>${D.headers.map((h, i) => `<th class="${i ? 'n' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${D.rows.length ? D.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'n' : ''}"${col(v, i)}>${cell(v, i)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="9" style="color:var(--gray-500)">${esc(D.note)}${can() ? ' — use ⬆ Upload file.' : ''}</td></tr>`}${D.totals ? `<tr class="t">${D.totals.map((v, i) => `<td class="${i ? 'n' : ''}"${col(v, i)}><b>${cell(v, i)}</b></td>`).join('')}</tr>` : ''}</tbody>`; }
+  function secRender() { const c = secMount(); if (!c) return; const up = c.querySelector('[data-w="up"]'); if (up) up.style.display = can() ? '' : 'none'; const cb = c.querySelector('[data-w="ci"]'); if (cb) cb.style.display = can() && window.CINV && CINV.has() ? '' : 'none';
+    ciPrime(); const D = secData(), t = Q('#mwuTable'), P = i => i === 4 || i === 5 || i === 10, cell = (v, i) => v == null ? '' : typeof v === 'number' ? (i === 11 && v > 0 ? '+' : '') + fmt(v, P(i) ? 1 : 0) + (P(i) ? '%' : '') : esc(v);
+    const col = (v, i) => P(i) && v != null ? ` style="font-weight:700;color:${v > 100 ? '#dc2626' : v >= 90 ? '#d97706' : 'inherit'}${i === 10 ? ';background:rgba(37,99,235,.06)' : ''}"` : i >= 9 && D.ci ? ' style="background:rgba(37,99,235,.06)"' : '';
+    Q('#mwuSub').textContent = '— ' + (D.rows.length ? D.rows.length + ' group(s) · ' : '') + D.note + (U.days.size ? ' · from ' + uName() : '') + (D.ci && D.ci.none ? ' · 🔗 link the stock warehouses (🔗 Stock links) for the actual utilization' : D.ci && D.ci.unl ? ' · ' + D.ci.unl + ' stock warehouse(s) not linked' : '');
+    t.innerHTML = `<thead><tr>${D.headers.map((h, i) => `<th class="${i ? 'n' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${D.rows.length ? D.rows.map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'n' : ''}"${col(v, i)}>${cell(v, i)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${D.headers.length}" style="color:var(--gray-500)">${esc(D.note)}${can() ? ' — use ⬆ Upload file.' : ''}</td></tr>`}${D.totals ? `<tr class="t">${D.totals.map((v, i) => `<td class="${i ? 'n' : ''}"${col(v, i)}><b>${cell(v, i)}</b></td>`).join('')}</tr>` : ''}</tbody>`; }
   if (typeof mwRenderReport === 'function') { const _r = mwRenderReport; mwRenderReport = function () { const r = _r.apply(this, arguments); try { if (mw.rows && mw.rows.length) secRender(); } catch (e) { console.error(e); } return r; }; }
   /* the KPI cards jump to the section */
   document.addEventListener('click', e => { const k = e.target.closest && e.target.closest('#mwKpis [data-whu]'); if (!k) return; if (!U.days.size && can()) return pickFile(); const c = Q('#mwuCard'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
@@ -196,5 +227,5 @@
   document.querySelectorAll('.nav-item[data-view="uploaddest"]').forEach(n => n.addEventListener('click', () => setTimeout(lkOpen, 120)));
   /* mount the publish button when the report opens */
   setInterval(() => { if (Q('#view-mgw')) pubBtn(); const v = Q('#view-uploaddest'); if (v && v.classList.contains('active') && !Q('#mwuLinkCard') && typeof isAdmin === 'function' && isAdmin()) lkOpen(); }, 1500);
-  window.mwShared = { pull, publish, U, parseFile, guess, box, secData, secRender, lkOpen, readWhs };
+  window.mwShared = { pull, publish, U, parseFile, guess, box, secData, secRender, lkOpen, readWhs, linkBox, ciActual };
 })();
