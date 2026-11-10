@@ -140,7 +140,7 @@
     const dd = (a, b) => o && a !== b ? ' class="dd"' : '', res = r.hit ? '<b style="color:#b91c1c">HIT</b>' : 'OK — no new damage';
     return `<div class="flr-cd"><h4>${ttl}</h4><div class="flr-sub"><b>${esc(r.rack)}</b> · ${esc(dmy(r.date))} · ${esc(r.shift)} · ${esc(r.by)}</div><table class="flr-dt">
       <tr${dd(r.hit, o && o.hit)}><td>Result</td><td>${res}</td></tr><tr${dd(r.types.join(','), o && o.types.join(','))}><td>Damage</td><td>${esc(r.types.join(', ')) || '—'}</td></tr><tr${dd(r.act, o && o.act)}><td>Action taken</td><td>${esc(r.act) || '—'}</td></tr>
-      <tr><td>Inspector note</td><td>${esc(r.note) || '—'}</td></tr><tr><td>Location</td><td>${esc([r.whs, r.loc, r.area].filter(Boolean).join(' · ')) || '—'}</td></tr><tr><td>Hits on record</td><td>${nOf(r)}</td></tr></table></div>`;
+      <tr><td>Inspector note</td><td>${esc(r.note) || '—'}</td></tr><tr><td>Location</td><td>${esc([r.whs, r.loc, r.area].filter(Boolean).join(' · ')) || '—'}</td></tr><tr><td>Hits on record</td><td>${nOf(r)}</td></tr></table>${window.LIM ? LIM.ph(LIST, r.id, { max: 8 }) : ''}</div>`;
   }
   function showRack(ids) {
     const L = String(ids).split(',').map(id => S.rows.find(r => String(r.id) === id)).filter(Boolean); if (!L.length || !LMX()) return; if (window.flrCss) window.flrCss();
@@ -346,7 +346,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
       <tr><td>Checklist</td><td>${r.tot ? r.ok + '/' + r.tot + ' OK' : '—'}${r.na ? ' · ' + r.na + ' N/A' : ''}</td></tr>
       <tr${o && [...r.iss.keys()].some(k => k.startsWith('c_') && !o.iss.has(k)) ? ' class="dd"' : ''}><td>NOT OK points</td><td>${r.nok.length ? r.nok.map(x => `<span class="flr-p ${o && !o.iss.has('c_' + x.toLowerCase().replace(/[^a-z0-9]/g, '')) ? 'r' : 'o'}">${esc(x)}</span>`).join(' ') : '—'}</td></tr>
       <tr${dif(r.scN, o && o.scN)}><td>Scratches</td><td>Front ${r.sc.f} · Rear ${r.sc.r} · Left ${r.sc.l} · Right ${r.sc.t}</td></tr>
-      <tr><td>User note</td><td>${esc(r.note) || '—'}</td></tr><tr><td>Approval</td><td>${esc(r.appr) || '—'}</td></tr></table></div>`;
+      <tr><td>User note</td><td>${esc(r.note) || '—'}</td></tr><tr><td>Approval</td><td>${esc(r.appr) || '—'}</td></tr></table>${window.LIM ? LIM.ph(LIST, r.id, { max: 8 }) : ''}</div>`;
   }
   const tm0 = t => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   function showRec(ids) {
