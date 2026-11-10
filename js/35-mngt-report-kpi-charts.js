@@ -11,7 +11,9 @@ function mwKpis(a) {
     + mwKpi('Over time % (relative)', a.otDiff2 == null ? '—' : kpiArrow(a.otDiff2, 0, false, 0) + (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
     + mwKpi('Orders processed', plF(a.orders), `${plF(a.n)} daily record(s)`)
     + (a.bud != null ? mwKpi('Headcount', `${plF(a.act)} <span style="font-size:14px;font-weight:500;color:var(--gray-500)">/ ${plF(a.bud)}</span>`, `actual / budget · ${a.act - a.bud >= 0 ? '+' : ''}${plF(a.act - a.bud)}`, a.act > a.bud ? T.warn : null) : '')
-    + mwKpi('Latest entry date', a.latest || '—', 'most recent record in the selection');
+    + (a.entered ? (() => { const e = a.entered, d = new Date(e.cr), loc = isNaN(d) ? '' : d.toLocaleDateString('en-CA'), tm = isNaN(d) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return mwKpi('Latest entry date', loc || a.latest || '—', `last record entered in SharePoint at ${tm}${e.by ? ' by ' + escapeHtml(e.by) : ''}<br>record date ${escapeHtml(e.date)} · ${escapeHtml(e.wh || '')}${a.latest && a.latest !== e.date ? `<br><span title="the highest record date in the selection">latest record date ${escapeHtml(a.latest)}</span>` : ''}`); })()
+      : mwKpi('Latest entry date', a.latest || '—', 'most recent record in the selection'));
 }
 /* ---------- charts ---------- */
 function mwGauge(host, ctx) {
