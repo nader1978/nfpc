@@ -71,7 +71,9 @@
     // ---- widths
     const W = P && P.w && Object.keys(P.w).length ? P.w : null;
     if (W && !t.querySelector(':scope > colgroup')) {
-      let sum = 0; [...hr.cells].forEach((c, j) => { const oi = stamped(hr) ? +c.dataset.co : j, w = Math.max(30, Math.round(W[colId(L, oi)] || 120)); const px = w + 'px'; if (c.style.width !== px) { c.style.width = px; c.style.minWidth = px; c.style.maxWidth = px; } if (c.style.display !== 'none') sum += w; });
+      let sum = 0; const b0 = t.tBodies[0] && [...t.tBodies[0].rows].find(r => r.cells.length === hr.cells.length); [...hr.cells].forEach((c, j) => { const oi = stamped(hr) ? +c.dataset.co : j; let w = Math.max(30, Math.round(W[colId(L, oi)] || 120));
+        /* a column of buttons only (⧉ copy, ✕ delete…) is never narrower than its buttons, so they cannot be cut off */
+        const bc = b0 && b0.cells[j]; if (bc && !bc.querySelector('input,select,textarea')) { const bs = [...bc.querySelectorAll('button')]; if (bs.length) { const need = bs.reduce((a, b) => a + b.offsetWidth + 6, 0) + 14; if (need > w) w = need; } } const px = w + 'px'; if (c.style.width !== px) { c.style.width = px; c.style.minWidth = px; c.style.maxWidth = px; } if (c.style.display !== 'none') sum += w; });
       if (t.classList.contains('rn-on')) sum += 42; t.classList.add('ct-fixed'); t.style.width = sum + 'px'; t.style.minWidth = '0'; t.style.maxWidth = 'none';
     } else if (t.classList.contains('ct-fixed')) {
       t.classList.remove('ct-fixed'); ['width', 'minWidth', 'maxWidth'].forEach(p => { t.style[p] = ''; }); [...hr.cells].forEach(c => { c.style.width = c.style.minWidth = c.style.maxWidth = ''; });
