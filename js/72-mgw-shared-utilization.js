@@ -116,12 +116,26 @@
     return K('WHs utilization · average', a.pct == null ? '—' : fmt(a.pct, 0) + '%', `avg ${fmt(a.used)} / ${fmt(a.cap)} pallets · ${fmt(a.free)} free<br>${a.days} day(s) · ${dmy(a.from)}${a.from !== a.to ? ' – ' + dmy(a.to) : ''} · ${whsTxt}`, col(a.pct))
       + K('WHs utilization · last date', p.pct == null ? '—' : fmt(p.pct, 0) + '%', `${fmt(p.used)} / ${fmt(p.cap)} pallets · ${fmt(p.free)} free${p.tr ? ' · ' + fmt(p.tr) + ' in transit' : ''}<br>${dmy(p.date)} · ${whsTxt}`, col(p.pct)) + ciCard(K, col); }
   /* KPI: actual utilization from the 📦 Consolidated Inventory stock (stock pallets of the linked warehouses ÷ their capacity) */
+  /* KPI: average of the stock-based utilization over the saved 📦 days (SharePoint, up to 30) in the report period */
+  const CA = { list: null, busy: false, data: null, dkey: '' };
+  const caRe = () => { try { mwRenderReport(); } catch (e) { try { secRender(); } catch (x) {} } };
+  function ciAvgCard(K, col, D) { const C = window.CINV; if (!C || !C.dayList) return ''; const T = 'WHs utilization · 📦 stock average';
+    if (!CA.list) { if (!CA.busy) { CA.busy = true; C.dayList().then(l => { CA.list = l || []; }).catch(() => { CA.list = []; }).finally(() => { CA.busy = false; caRe(); }); } return K(T, '…', 'reading the saved 📦 days', '#94a3b8'); }
+    const f = mw.f || {}, from = f.from || '0000-00-00', to = f.to || '9999-12-31', days = CA.list.filter(d => d >= from && d <= to).sort();
+    if (!days.length) return K(T, '—', CA.list.length ? 'no saved 📦 day between ' + dmy(f.from || '…') + ' and ' + dmy(f.to || '…') : 'no saved 📦 days yet (each upload of the stock reports is one day)', '#94a3b8');
+    const dk = days.join(','); if (CA.dkey !== dk) { if (!CA.busy) { CA.busy = true; C.dayData(days).then(r => { CA.data = new Map(r); CA.dkey = dk; }).catch(() => { CA.data = new Map(); CA.dkey = dk; }).finally(() => { CA.busy = false; caRe(); }); } return K(T, '…', '⏳ loading ' + days.length + ' saved day(s)', '#94a3b8'); }
+    const by = mw.cfg.by || 'areareg', WI = whInfo(), key = typeof MW_BY !== 'undefined' && MW_BY[by] ? MW_BY[by] : (r => r.wh || '—'), L = [];
+    days.forEach(d => { const S = CA.data.get(d); if (!S) return; const ci = ciActual(by, key, WI, C.stockPal(S)); if (!ci || ci.none) return; let pal = 0, cap = 0; D.rows.forEach(r => { const p = ci.g.get(r[0]); if (p != null && r[2]) { pal += p; cap += r[2]; } }); if (cap) L.push({ d, pal, cap, pct: pal / cap * 100 }); });
+    if (!L.length) return K(T, '—', 'the saved days could not be counted — check 🔗 Stock links', '#94a3b8');
+    const av = k => L.reduce((a, x) => a + x[k], 0) / L.length, pct = av('pct'), lo = L.reduce((a, x) => x.pct < a.pct ? x : a), hi = L.reduce((a, x) => x.pct > a.pct ? x : a);
+    return K(T, fmt(pct, 0) + '%', `avg ${fmt(av('pal'))} / ${fmt(av('cap'))} pallets · ${fmt(av('cap') - av('pal'))} free<br>${L.length} day(s) · ${dmy(L[0].d)}${L.length > 1 ? ' – ' + dmy(L[L.length - 1].d) : ''}${L.length > 1 ? ` · low ${fmt(lo.pct, 0)}% (${dmy(lo.d)}) · high ${fmt(hi.pct, 0)}% (${dmy(hi.d)})` : ''}`, col(pct)); }
   function ciCard(K, col) { ciPrime(); let D; try { D = secData(); } catch (e) { return ''; } const C = D.ci;
     if (!C) return window.CINV && can() ? K('WHs utilization · 📦 stock', '—', 'no 📦 Consolidated Inventory loaded yet', '#94a3b8') : '';
     if (C.none) return can() ? K('WHs utilization · 📦 stock', '—', '🔗 link the stock warehouses (WHs utilization table → 🔗 Stock links)', '#94a3b8') : '';
     let pal = 0, cap = 0, used = 0, n = 0; D.rows.forEach(r => { if (r[9] != null && r[2]) { pal += r[9]; cap += r[2]; used += r[3] || 0; n++; } });
     const pct = cap ? pal / cap * 100 : null, gap = pal - used;
-    return K('WHs utilization · 📦 stock ' + dmy(C.date), pct == null ? '—' : fmt(pct, 0) + '%', `${fmt(pal)} / ${fmt(cap)} pallets · ${fmt(cap - pal)} free<br>${gap > 0 ? '+' : ''}${fmt(gap)} vs reported used · ${n} group(s)${C.unl ? ' · ' + C.unl + ' stock WH not linked' : ''}`, col(pct)); }
+    const avg = ciAvgCard(K, col, D);
+    return avg + K('WHs utilization · 📦 stock ' + dmy(C.date), pct == null ? '—' : fmt(pct, 0) + '%', `${fmt(pal)} / ${fmt(cap)} pallets · ${fmt(cap - pal)} free<br>${gap > 0 ? '+' : ''}${fmt(gap)} vs reported used · ${n} group(s)${C.unl ? ' · ' + C.unl + ' stock WH not linked' : ''}`, col(pct)); }
   if (typeof mwKpis === 'function') { const _k = mwKpis; mwKpis = function () { const r = _k.apply(this, arguments); try { const h = Q('#mwKpis'), html = card(); if (h && html) { const last = h.lastElementChild; if (last) last.insertAdjacentHTML('beforebegin', html); else h.insertAdjacentHTML('beforeend', html); } } catch (e) { console.error(e); } return r; }; }
 
   /* ---------- upload dialog: preview the file, then save it (links are kept in Upload Destinations & Sources) ---------- */
@@ -164,7 +178,7 @@
     if (CI) CI.miss.forEach(k => { if (!G.has(k)) rows.push([k, 0, null, null, null, null, null, null, 0, CI.g.get(k), null, null]); });
     return { headers: H, rows, totals: t, ds, ci: CI, note: dmy(ds[0]) + (ds.length > 1 ? ' → ' + dmy(ds[ds.length - 1]) : '') + ' · last date ' + dmy(ds[ds.length - 1]) + (CI ? ' · stock pallets from 📦 Consolidated Inventory ' + dmy(CI.date) : '') }; }
   /* ---------- actual utilization from the 📦 Consolidated Inventory stock (pallets per warehouse → linked WHs Desc → group) ---------- */
-  function ciActual(by, key, WI) { const C = window.CINV; if (!C || !C.has || !C.has() || /^(day|month)$/.test(by)) return null; const sp = C.stockPal(), g = new Map(); let total = 0, linked = 0, unl = 0;
+  function ciActual(by, key, WI, sp0) { const C = window.CINV; if (!C || !C.has || (!sp0 && !C.has()) || /^(day|month)$/.test(by)) return null; const sp = sp0 || C.stockPal(), g = new Map(); let total = 0, linked = 0, unl = 0;
     sp.wh.forEach((o, w) => { const wh = U.ci[w]; if (wh === '-') return; if (!wh) { unl++; return; } const i = WI.get(wh) || {}, k = key({ area: i.area || '', region: i.region || '', wh, date: '' }); g.set(k, (g.get(k) || 0) + o.pal); total += o.pal; linked++; });
     if (!linked) return { g, total: null, date: sp.date, unl, miss: [], none: true };
     return { g, total, date: sp.date, unl, miss: [...g.keys()] }; }
