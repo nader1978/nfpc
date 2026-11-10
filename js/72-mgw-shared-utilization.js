@@ -114,7 +114,14 @@
     if (p.none) return can() || U.days.size ? K('WHs utilization', '—', esc(p.none) + (can() ? ' · <b>⬆ upload</b>' : ''), '#94a3b8') : '';
     const a = p.avg, whsTxt = p.filt ? p.n + ' of ' + p.all + ' WHs (filtered)' : p.n + ' WHs';
     return K('WHs utilization · average', a.pct == null ? '—' : fmt(a.pct, 0) + '%', `avg ${fmt(a.used)} / ${fmt(a.cap)} pallets · ${fmt(a.free)} free<br>${a.days} day(s) · ${dmy(a.from)}${a.from !== a.to ? ' – ' + dmy(a.to) : ''} · ${whsTxt}`, col(a.pct))
-      + K('WHs utilization · last date', p.pct == null ? '—' : fmt(p.pct, 0) + '%', `${fmt(p.used)} / ${fmt(p.cap)} pallets · ${fmt(p.free)} free${p.tr ? ' · ' + fmt(p.tr) + ' in transit' : ''}<br>${dmy(p.date)} · ${whsTxt}`, col(p.pct)); }
+      + K('WHs utilization · last date', p.pct == null ? '—' : fmt(p.pct, 0) + '%', `${fmt(p.used)} / ${fmt(p.cap)} pallets · ${fmt(p.free)} free${p.tr ? ' · ' + fmt(p.tr) + ' in transit' : ''}<br>${dmy(p.date)} · ${whsTxt}`, col(p.pct)) + ciCard(K, col); }
+  /* KPI: actual utilization from the 📦 Consolidated Inventory stock (stock pallets of the linked warehouses ÷ their capacity) */
+  function ciCard(K, col) { ciPrime(); let D; try { D = secData(); } catch (e) { return ''; } const C = D.ci;
+    if (!C) return window.CINV && can() ? K('WHs utilization · 📦 stock', '—', 'no 📦 Consolidated Inventory loaded yet', '#94a3b8') : '';
+    if (C.none) return can() ? K('WHs utilization · 📦 stock', '—', '🔗 link the stock warehouses (WHs utilization table → 🔗 Stock links)', '#94a3b8') : '';
+    let pal = 0, cap = 0, used = 0, n = 0; D.rows.forEach(r => { if (r[9] != null && r[2]) { pal += r[9]; cap += r[2]; used += r[3] || 0; n++; } });
+    const pct = cap ? pal / cap * 100 : null, gap = pal - used;
+    return K('WHs utilization · 📦 stock ' + dmy(C.date), pct == null ? '—' : fmt(pct, 0) + '%', `${fmt(pal)} / ${fmt(cap)} pallets · ${fmt(cap - pal)} free<br>${gap > 0 ? '+' : ''}${fmt(gap)} vs reported used · ${n} group(s)${C.unl ? ' · ' + C.unl + ' stock WH not linked' : ''}`, col(pct)); }
   if (typeof mwKpis === 'function') { const _k = mwKpis; mwKpis = function () { const r = _k.apply(this, arguments); try { const h = Q('#mwKpis'), html = card(); if (h && html) { const last = h.lastElementChild; if (last) last.insertAdjacentHTML('beforebegin', html); else h.insertAdjacentHTML('beforeend', html); } } catch (e) { console.error(e); } return r; }; }
 
   /* ---------- upload dialog: preview the file, then save it (links are kept in Upload Destinations & Sources) ---------- */
@@ -183,7 +190,7 @@
     d.addEventListener('click', async e => { if (e.target === d) return d.remove(); const b = e.target.closest('button[data-c]'); if (!b) return; if (b.dataset.c === 'x') return d.remove();
       const m = Q('#mwuCiMsg'); try { b.disabled = true; m.textContent = 'Saving…'; await upsert(CIMAP, JSON.stringify({ map, by: me(), at: new Date().toISOString() })); U.ci = map; d.remove(); toast('🔗 Stock warehouse links saved — the actual utilization is in the WHs utilization table.'); try { secRender(); } catch (x) {} }
       catch (x) { b.disabled = false; m.textContent = /Cancelled/.test(x.message) ? 'Not saved.' : '⚠ Not saved: ' + x.message; m.style.color = '#c0392b'; } }); }
-  let ciAsked = 0; function ciPrime() { const C = window.CINV; if (!C || C.has() || ciAsked) return; ciAsked = 1; try { C.pull(false).then(g => { if (g) secRender(); }).catch(() => {}); } catch (e) {} }
+  let ciAsked = 0; function ciPrime() { const C = window.CINV; if (!C || C.has() || ciAsked) return; ciAsked = 1; try { C.pull(false).then(g => { if (g) { try { mwRenderReport(); } catch (e) { secRender(); } } }).catch(() => {}); } catch (e) {} }
   function secMount() { if (Q('#mwuCard')) return Q('#mwuCard'); const det = Q('#mwTable'), c0 = det && det.closest('.card'); if (!c0) return null; const c = document.createElement('div'); c.className = 'card'; c.id = 'mwuCard'; c.style.marginTop = '12px';
     c.innerHTML = `<div class="card-header"><div class="card-title">🏭 WHs utilization <span class="text-sm" style="font-weight:400;" id="mwuSub"></span></div><div class="btn-row"><button data-w="up" class="ghost small" type="button" style="display:none">⬆ Upload file</button><button data-w="ci" class="ghost small" type="button" style="display:none" title="Link the 📦 Consolidated Inventory warehouses to these warehouses → actual utilization from the stock pallets">🔗 Stock links</button><button data-w="xl" class="ghost small" type="button">⬇ Excel</button><button data-w="pr" class="ghost small" type="button">🖨 Print</button></div></div><div class="fd-wrap" style="max-height:480px"><table class="fd-tbl" id="mwuTable"></table></div>`;
     c0.after(c); c.addEventListener('click', e => { const b = e.target.closest('button[data-w]'); if (!b) return; const a = b.dataset.w, D = secData();
@@ -227,5 +234,5 @@
   document.querySelectorAll('.nav-item[data-view="uploaddest"]').forEach(n => n.addEventListener('click', () => setTimeout(lkOpen, 120)));
   /* mount the publish button when the report opens */
   setInterval(() => { if (Q('#view-mgw')) pubBtn(); const v = Q('#view-uploaddest'); if (v && v.classList.contains('active') && !Q('#mwuLinkCard') && typeof isAdmin === 'function' && isAdmin()) lkOpen(); }, 1500);
-  window.mwShared = { pull, publish, U, parseFile, guess, box, secData, secRender, lkOpen, readWhs, linkBox, ciActual };
+  window.mwShared = { pull, publish, U, parseFile, guess, box, secData, secRender, lkOpen, readWhs, linkBox, ciActual, card };
 })();

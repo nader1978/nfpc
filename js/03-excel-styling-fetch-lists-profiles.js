@@ -405,7 +405,9 @@ function sectionToast(msg, type, opt) {
 }
 /* centered alert: icon + title + message + OK. Several messages while it is open are listed in the same box. opt.focus = element to go to after OK */
 function orbAlert(msg, type, opt) {
-  opt = opt || {}; const err = type === 'error', esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  opt = opt || {};
+  /* a "missing input" warning anywhere: outline the empty required fields near the button just pressed, name them, go to the first on OK */
+  if (type === 'warn' && !opt.focus && !opt.noScan && ORB_MISS_RE.test(String(msg))) { try { const r = orbScanMissing(msg); if (r.els.length) { r.els.forEach(el => el.classList.add('fld-bad')); opt = Object.assign({}, opt, { focus: r.els[0], title: opt.title || 'Missing information' }); const nm = r.names.filter(n => !String(msg).toLowerCase().includes(n.toLowerCase().replace(/ \(row \d+\)$/, ''))); if (nm.length) msg = String(msg).replace(/\s*$/, '') + '\n\nComplete the field(s) marked in red:\n• ' + nm.slice(0, 10).join('\n• ') + (nm.length > 10 ? '\n• … ' + (nm.length - 10) + ' more' : ''); } } catch (e) {} } const err = type === 'error', esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   if (!document.querySelector('#orbAlertCss')) { const c = document.createElement('style'); c.id = 'orbAlertCss'; c.textContent = `
 #orbAlert{position:fixed;inset:0;z-index:2147483200;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px;animation:oaIn .12s ease-out}
 #orbAlert .oa-c{background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(460px,100%);box-shadow:0 30px 70px -20px rgba(15,23,42,.6);overflow:hidden;border-top:5px solid #d97706}
@@ -426,6 +428,36 @@ function orbAlert(msg, type, opt) {
   d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-oa="ok"]')) close(); });
   document.addEventListener('keydown', key, true); draw(); document.body.appendChild(d);
 }
+/* ---------- missing required fields: forms (label ending with * / required) and entry tables (column heading ending with *) ---------- */
+const ORB_MISS_RE = /fill|required|missing|mandatory|enter |select |choose|pick |complete|empty|blank|is needed|are needed|set the|type the|give the|no (sku|item|batch|date|qty|quantity|route|driver)/i;
+let orbLastBtn = null; document.addEventListener('click', e => { const b = e.target && e.target.closest && e.target.closest('button,[role="button"],input[type="button"],input[type="submit"],a'); if (b) orbLastBtn = { el: b, t: Date.now() }; }, true);
+function orbScanMissing(msg) {
+  const CTL = 'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="file"]),select,textarea';
+  const vis = el => !!(el && el.offsetParent !== null && !el.disabled && !el.readOnly && !el.closest('[aria-hidden="true"]'));
+  const empty = el => String(el.value == null ? '' : el.value).trim() === '';
+  const star = t => /\*\s*$/.test(String(t || '').replace(/\s+/g, ' ').trim());
+  const clean = t => String(t || '').replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
+  function reqIn(scope) { const out = [];
+    scope.querySelectorAll(CTL).forEach(el => { if ((el.required || el.getAttribute('aria-required') === 'true') && !el.closest('table')) out.push({ el, name: clean((el.labels && el.labels[0] && el.labels[0].textContent) || el.placeholder || el.name || 'Required field') }); });
+    scope.querySelectorAll('label').forEach(l => { if (!star(l.textContent) || l.closest('table')) return; let el = l.control || l.querySelector(CTL); if (!el) { const p = l.parentElement; if (p && p.querySelectorAll('label').length === 1) el = p.querySelector(CTL); } if (!el && l.nextElementSibling && l.nextElementSibling.matches && l.nextElementSibling.matches(CTL)) el = l.nextElementSibling; if (el && !out.some(x => x.el === el)) out.push({ el, name: clean(l.textContent) }); });
+    scope.querySelectorAll('table').forEach(t => { const hr = t.tHead && t.tHead.rows[t.tHead.rows.length - 1]; if (!hr) return; const cols = [...hr.cells].map((c, i) => star(c.textContent) ? { i, name: clean(c.textContent) } : null).filter(Boolean); if (!cols.length) return;
+      [...(t.tBodies[0] ? t.tBodies[0].rows : [])].forEach((tr, ri) => { if (tr.cells.length !== hr.cells.length) return; const cs = cols.map(c => ({ c, el: tr.cells[c.i] && tr.cells[c.i].querySelector(CTL) })).filter(x => x.el && vis(x.el)); if (!cs.length || !cs.some(x => !empty(x.el))) return;   /* only rows the user started */
+        cs.forEach(x => out.push({ el: x.el, name: x.c.name + ' (row ' + (ri + 1) + ')' })); }); });
+    return out.filter(x => vis(x.el)); }
+  const view = document.querySelector('.view.active') || document.body; let scope = null;
+  const modal = [...document.body.children].filter(d => d.id !== 'orbAlert' && d.tagName === 'DIV' && d.querySelector(CTL) && getComputedStyle(d).position === 'fixed' && getComputedStyle(d).display !== 'none' && d.getBoundingClientRect().width > 300).pop();
+  const start = orbLastBtn && Date.now() - orbLastBtn.t < 4000 && document.contains(orbLastBtn.el) ? orbLastBtn.el : null;
+  if (start) { for (let p = start.parentElement; p && p !== document.body; p = p.parentElement) { if (reqIn(p).some(x => empty(x.el))) { scope = p; break; } if (p.classList && p.classList.contains('view')) break; } }
+  if (!scope && modal && reqIn(modal).some(x => empty(x.el))) scope = modal;
+  if (!scope) scope = start ? null : view; if (!scope) return { els: [], names: [] };
+  const miss = reqIn(scope).filter(x => empty(x.el)), seen = new Set(), names = [];
+  /* fields named in the message ("Date and reference are required") even without a * in their label */
+  const m = String(msg || '').toLowerCase(); if (m) { const sc = scope.classList && scope.classList.contains('view') ? scope : (scope.closest('.view') || scope); sc.querySelectorAll('label').forEach(l => { if (l.closest('table')) return; const n = clean(l.textContent), k0 = n.toLowerCase(), w1 = (k0.match(/^[a-z]{4,}/) || [''])[0], k = new RegExp('\\b' + k0.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + '\\b').test(m) ? k0 : w1 && !/^(from|with|this|that|your|date)$/.test(w1) && new RegExp('\\b' + w1 + '\\b').test(m) ? w1 : (/^date\b/.test(k0) && /\bdate\b/.test(m) ? 'date' : ''); if (!k || !new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&') + '\\b').test(m)) return; let el = l.control || l.querySelector(CTL); if (!el) { const p = l.parentElement; if (p && p.querySelectorAll('label').length === 1) el = p.querySelector(CTL); } if (el && vis(el) && empty(el) && !miss.some(x => x.el === el)) miss.unshift({ el, name: n }); }); }
+  miss.forEach(x => { if (!seen.has(x.name)) { seen.add(x.name); names.push(x.name); } });
+  return { els: miss.map(x => x.el), names };
+}
+/* window.alert → the same centered alert */
+try { const _al = window.alert; window.alert = function (m) { try { return orbAlert(String(m == null ? '' : m), /error|fail|could not|not saved|✘|⛔/i.test(String(m)) ? 'error' : 'warn'); } catch (e) { return _al.call(window, m); } }; } catch (e) {}
 /* a field outlined by .fld-bad loses the outline as soon as the user fills it */
 document.addEventListener('input', e => { const t = e.target; if (t && t.classList && t.classList.contains('fld-bad') && String(t.value || '').trim()) t.classList.remove('fld-bad'); }, true);
 document.addEventListener('change', e => { const t = e.target; if (t && t.classList && t.classList.contains('fld-bad') && String(t.value || '').trim()) t.classList.remove('fld-bad'); }, true);
