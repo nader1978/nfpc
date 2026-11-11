@@ -84,3 +84,16 @@ body.dark .pl-tabs button:hover:not(.on):not(:disabled){color:#fff!important;bac
 
   window.DSTAGE = { DIV, stage, move, hero, place };
 })();
+/* ---- 🎨 "Soft" dashboard style: the division banner, pop-up header and main buttons turn pastel too ---- */
+(function () { const s = document.createElement('style'); s.id = 'dstSoftCss';
+  s.textContent = `
+body.ds-soft .dst-hero{color:var(--dv1);background:radial-gradient(circle at 92% -30%,rgba(var(--dvt),.10) 0 120px,transparent 121px),radial-gradient(circle at 78% 140%,rgba(var(--dvt),.07) 0 90px,transparent 91px),linear-gradient(120deg,rgba(var(--dvt),.16),rgba(var(--dvt),.05));border:1px solid rgba(var(--dvt),.28);box-shadow:0 10px 24px -18px rgba(var(--dvt),.9)}
+body.ds-soft .dst-hero .ic{background:#fff;box-shadow:0 4px 12px -6px rgba(var(--dvt),.8)}body.ds-soft .dst-hero small{opacity:1;color:var(--gray-600,#64748b)}
+body.ds-soft .dst-hero .hint{background:rgba(var(--dvt),.12);color:var(--dv1)}body.ds-soft .dst-hero .tm{opacity:1;color:var(--gray-600,#64748b)}body.ds-soft .dst-hero .tm b{color:var(--dv1)}
+body.ds-soft .dst-wh{color:var(--dv1);background:linear-gradient(120deg,rgba(var(--dvt),.18),rgba(var(--dvt),.07)),var(--card,#fff);border-bottom:1px solid rgba(var(--dvt),.25)}
+body.ds-soft .dst-wh .d{color:var(--gray-600,#64748b);opacity:1}body.ds-soft .dst-back{background:#fff!important;color:var(--dv1)!important;border:1px solid rgba(var(--dvt),.35)!important}
+body.ds-soft .dst-wh select{border:1px solid rgba(var(--dvt),.3)}
+body.ds-soft .sdb-go button.main{background:rgba(var(--dvt),.14)!important;color:var(--dv1)!important;border:1px solid rgba(var(--dvt),.4)!important}body.ds-soft .sdb-go button:hover{background:rgba(var(--dvt),.22)!important;color:var(--dv1)!important}
+body.ds-soft.dark .dst-hero,body.ds-soft.dark .dst-wh{color:#e2e8f0;background:linear-gradient(120deg,rgba(var(--dvt),.30),rgba(var(--dvt),.10)),var(--card,#1e293b)}
+body.ds-soft.dark .dst-hero .tm b,body.ds-soft.dark .dst-hero .hint,body.ds-soft.dark .sdb-go button.main,body.ds-soft.dark .dst-back{color:#fff!important}body.ds-soft.dark .dst-hero .ic,body.ds-soft.dark .dst-back{background:rgba(255,255,255,.1)!important}`;
+  (document.head || document.documentElement).appendChild(s); })();
