@@ -10,7 +10,7 @@
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const fmt = n => (Math.round(n) || 0).toLocaleString();
   const names = new Map();   /* listId → list name (from resolveIds) */
-  let lastUser = 0; ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { lastUser = Date.now(); }, true));
+  let lastUser = 0, lastEl = null; ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, e => { lastUser = Date.now(); lastEl = e.target; }, true));
   let J = null, el = null, paused = null, stopReq = false, hideT = 0, idleT = 0, showT = 0, exp = null;
 
   const css = document.createElement('style'); css.textContent = `
@@ -208,8 +208,17 @@
       .then(ok => { if (!ok) return; okMsgs.set(msg, Date.now()); okAt = Date.now() + 4000; const el = a.el; lastAct = { el, t: Date.now() }; try { el.click(); } catch (e) {} });
     return false; };
 
+  /* automatic saves never ask: settings, activity / system logs, shared snapshots, sync of uploaded / downloaded data */
+  const AUTO_LISTS = /^(App_?Config_tbl|WebApp_userActivity_Log_tbl|System_Log_tbl|Activity_Log_tbl|WHs_Utilization_Daily_tbl|Attendance_Data_tbl|Consolidated_Inventory[A-Za-z_]*|CI_[A-Za-z_]*|User_?Prefs?_tbl)$/i;
+  /* only a deliberate click on a save / upload / delete … button asks; filters, tabs, dates, reload, download, export, print do not */
+  const SAVE_WORDS = /\b(save|upload|import|submit|send|e-?mail|approve|reject|delete|remove|post|push|register|issue|release|receive|confirm|apply|correct|close point|update|share|assign|complete|dispose|transfer|relocate|move)\b/i,
+    NO_WORDS = /\b(filter|reload|refresh|download|excel|export|print|tab|view|show|hide|load|open|search|clear filters?|latest|days?|month|dates?|zoom|columns?|expand)\b/i;
+  function intent() { const el = lastEl && lastEl.closest ? lastEl.closest('button,a,[role="button"],input[type="submit"],input[type="button"],label') : null; if (!el) return false;
+    const t = String(el.textContent || el.value || el.title || '').replace(/\s+/g, ' ').trim(); if (!t) return false; if (SAVE_WORDS.test(t) && !NO_WORDS.test(t.replace(SAVE_WORDS, ''))) return true; return SAVE_WORDS.test(t) && !/^(\W*)(reload|refresh|download|excel|export|print)\b/i.test(t); }
   async function gate(c, j) {
     if (!j.user) return true;                       /* background work: no question */
+    try { const ln = String(listName(c.list) || c.list || ''); if (c.k === 'w' && (AUTO_LISTS.test(ln) || AUTO_LISTS.test(String(c.list || '')))) return true; } catch (e) {}
+    if (!c.del && !intent()) return true;           /* the click was not a save / upload button → automatic work, no question (deletes always ask) */
     if (noAt && lastUser <= noAt) return false;      /* already cancelled for this action */
     if (okAt && lastUser <= okAt) return true;       /* already confirmed for this action */
     const ok = await ask(c, j); if (ok && !j.fin) { j.t0 = Date.now(); j.shown = true; draw(); } return ok; }
