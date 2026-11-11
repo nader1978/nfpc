@@ -63,9 +63,9 @@ body.ds-elegant .ds-gap,body.ds-soft .ds-gap{gap:12px!important}
   /* top-bar button + menu */
   function menu(btn) { let m = document.querySelector('#dsMenu'); if (m) { m.remove(); return; } const cur = get(); m = document.createElement('div'); m.id = 'dsMenu'; m.dataset.nohc = '1';
     const sw = k => k === 'elegant' ? `<span class="sw"><i style="background:${G[0]}"></i><i style="background:${G[1]}"></i><i style="background:${G[3]}"></i><i style="background:${G[4]}"></i></span>` : k === 'soft' ? `<span class="sw" style="background:#fff;border:1px solid var(--border)">${C.slice(0, 4).map(c => `<i style="background:#fff;border-top:3px solid ${c};box-shadow:0 1px 3px rgba(0,0,0,.15)"></i>`).join('')}</span>` : `<span class="sw">${[0, 1, 2, 3].map(() => '<i style="background:#fff;border:1px solid #cbd5e1"></i>').join('')}</span>`;
-    const nc = nget(); m.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--gray-600,#64748b);padding:4px 10px 6px">🎨 Dashboard style — every section</div>' + STY.map(([k, t, d]) => `<button type="button" data-ds="${k}" class="${k === cur ? 'on' : ''}">${sw(k)}<span>${t}${k === cur ? ' ✓' : ''}<small>${d}</small></span></button>`).join('') + '<div style="font-size:12px;font-weight:700;color:var(--gray-600,#64748b);padding:10px 10px 6px;border-top:1px solid var(--border);margin-top:6px">🧭 Side panel & top bar</div>' + NT.map(([k, t, d, c]) => `<button type="button" data-nt="${k}" class="${k === nc ? 'on' : ''}"><span class="sw" style="grid-template-columns:1fr 2fr;background:#e2e8f0"><i style="background:${c[0]};${k === 'pearl' ? 'border:1px solid #cbd5e1' : ''}"></i><i style="background:linear-gradient(90deg,${c.slice(k === 'classic' ? 0 : 1).join(',')})"></i></span><span>${t}${k === nc ? ' ✓' : ''}<small>${d}</small></span></button>`).join('');
+    const nc = nget(); m.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--gray-600,#64748b);padding:4px 10px 6px">🎨 Dashboard style — every section</div>' + STY.map(([k, t, d]) => `<button type="button" data-ds="${k}" class="${k === cur ? 'on' : ''}">${sw(k)}<span>${t}${k === cur ? ' ✓' : ''}<small>${d}</small></span></button>`).join('') + '<div style="font-size:12px;font-weight:700;color:var(--gray-600,#64748b);padding:10px 10px 6px;border-top:1px solid var(--border);margin-top:6px">🧭 Side panel & top bar</div>' + NT.map(([k, t, d, c]) => `<button type="button" data-nt="${k}" class="${k === nc ? 'on' : ''}"><span class="sw" style="grid-template-columns:1fr 2fr;background:#e2e8f0"><i style="background:${c[0]};${k === 'pearl' ? 'border:1px solid #cbd5e1' : ''}"></i><i style="background:linear-gradient(90deg,${c.slice(k === 'classic' ? 0 : 1).join(',')})"></i></span><span>${t}${k === nc ? ' ✓' : ''}<small>${d}</small></span></button>`).join('') + (window.PTONE ? PTONE.menuHtml() : '');
     document.body.appendChild(m); const r = btn.getBoundingClientRect(); m.style.top = (r.bottom + 6) + 'px'; m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.right - m.offsetWidth)) + 'px';
-    m.addEventListener('click', e => { const b = e.target.closest('[data-ds]'); if (b) { set(b.dataset.ds); m.remove(); } const n = e.target.closest('[data-nt]'); if (n) { nset(n.dataset.nt); m.remove(); } });
+    m.addEventListener('click', e => { const b = e.target.closest('[data-ds]'); if (b) { set(b.dataset.ds); m.remove(); } const n = e.target.closest('[data-nt]'); if (n) { nset(n.dataset.nt); m.remove(); } const pt = e.target.closest('[data-pt]'); if (pt && window.PTONE) { PTONE.set(pt.dataset.pt); m.remove(); } });
     setTimeout(() => document.addEventListener('click', function off(e) { if (!e.target.closest('#dsMenu,#dsBtn')) { const x = document.querySelector('#dsMenu'); if (x) x.remove(); document.removeEventListener('click', off, true); } }, true), 0); }
   function addBtn() { const t = document.querySelector('#themeToggle'); if (!t || document.querySelector('#dsBtn')) return; const b = document.createElement('button'); b.id = 'dsBtn'; b.className = t.className; b.type = 'button'; b.textContent = '🎨'; t.insertAdjacentElement('beforebegin', b); b.addEventListener('click', e => { e.stopPropagation(); menu(b); }); }
   let tm = 0; const mo = new MutationObserver(() => { if (get() === 'classic') return; clearTimeout(tm); tm = setTimeout(() => scan(document.querySelector('.view.active') || document.body), 120); });
@@ -75,3 +75,51 @@ body.ds-elegant .ds-gap,body.ds-soft .ds-gap{gap:12px!important}
   let lastU = ''; setInterval(() => { const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.username) || ''; if (u !== lastU) { lastU = u; apply(); napply(); } }, 1500);
   window.DSTYLE = { get, set, apply, scan, nget, nset, napply, NT };
 })();
+/* ---- side panel scroll bar follows the side-panel theme: dark track, gray handle, accent on hover/drag ---- */
+(function () { const st = document.createElement('style'); st.id = 'sbScrollCss';
+  const T = { '': ['#0a1a38', '#8a9bb5', '#60a5fa'], midnight: ['#0e1630', '#8b95ab', '#8b5cf6'], aurora: ['#231d5e', '#a5a3c7', '#ec4899'], ocean: ['#032833', '#8fb3bb', '#2dd4bf'], sunset: ['#211d1b', '#a8a29e', '#f59e0b'], pearl: ['#e8edf5', '#a3afc2', '#2563eb'] };
+  st.textContent = Object.entries(T).map(([k, c]) => `${k ? 'body.nt-' + k + ' ' : ''}.sidebar-nav{--sbT:${c[0]};--sbH:${c[1]};--sbA:${c[2]}}`).join('') + `
+.sidebar-nav::-webkit-scrollbar{width:10px;height:10px;display:block}
+.sidebar-nav::-webkit-scrollbar-track{background:var(--sbT);border-radius:10px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.sidebar-nav::-webkit-scrollbar-thumb{background:var(--sbH);border-radius:10px;border:2px solid var(--sbT);min-height:40px}
+.sidebar-nav::-webkit-scrollbar-thumb:hover{background:var(--sbA)}.sidebar-nav::-webkit-scrollbar-thumb:active{background:var(--sbA)}
+.sidebar-nav::-webkit-scrollbar-button{display:none;width:0;height:0}.sidebar-nav::-webkit-scrollbar-corner{background:transparent}
+@supports not selector(::-webkit-scrollbar){.sidebar-nav{scrollbar-width:thin;scrollbar-color:var(--sbH) var(--sbT)}}`;
+  (document.head || document.documentElement).appendChild(st); })();
+/* ---- the KPI "hide" ✕ stays visible on coloured / gradient tiles ---- */
+(function () { const st = document.createElement('style'); st.id = 'kxFixCss';
+  st.textContent = 'html body .kx-wrap>.kx-x.kx-x.kx-x.kx-x,html body button.kx-x.kx-x.kx-x.kx-x{background:rgba(255,255,255,.96)!important;color:#334155!important;-webkit-text-fill-color:#334155!important;border:1px solid rgba(15,23,42,.18)!important;font-size:12px!important;font-weight:800!important;text-shadow:none!important;opacity:1!important;z-index:5;box-shadow:0 2px 6px rgba(15,23,42,.25)!important;align-items:center;justify-content:center}html body .kx-wrap>.kx-x.kx-x.kx-x.kx-x:hover,html body button.kx-x.kx-x.kx-x.kx-x:hover{background:#dc2626!important;color:#fff!important;-webkit-text-fill-color:#fff!important;border-color:#dc2626!important}html body .kx-wrap>.kx-x.kx-x.kx-x.kx-x:before,html body .kx-wrap>.kx-x.kx-x.kx-x.kx-x:after{display:none!important}';
+  (document.head || document.documentElement).appendChild(st); })();
+
+/* ---- 🌗 Page brightness — background + form / data sections: Bright · Soft · Dim · Dark · Darker ---- */
+(function () { const KEY = () => LS_BASE + '_ptone_' + (((typeof currentUser !== 'undefined' && currentUser && (currentUser.id || currentUser.username)) || 'u'));
+  const PT = [['bright', 'Bright', 'white sections on light gray (as today)', ['#f3f2f1', '#ffffff']], ['soft', 'Soft', 'off-white sections, softer background', ['#e6eaf0', '#f6f8fb']], ['dim', 'Dim', 'gray-blue background, muted sections', ['#c4ccd8', '#e2e7ee']], ['dark', 'Dark', 'slate night mode', ['#0f172a', '#1e293b']], ['darker', 'Darker', 'deep black-blue, low glare', ['#05080f', '#0d1424']]];
+  const st = document.createElement('style'); st.id = 'ptoneCss';
+  st.textContent = `
+body.pt-soft{--bg:#e6eaf0;--card:#f6f8fb;--gray-50:#eef1f5;--gray-100:#e8ecf2;--gray-200:#dfe4eb;--border:#d6dce5;--brand-light:#e3ecf9;--topbar-bg:#f6f8fb}
+body.pt-soft input:not([type=checkbox]):not([type=radio]):not([type=range]),body.pt-soft select,body.pt-soft textarea,body.pt-soft .combo-input{background-color:#fdfdfe}
+body.pt-dim{--bg:#c4ccd8;--card:#e2e7ee;--gray-50:#d9dfe8;--gray-100:#d2d9e3;--gray-200:#c8d0dc;--gray-300:#aab4c3;--border:#bcc5d2;--brand-light:#d3def0;--topbar-bg:#e2e7ee}
+body.pt-dim input:not([type=checkbox]):not([type=radio]):not([type=range]),body.pt-dim select,body.pt-dim textarea,body.pt-dim .combo-input{background-color:#f1f4f8;border-color:#b3bdcb}
+body.pt-dim table th,body.pt-soft table th{background-color:var(--gray-100)}
+body.pt-dim .card,body.pt-dim .sdb-p,body.pt-dim .sdb-k,body.pt-dim .dst-win{box-shadow:0 2px 10px -6px rgba(15,23,42,.35)}
+body.dark.pt-darker{--bg:#05080f;--card:#0d1424;--gray-50:#0a101d;--gray-100:#111a2c;--gray-200:#1a2438;--gray-300:#2b3850;--border:#1c273b;--topbar-bg:#0d1424;--brand-light:#13243f}
+body.dark.pt-darker input:not([type=checkbox]):not([type=radio]):not([type=range]),body.dark.pt-darker select,body.dark.pt-darker textarea,body.dark.pt-darker .combo-input{background:#070b14!important;border-color:#26324a}
+body.pt-soft .dst-bg,body.pt-dim .dst-bg{background:linear-gradient(180deg,rgba(var(--dvt),.12),rgba(var(--dvt),.04) 320px)}
+body.dark .sdb-k,body.dark .sdb-p,body.dark .sdb-go button:not(.main){background:var(--card)!important}
+#dsMenu .pt-sw{width:46px;height:28px;border-radius:8px;flex:none;padding:5px 6px;box-sizing:border-box;border:1px solid rgba(100,116,139,.35)}#dsMenu .pt-sw i{display:block;height:100%;border-radius:4px}`;
+  (document.head || document.documentElement).appendChild(st);
+  const get = () => { try { return localStorage.getItem(KEY()) || ''; } catch (e) { return ''; } };
+  let busy = false;
+  function apply(t) { const b = document.body; if (!b || !t) return; busy = true; try { b.classList.remove('pt-soft', 'pt-dim', 'pt-darker'); const dk = t === 'dark' || t === 'darker';
+      if (dk !== b.classList.contains('dark')) { if (typeof applyTheme === 'function') applyTheme(dk ? 'dark' : 'light'); else b.classList.toggle('dark', dk); }
+      if (t === 'soft' || t === 'dim') b.classList.add('pt-' + t); if (t === 'darker') b.classList.add('pt-darker'); } finally { setTimeout(() => { busy = false; }, 0); } }
+  function set(t) { try { localStorage.setItem(KEY(), t); } catch (e) {} apply(t); try { sectionToast('🌗 Page brightness: ' + (PT.find(x => x[0] === t) || PT[0])[1], 'success'); } catch (e) {} }
+  const cur = () => get() || (document.body.classList.contains('dark') ? 'dark' : 'bright');
+  const menuHtml = () => { const c = cur(); return '<div style="font-size:12px;font-weight:700;color:var(--gray-600,#64748b);padding:10px 10px 6px;border-top:1px solid var(--border);margin-top:6px">🌗 Page brightness — background & data sections</div>' + PT.map(([k, t, d, c2]) => `<button type="button" data-pt="${k}" class="${k === c ? 'on' : ''}"><span class="pt-sw" style="background:${c2[0]}"><i style="background:${c2[1]}"></i></span><span>${t}${k === c ? ' ✓' : ''}<small>${d}</small></span></button>`).join(''); };
+  /* the 🌙 / ☀ button still works: switching it changes the brightness choice to match */
+  new MutationObserver(() => { if (busy) return; const t = get(), dk = document.body.classList.contains('dark'); if (!t) return; if (dk && (t === 'bright' || t === 'soft' || t === 'dim')) { try { localStorage.setItem(KEY(), 'dark'); } catch (e) {} document.body.classList.remove('pt-soft', 'pt-dim'); } else if (!dk && (t === 'dark' || t === 'darker')) { try { localStorage.setItem(KEY(), 'bright'); } catch (e) {} document.body.classList.remove('pt-darker'); } }).observe(document.body || document.documentElement, { attributes: true, attributeFilter: ['class'] });
+  const boot = () => apply(get()); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 50)); else setTimeout(boot, 50);
+  let lastU = ''; setInterval(() => { const u = KEY(); if (u !== lastU) { lastU = u; boot(); } }, 1500);
+  window.PTONE = { set, apply, get: cur, menuHtml, PT };
+})();
+(function () { const s = document.createElement('style'); s.textContent = '#dsMenu{max-height:calc(100vh - 80px);overflow:auto;overscroll-behavior:contain}'; (document.head || document.documentElement).appendChild(s); })();
