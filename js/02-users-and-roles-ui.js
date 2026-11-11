@@ -492,7 +492,7 @@ function renderUsersView() {
     else if (visCount === 0) listsLabel = '<em>All lists (no restriction)</em>';
     else listsLabel = `${visCount} visible · ${edCount || visCount} editable`;
     return `<tr>
-      <td><code>${escapeHtml(u.username)}</code>${u.mustChangePassword ? ' <span class="badge required">CHANGE PW</span>' : ''}</td>
+      <td><code>${escapeHtml(u.username)}</code>${u.mustChangePassword ? ' <span class="badge required">CHANGE PW</span>' : ''}${u.spOff ? ' <span class="badge required" title="Switched off in the SharePoint login list">⛔ OFF in SharePoint</span>' : ''}</td>
       <td>${escapeHtml(u.displayName)}</td>
       <td><span class="badge role-${u.role}">${ROLES[u.role].label}</span></td>
       <td style="font-size:12px;">${u.locationId ? '📍 ' + escapeHtml(u.locationId) : '<em>all</em>'}${u.bu ? '<br><span style="color:var(--gray-500);">' + escapeHtml(u.bu) + '</span>' : ''}${typeof locWhName === 'function' && locWhName(u) ? '<br><span style="color:var(--gray-500);">' + escapeHtml(locWhName(u)) + '</span>' : ''}</td>

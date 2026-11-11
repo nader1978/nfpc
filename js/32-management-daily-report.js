@@ -583,3 +583,46 @@ function atListUi() {
   const tog = () => { const f = m.value === 'file'; document.querySelectorAll('.atsp-file').forEach(e => { e.style.display = f ? '' : 'none'; }); document.querySelectorAll('.atsp-list').forEach(e => { e.style.display = f ? 'none' : ''; }); }; tog();
   m.addEventListener('change', () => { atSpCfgSave({ mode: m.value, mod: '' }); tog(); if (q('#atSpOn').checked) atSpSync(); }); l.addEventListener('change', () => { atSpCfgSave({ list: l.value.trim() || 'Attendance_Data_tbl', mod: '' }); });
 }
+
+/* ============================================================
+   USERS & ROLES — 🔄 Refresh from SharePoint (admin): reads LoginUserList and
+   · adds every user that is in the list but not yet in ORBIT (e.g. recently added staff)
+   · refreshes name, e-mail, Location ID, access profile, warehouse, BU, region, line manager, job title of the existing ones
+   · marks users switched off in the list (Allow column = No) — passwords stay in SharePoint (sign-in checks the list)
+   ============================================================ */
+async function usrSpRefresh(btn) {
+  if (!isAdmin()) { sectionToast('Only an admin can refresh the users from SharePoint.', 'warn'); return; }
+  const c = lulCfg(), old = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = '⏳ Reading ' + c.list + '…'; }
+  try {
+    const r = await lulFetch(); if (r.state !== 'ok') throw new Error(r.state === 'notoken' ? 'sign in to SharePoint first (Re-login)' : r.state === 'nolist' ? 'the list “' + c.list + '” was not found' : (r.msg || r.state));
+    const pick = (f, re) => { const k = Object.keys(f).find(x => re.test(x)); return k == null ? '' : String(lulVals(f[k])[0] == null ? '' : lulVals(f[k])[0]).trim(); };
+    const by = new Map();
+    r.items.forEach(it => { const f = it.fields || {}, uk = c.user ? lulAllowKey(f, c.user) : null, un = String((uk ? lulVals(f[uk])[0] : '') || f.User_Name || f.UserName || f.Title || '').trim(); if (!un) return;
+      const ak = lulAllowKey(f, c.allow), on = ak ? lulTrue(f[ak]) : true, k = un.toLowerCase(), o = by.get(k); if (!o || (on && !o.on)) by.set(k, { un, f, on, created: f.Created || it.createdDateTime || '' }); });
+    let add = 0, upd = 0, off = 0; const added = [];
+    by.forEach(({ un, f, on, created }, k) => {
+      const name = pick(f, /^(employee_?name|display_?name|full_?name|name)$/i), email = pick(f, /^(e-?mail(_?id)?|mail)$/i), rk = lulAllowKey(f, c.role), role0 = rk ? String(lulVals(f[rk])[0] || '').trim().toLowerCase() : '';
+      let prof = {}; try { prof = locProfile(f); } catch (e) {}
+      let u = users.list.find(x => x.username.toLowerCase() === k) || (email ? users.list.find(x => x.email && x.email.toLowerCase() === email.toLowerCase() && !x.builtin) : null);
+      if (u && u.builtin) return;
+      if (!u) { if (!on) return; u = { id: uid(), username: un, displayName: name || un, role: ['viewer', 'operator', 'admin'].includes(role0) ? role0 : 'operator', salt: '', hash: '', email, managerEmail: '', mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.parse(created) || Date.now(), lastLogin: null, fromSP: true }; users.list.push(u); add++; added.push(name || un); }
+      else { upd++; if (name) u.displayName = name; if (email) u.email = email; if (['viewer', 'operator', 'admin'].includes(role0)) u.role = role0; u.fromSP = true; }
+      Object.assign(u, prof); if (!on) off++; u.spOff = !on;
+      if (u.lineMngr && !u.managerEmail && typeof orbEmailOf === 'function') { const m = orbEmailOf(u.lineMngr); if (m) u.managerEmail = m; }
+    });
+    saveUsers(); try { if (currentUser && !currentUser.builtin) { const me = users.list.find(x => x.id === currentUser.id); if (me) { const { id, salt, hash, ...rest } = me; Object.assign(currentUser, rest); saveSession(); locBadge(); } } } catch (e) {}
+    renderUsersView(); addActivity('auth', `Users refreshed from SharePoint ${c.list}: ${add} added, ${upd} updated, ${off} switched off`);
+    const L = [`➕ <b>${add}</b> new user(s) added${added.length ? ': ' + added.slice(0, 15).map(escapeHtml).join(', ') + (added.length > 15 ? ' …' : '') : ''}`, `✔ <b>${upd}</b> existing user(s) updated — name, e-mail, Location ID, profile …`, off ? `⛔ <b>${off}</b> user(s) are switched off in SharePoint (${escapeHtml(c.allow)} = No) — marked in the list` : ''].filter(Boolean);
+    const d = document.createElement('div'); d.id = 'usrSpDlg'; d.dataset.nohc = '1'; d.style.cssText = 'position:fixed;inset:0;z-index:2147483200;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+    d.innerHTML = `<div style="background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(520px,100%);box-shadow:0 30px 70px -20px rgba(15,23,42,.6);border-top:5px solid #16a34a;padding:18px 20px"><div style="font-weight:800;font-size:16px;margin-bottom:6px">🔄 Users refreshed from SharePoint</div><div style="font-size:13px;color:var(--gray-600,#64748b);margin-bottom:8px">${by.size} user(s) read from ${escapeHtml(c.list)}.</div><ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.7">${L.map(x => '<li>' + x + '</li>').join('')}</ul><div style="font-size:12.5px;color:var(--gray-600,#64748b);margin-top:8px">New users sign in with the user name and password of the SharePoint list.</div><div style="text-align:right;margin-top:12px"><button type="button" class="success">OK</button></div></div>`;
+    d.addEventListener('click', e => { if (e.target === d || e.target.closest('button')) d.remove(); }); document.body.appendChild(d);
+  } catch (e) { sectionToast('Could not refresh the users — ' + e.message, 'error'); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
+}
+function usrSpEnsure() {   /* the header may be rebuilt / cloned — make sure the button is there, and admin-only */
+  const ib = document.querySelector('#importUsersBtn'); if (!ib) return; let b = document.querySelector('#usrSpBtn');
+  if (!b) { b = document.createElement('button'); b.id = 'usrSpBtn'; b.type = 'button'; b.className = 'secondary small'; b.textContent = '🔄 Refresh from SharePoint'; b.title = 'Admin: read LoginUserList — add the users recently added there and refresh everybody\'s name, e-mail, Location ID and profile'; ib.insertAdjacentElement('afterend', b); }
+  const v = isAdmin() ? '' : 'none'; if (b.style.display !== v) b.style.display = v; }
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('#usrSpBtn'); if (b && !b.disabled) { e.preventDefault(); usrSpRefresh(b); } });
+(function () { usrSpEnsure(); const r0 = window.renderUsersView; if (typeof r0 === 'function') window.renderUsersView = renderUsersView = function () { const x = r0.apply(this, arguments); try { usrSpEnsure(); } catch (e) {} return x; };
+  document.addEventListener('click', () => setTimeout(() => { try { usrSpEnsure(); } catch (e) {} }, 50), true); })();
