@@ -56,7 +56,7 @@ async function atSpSync(quiet) {
   const c = atSpCfg(); if (!c.on || !atSpOk() || atSpSync.busy) return; atSpSync.busy = true;
   try {
     const m = await atSpRemote();
-    if (!m) { if (at.rows.length) await atSpAuto(); return; }
+    if (!m) { if (at.rows.length) atSpMsg('No SharePoint copy yet — press “Save to SharePoint now” to share the attendance of this browser.', ''); return; }
     if (m.mod === c.mod && at.rows.length) return;
     if (!at.rows.length || (c.mod && m.mod !== c.mod)) { atSpMsg('Loading the attendance data from SharePoint…'); const n = await atSpLoad(m); if (at.tab === 'up') at.tab = 'dash'; atSpMsg(`✓ Loaded ${plF(n)} record(s) from SharePoint (saved ${new Date(m.mod).toLocaleString('en-GB')}).`, 'ok'); if (!quiet) sectionToast('Attendance data loaded from SharePoint.', 'success'); atRefresh(); }
     else atSpMsg('A SharePoint copy exists (' + new Date(m.mod).toLocaleString('en-GB') + ') but this browser already has data — use “Load from SharePoint” to replace it, or “Save to SharePoint now” to overwrite the copy.', '');
@@ -517,9 +517,17 @@ async function atListRead(C, say, keysOnly) {
   const out = []; let url = `https://graph.microsoft.com/v1.0/sites/${C.ids.siteId}/lists/${C.ids.listId}/items?$top=999&$expand=fields` + (keysOnly ? '($select=Title)' : '');
   while (url) { const r = await fetchWithRetry(url, { headers: atListHdr(C.token) }, 'read attendance list'); if (!r.ok) throw await atSpErr(r); const d = await r.json(); (d.value || []).forEach(x => out.push({ id: x.id, f: x.fields || {} })); url = d['@odata.nextLink']; if (say) say(out.length); } return out;
 }
-async function atListRemoteMod(C) {
-  try { const r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${C.ids.siteId}/lists/${C.ids.listId}/items?$top=1&$orderby=lastModifiedDateTime desc&$select=id`, { headers: atListHdr(C.token) }, 'check attendance list'); if (!r.ok) return null; const d = await r.json(); return d.value && d.value[0] ? (d.value[0].lastModifiedDateTime || '') : ''; } catch (e) { return null; }
+async function atListRemoteMod(C) {   /* '' = the list is really empty · null = could not tell · else the time of the last change */
+  try { const H = { headers: atListHdr(C.token) }, base = `https://graph.microsoft.com/v1.0/sites/${C.ids.siteId}/lists/${C.ids.listId}`;
+    let url = base + '/items?$top=1&$select=id', any = false, n = 0;
+    while (url && !any && n++ < 6) { const r = await fetchWithRetry(url, H, 'check attendance list'); if (!r.ok) return null; const d = await r.json(); any = !!(d.value && d.value.length); url = d['@odata.nextLink']; }
+    if (!any && url) return null; if (!any) return '';
+    const r2 = await fetchWithRetry(base + '?$select=lastModifiedDateTime', H, 'check attendance list'); if (!r2.ok) return null; return (await r2.json()).lastModifiedDateTime || null;
+  } catch (e) { return null; }
 }
+/* add rows into what this browser has (same date + employee → the newer copy wins) */
+function atMergeRows(rows) { const idx = new Map(at.rows.map((r, i) => [atLKey(r), i])); let add = 0, upd = 0;
+  rows.forEach(r => { const k = atLKey(r); if (idx.has(k)) { at.rows[idx.get(k)] = r; upd++; } else { at.rows.push(r); idx.set(k, at.rows.length - 1); add++; } }); return { add, upd }; }
 async function atListBatch(C, ops, say) {
   const fail = [], made = new Map(), root = 'https://graph.microsoft.com/v1.0/', S = C.ids.siteId, L = C.ids.listId; let done = 0;
   for (let i = 0; i < ops.length; i += 20) {
@@ -543,7 +551,8 @@ async function atListSave(R) {
 }
 async function atListLoad(C) {
   C = C || await atListCtx(); const items = await atListRead(C, n => atSpMsg('Reading the attendance list… ' + plF(n))), rows = items.map(x => x.f).filter(f => f.Att_Date && f.Emp_No).map(atFieldsRow);
-  at.rows = rows; at.file = 'SharePoint list ' + atListName(); at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; atSave(); atSpCfgSave({ mod: (await atListRemoteMod(C)) || '' }); a2Bump(); return rows.length;
+  const rr = rows.map(atIndex); if (at.rows.length) atMergeRows(rr); else at.rows = rr;
+  at.file = 'SharePoint list ' + atListName(); at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; atSave(); atSpCfgSave({ mod: (await atListRemoteMod(C)) || '' }); a2Bump(); return rows.length;
 }
 const _atSpAutoFile = atSpAuto, _atSpSyncFile = atSpSync;
 atSpAuto = async function (rows) {
@@ -555,13 +564,14 @@ atSpAuto = async function (rows) {
 };
 atSpSync = async function (quiet) {
   if (atSpCfg().mode === 'file') return _atSpSyncFile(quiet);
-  const c = atSpCfg(); if (!c.on || !atSpOk() || atSpSync.busy) return; atSpSync.busy = true;
+  const c = atSpCfg(); if (!atSpOk() || atSpSync.busy) return; atSpSync.busy = true;   /* reading the shared copy does not need "keep in SharePoint" — only saving does */
   try { const C = await atListCtx(), mod = await atListRemoteMod(C);
-    if (!at.rows.length) {
-      if (mod === '') { const m = await atSpRemote().catch(() => null); if (m) { atSpMsg('The list is empty — moving the data from the old JSON file into it…'); await atSpLoad(m); atRefresh(); await atSpAuto(); } return; }
-      atSpMsg('Loading the attendance data from SharePoint…'); const n = await atListLoad(C); if (at.tab === 'up') at.tab = 'dash'; atSpMsg(`✓ Loaded ${plF(n)} record(s) from the SharePoint list.`, 'ok'); if (!quiet) sectionToast('Attendance data loaded from SharePoint.', 'success'); atRefresh(); return; }
-    if (mod === '') { await atSpAuto(); return; }
-    if (mod && c.mod && mod !== c.mod) { atSpMsg('Someone saved newer attendance data — loading it…'); const n = await atListLoad(C); atSpMsg(`✓ Loaded ${plF(n)} record(s) from the SharePoint list.`, 'ok'); atRefresh(); }
+    if (mod === null) { atSpMsg('Could not check the SharePoint list right now — use “Load from SharePoint” to read it.', ''); return; }
+    if (mod === '') { const m = await atSpRemote().catch(() => null); if (m && !at.rows.length) { atSpMsg('The list is empty — reading the old JSON file…'); await atSpLoad(m); atRefresh(); }
+      else atSpMsg(at.rows.length ? 'The SharePoint list is empty — press “Save to SharePoint now” to share the attendance of this browser.' : '', ''); return; }
+    if (!at.rows.length || mod !== c.mod) { const old = atDates().pop() || ''; atSpMsg('Loading the latest attendance from SharePoint…'); const n = await atListLoad(C), last = atDates().pop() || '';
+      if (at.tab === 'up') at.tab = 'dash'; atSpMsg(`✓ ${plF(n)} record(s) read from the SharePoint list — attendance now up to ${last ? atDateLabel(last) : '—'}.`, 'ok');
+      if (!quiet || last > old) sectionToast('Attendance loaded from SharePoint — up to ' + (last ? atDateLabel(last) : '—') + '.', 'success'); try { atRefresh(); } catch (e) {} }
   } catch (e) { atSpMsg('✘ SharePoint: ' + e.message, 'err'); } finally { atSpSync.busy = false; }
 };
 async function atListLoadBtn() {

@@ -32,7 +32,8 @@
   const A = { r: null, m: null, d: null, k: new Map() };
   function attIdx() {
     if (typeof at === 'undefined') return null; if (!at.rows.length && typeof atLoad === 'function') atLoad(); if (!at.rows.length) return null;
-    if (A.r !== at.rows) { const m = new Map(), d = new Set(), req = new Map(); at.rows.forEach(r => { d.add(r.date); const k = atKey(r.id) + '|' + r.date, w = atHours(r), q = +r.req || 0; let o = m.get(k); if (!o) m.set(k, o = { w: 0, q: 0, t: 0, st: '', i: null, o: null }); o.w += w; if (r.inT != null && (o.i == null || r.inT < o.i)) o.i = r.inT; if (r.outT != null && (o.o == null || r.outT > o.o)) o.o = r.outT; o.t += +r.ot || 0; o.q = Math.max(o.q, q); o.st = o.st || r.st || ''; if (q > 0) { const a = req.get(atKey(r.id)) || []; a.push(q); req.set(atKey(r.id), a); } });
+    const sig = at.rows.length + '|' + (at.loaded || '') + '|' + (at.file || '');
+    if (A.r !== at.rows || A.sig !== sig) { A.sig = sig; const m = new Map(), d = new Set(), req = new Map(); at.rows.forEach(r => { d.add(r.date); const k = atKey(r.id) + '|' + r.date, w = atHours(r), q = +r.req || 0; let o = m.get(k); if (!o) m.set(k, o = { w: 0, q: 0, t: 0, st: '', i: null, o: null }); o.w += w; if (r.inT != null && (o.i == null || r.inT < o.i)) o.i = r.inT; if (r.outT != null && (o.o == null || r.outT > o.o)) o.o = r.outT; o.t += +r.ot || 0; o.q = Math.max(o.q, q); o.st = o.st || r.st || ''; if (q > 0) { const a = req.get(atKey(r.id)) || []; a.push(q); req.set(atKey(r.id), a); } });
       const typ = new Map(); req.forEach((a, k) => { a.sort((x, y) => x - y); typ.set(k, a[Math.floor(a.length / 2)]); }); A.r = at.rows; A.m = m; A.d = d; A.k = typ; }
     return A;
   }
@@ -153,7 +154,9 @@
 #view-otr .otr-p{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}#view-otr .otr-p.g{background:#dcfce7;color:#166534}#view-otr .otr-p.o{background:#fef3c7;color:#92400e}#view-otr .otr-p.r{background:#fee2e2;color:#991b1b}`; document.head.appendChild(css);
     render();
   }
-  const nav = Q('.nav-item[data-view="otr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
+  const nav = Q('.nav-item[data-view="otr"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); attSync(); });
+  /* the attendance used for the checks: the latest shared copy in SharePoint (uploaded daily by the team), merged into this browser */
+  function attSync() { try { if (typeof at === 'undefined' || typeof atSpSync !== 'function') return; if (!at.rows.length && typeof atLoad === 'function') atLoad(); Promise.resolve(atSpSync(true)).then(() => { A.r = null; render(); }).catch(() => {}); } catch (e) {} }
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'otr') { e.stopImmediatePropagation(); load(true); } }, true);
 
   /* ============================================================
