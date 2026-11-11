@@ -116,7 +116,7 @@ function ffScan() {
     '[data-mdl].mdl-min2>:first-child>:first-child{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
   ].join('\n');
   document.head.appendChild(st);
-  const SKIP = '#teBackdrop,.m-backdrop,#lulLock,.lul-lock,#opBack,#opAsk,#mbAdm,#mob,#wxModal,#wxTBox,#rvBox,#dcBox,#wmbBack,#wbBack,#wmvRkBox,#wmvMapBox,#woBig,#orbAlert,#rcvImpBox,#mwuCiBox,#limView,#inspPop,#pjDec,#usrSpDlg';
+  const SKIP = '#teBackdrop,.m-backdrop,#lulLock,.lul-lock,#opBack,#opAsk,#mbAdm,#mob,#wxModal,#wxTBox,#rvBox,#dcBox,#wmbBack,#wbBack,#wmvRkBox,#wmvMapBox,#woBig,#orbAlert,#rcvImpBox,#mwuCiBox,#limView,#inspPop,#pjDec,#usrSpDlg,#wmvFix';
   const WINSEL = '#tblExpandOverlay,#roSmGridModal,#roLvGridModal';
   const HEAD = '.tm-head,.card-header,.modal-header';
   const alpha = c => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return 0; const p = m[1].split(','); return p.length > 3 ? parseFloat(p[3]) : 1; };
@@ -492,3 +492,20 @@ function mwGroups(rows, T, WM) { const g = new Map(), kf = MW_BY[mw.cfg.by] || M
   L.forEach(x => { const lv = by === 'area' ? { area: d(x, 'area') } : by === 'wh' ? { area: d(x, 'area'), region: d(x, 'region'), wh: d(x, 'wh') } : (by === 'areareg' || by === 'region') ? { area: d(x, 'area'), region: d(x, 'region') } : { area: mw.f.area, region: mw.f.region, wh: mw.f.wh }; x.a = mwAgg(x.rows, T, WM, lv); }); return L; }
 const mwFilterText = () => { const f = mw.f, p = []; if (f.from || f.to) p.push(`${f.from || '…'} → ${f.to || '…'}`); if (f.area.length) p.push('Area: ' + f.area.join(', ')); if (f.region.length) p.push('Region: ' + f.region.join(', ')); if (f.wh.length) p.push('WHs: ' + f.wh.join(', ')); return p.join(' · ') || 'All data'; };
 
+
+/* ---------- windows no longer vanish after resizing / dragging / selecting text ----------
+   Many ORBIT windows close when you click their dark background. When the mouse is PRESSED inside the window
+   (resize corner, title bar, selecting text) and RELEASED outside it, the browser fires that "click" on the
+   background — and the window closed. Such a click is now ignored; a real click on the background still closes. */
+(function () {
+  let down = null;
+  document.addEventListener('pointerdown', e => { down = e.target; }, true);
+  document.addEventListener('click', e => {
+    const t = e.target, d = down; down = null;
+    if (!d || d === t || !(t instanceof Element) || !t.contains(d)) return;   /* pressed and released on the same element → a normal click */
+    let cs; try { cs = getComputedStyle(t); } catch (x) { return; }
+    if (cs.position !== 'fixed') return; const r = t.getBoundingClientRect();
+    if (r.width < innerWidth * 0.8 || r.height < innerHeight * 0.8) return;   /* only full-screen backdrops */
+    e.stopImmediatePropagation(); e.preventDefault();
+  }, true);
+})();
