@@ -21,6 +21,11 @@ body.ds-elegant .ds-k b,body.ds-elegant .ds-k strong{letter-spacing:-.3px}body.d
 body.ds-elegant .ds-k [class*="bar"]:not(b){background:rgba(255,255,255,.25)!important}body.ds-elegant .ds-k [class*="bar"] i{background:#fff!important}
 body.ds-soft .ds-k{background:var(--card,#fff)!important;border:1px solid var(--border)!important;border-top:4px solid var(--ds-c)!important;border-left-width:1px!important;border-radius:14px!important;box-shadow:0 6px 18px -10px rgba(15,23,42,.35)!important;transition:transform .15s}
 body.ds-soft .ds-k:hover{transform:translateY(-2px)}body.ds-soft .ds-k b,body.ds-soft .ds-k strong{color:var(--ds-c)!important}
+body.ds-elegant #view-home .hm-tile.ds-k,body.ds-elegant #view-home .hm-tile.ds-k:hover{background:var(--ds-g)!important;border:0!important;color:#fff!important}body.ds-elegant #view-home .hm-tile.ds-k b,body.ds-elegant #view-home .hm-tile.ds-k small{color:#fff!important}
+body.ds-elegant #view-home .hm-tile.ds-k.on{box-shadow:0 0 0 3px var(--hm-c,#fff),0 0 0 6px rgba(37,99,235,.55),0 12px 26px -12px rgba(15,23,42,.6)!important;transform:translateY(-2px)}body.ds-elegant #view-home .hm-tile.ds-k .hm-ring{box-shadow:0 0 0 3px rgba(255,255,255,.35)}
+body.ds-soft #view-home .hm-tile.ds-k{background:var(--hm-c,var(--card,#fff))!important;border:1px solid var(--hm-l,var(--border))!important;border-top:4px solid var(--ds-c)!important}body.ds-soft #view-home .hm-tile.ds-k b{color:var(--ds-c)!important}
+body.ds-soft #view-home .hm-tile.ds-k:hover{background:var(--hm-c,var(--card,#fff))!important;color:inherit!important;border-color:var(--ds-c)!important;border-top-width:4px!important}body.ds-soft #view-home .hm-tile.ds-k:hover small{color:var(--hm-m,#64748b)!important;opacity:1}
+body.ds-soft #view-home .hm-tile.ds-k.on{background:color-mix(in srgb,var(--ds-c) 10%,var(--hm-c,#fff))!important;box-shadow:0 0 0 2px var(--ds-c),0 8px 20px -10px rgba(15,23,42,.4)!important}
 body.ds-elegant .ds-p,body.ds-soft .ds-p{border-radius:16px!important;box-shadow:0 4px 16px -8px rgba(15,23,42,.25)!important}
 body.ds-elegant .ds-gap,body.ds-soft .ds-gap{gap:12px!important}
 #dsBtn{position:relative}#dsMenu{position:fixed;z-index:2147483100;background:var(--card,#fff);color:var(--text,#0f172a);border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 50px -15px rgba(15,23,42,.5);padding:8px;min-width:250px}
