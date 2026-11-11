@@ -43,8 +43,12 @@ body.ds-elegant .ds-gap,body.ds-soft .ds-gap{gap:12px!important}
         [...g.children].filter(k => k.nodeType === 1 && !/^(SCRIPT|STYLE|BR)$/.test(k.tagName)).forEach((k, i) => { if (!k.classList.contains('ds-k')) k.classList.add('ds-k'); const gi = G[i % G.length], ci = C[i % C.length]; if (k.style.getPropertyValue('--ds-g') !== gi) { k.style.setProperty('--ds-g', gi); k.style.setProperty('--ds-c', ci); } }); });
       /* cards found by their own class too (…-k / …-kpi / …-tile), whatever their container is called (e.g. Consolidated Inventory .ci-kp > .ci-k) */
       const isCard = el => { for (const c of el.classList) if (/-(k|kpi|tile)$/.test(c)) return true; return false; };
-      (root || document).querySelectorAll('[class$="-k"],[class*="-k "],[class$="-kpi"],[class*="-kpi "],[class$="-tile"],[class*="-tile "]').forEach(k => { if (k.classList.contains('ds-k') || !isCard(k) || skip(k) || !k.querySelector('b,strong') || !k.offsetParent) return;
-        const sib = [...k.parentElement.children].filter(isCard), i = Math.max(0, sib.indexOf(k)); k.classList.add('ds-k'); k.parentElement.classList.add('ds-gap'); k.style.setProperty('--ds-g', G[i % G.length]); k.style.setProperty('--ds-c', C[i % C.length]); });
+      const mark = (k, i) => { k.classList.add('ds-k'); if (k.parentElement) k.parentElement.classList.add('ds-gap'); k.style.setProperty('--ds-g', G[i % G.length]); k.style.setProperty('--ds-c', C[i % C.length]); };
+      (root || document).querySelectorAll('[class$="-k"],[class*="-k "],[class$="-kpi"],[class*="-kpi "],[class$="-tile"],[class*="-tile "]').forEach(k => { if (k.classList.contains('ds-k') || k.classList.contains('ds-gap') || !isCard(k) || skip(k) || !k.querySelector('b,strong') || !k.offsetParent) return;
+        /* a "…-k" that is really a ROW of cards (e.g. WHs Inspection .in-k > .in-kc): style its children, not the row */
+        const kids = [...k.children].filter(c => c.nodeType === 1 && !/^(B|STRONG|SPAN|SMALL|I|EM|BR)$/.test(c.tagName) && c.querySelector('b,strong'));
+        if (kids.length >= 2) { k.classList.add('ds-gap'); kids.forEach((c, i) => { if (!c.classList.contains('ds-k')) mark(c, i); }); return; }
+        const sib = [...k.parentElement.children].filter(isCard); mark(k, Math.max(0, sib.indexOf(k))); });
       (root || document).querySelectorAll('[class*="-sec"],[class*="-box"],[class*="-pan"]').forEach(p => { if (skip(p)) return; for (const c of p.classList) if (/-(sec|box|pan)$/.test(c)) { if (!p.classList.contains('ds-p')) p.classList.add('ds-p'); break; } });
     } finally { busy = false; } }
   function apply(st) { st = st || get(); document.body.classList.remove('ds-elegant', 'ds-soft'); if (st !== 'classic') { document.body.classList.add('ds-' + st); scan(); } const b = document.querySelector('#dsBtn'); if (b) b.title = 'Dashboard style: ' + (STY.find(x => x[0] === st) || STY[0])[1] + ' — click to change'; }
