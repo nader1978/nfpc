@@ -102,5 +102,6 @@
     for (const id of ids) { let L = []; try { L = await attOf(list, id); } catch (e) { continue; }
       for (const a of L.filter(x => IMG_EXT.test(x.name))) { if (out.length >= max) break; try { const u = await srcOf(a), raw = await (await fetch(u)).blob(), sm = await shrink(raw), d = await b64(sm); if (tot + d.length > 3000000) break; tot += d.length; out.push({ fileName: a.name.replace(/\.(png|gif|webp|bmp|heic|heif)$/i, '.jpg'), dataB64: d, contentType: sm.type || 'image/jpeg' }); } catch (e) {} } }
     return out; }
-  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts };
+  async function fileAtts(files, max) { const out = []; let tot = 0; for (const f of [...(files || [])].slice(0, max || 8)) { try { const sm = await shrink(f), d = await b64(sm); if (tot + d.length > 3000000) break; tot += d.length; out.push({ fileName: String(f.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg', dataB64: d, contentType: sm.type || 'image/jpeg' }); } catch (e) {} } return out; }
+  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts };
 })();
