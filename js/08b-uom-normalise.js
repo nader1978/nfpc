@@ -8,8 +8,26 @@
 (function () {
   const num = v => { const n = Number(String(v == null ? '' : v).replace(/[,\s]/g, '')); return isFinite(n) ? n : 0; };
   const KEY = () => (typeof LS_BASE !== 'undefined' ? LS_BASE : 'orbit') + '_uomconv';
+  const COLQ = new Map();   /* listId → promise of the list columns (to know if PLT_Base_Nr / PLT_Qty exist) */
   const U = window.UOMC = {
     last: null,
+    /* pieces in one pallet of a SKU — from the UOM list (UOM_tbl, UoM = PLT / pallet); null when the list has no pallet value */
+    pltOf(sku) { try { const f = wUom_factor(String(sku || '').trim(), 'PLT'); return f > 0 ? f : null; } catch (e) { return null; } },
+    /* every new stock movement (any section, desktop or mobile) is stamped with the pallet value of its SKU at the time of the entry:
+       PLT_Base_Nr = pieces per pallet (UOM list, current value) · PLT_Qty = pallets moved = pieces ÷ PLT_Base_Nr.
+       Only written when the movement list has these columns; a value already given by the section is kept. */
+    async stamp(siteId, listId, fields, token) {
+      if (!fields || typeof fields !== 'object' || !('SKU_Code' in fields) || !(('Qty_Rcvd' in fields) || ('Qty_Rlsd' in fields))) return fields;
+      let T = (window.SP_COLT || {})[listId];
+      if (!T && typeof fetchColumns === 'function') { if (!COLQ.has(listId)) COLQ.set(listId, fetchColumns(siteId, listId, token).catch(() => null)); await COLQ.get(listId); T = (window.SP_COLT || {})[listId]; }
+      if (!T || !(T.PLT_Base_Nr || T.PLT_Qty)) return fields;
+      if (!U.ready()) { try { if (wUomState.listName && typeof wUom_loadFromList === 'function') await Promise.race([wUom_loadFromList().catch(() => {}), new Promise(r => setTimeout(r, 15000))]); } catch (e) {} }
+      const sku = String(fields.SKU_Code || '').trim(), out = Object.assign({}, fields), given = num(fields.PLT_Base_Nr), base = given > 0 ? given : U.pltOf(sku);
+      if (!base) return fields;
+      if (T.PLT_Base_Nr && !(given > 0)) out.PLT_Base_Nr = base;
+      if (T.PLT_Qty && (fields.PLT_Qty == null || fields.PLT_Qty === '')) { const q = num(fields.Qty_Rcvd) || num(fields.Qty_Rlsd), uom = String(fields.UOM_Desc == null ? '' : fields.UOM_Desc).trim(), f = uom ? U.factor(sku, uom, fields.UOM_Base) : 1;
+        if (q > 0 && f) out.PLT_Qty = Math.round(q * f / base * 1000) / 1000; }
+      return out; },
     on() { try { return localStorage.getItem(KEY()) !== '0'; } catch (e) { return true; } },
     set(v) { try { localStorage.setItem(KEY(), v ? '1' : '0'); } catch (e) {} },
     ready() { try { return wUomState.table.size > 0; } catch (e) { return false; } },

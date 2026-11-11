@@ -41,15 +41,17 @@
 
   const H = () => { const W = window.WMVX; return W && W.S && W.S.hist && W.S.hist.all ? W.S.hist : null; };
   const whOf = lc => { try { const r = typeof srkFind === 'function' && lc ? srkFind(lc) : null; return r ? r.loc || '' : ''; } catch (e) { return ''; } };
-  const palOf = r => { const p = num(r.Pallets != null ? r.Pallets : r.Nr_of_Plts); if (p > 0) return p;   /* pallets per movement */
-    const v = num(String(r.PLT_Volume == null ? '' : r.PLT_Volume).replace('%', '')); if (v > 0) return Math.round((v > 1.0001 ? v / 100 : v) * 100) / 100;   /* PLT_Volume % → 100 = one full pallet */
-    if (String(r.PLT_Position == null ? '' : r.PLT_Position).trim() !== '' || r._ps) return 1;   /* a pallet position without volume = one pallet */
-    const u = String((r._raw && r._raw.uom) || r.UOM_Desc || '').trim(); if (/^(plt|pallets?|pal|pl)$/i.test(u)) return r._raw ? num(r._raw.rcvd) || num(r._raw.rlsd) : num(r.Qty_Rcvd) || num(r.Qty_Rlsd);   /* moved in pallets */
+  /* pallets per movement: stored at the entry (PLT_Qty, or pieces ÷ PLT_Base_Nr) → pieces ÷ pieces-per-pallet of the UOM list now → older fallbacks */
+  const palOf = (r, pcs) => { const st = num(r.PLT_Qty); if (st > 0) return st;
+    const b = num(r.PLT_Base_Nr); if (b > 0 && pcs > 0) return Math.round(pcs / b * 1000) / 1000;
+    const u = window.UOMC && UOMC.pltOf ? UOMC.pltOf(r.SKU_Code) : null; if (u > 0 && pcs > 0) return Math.round(pcs / u * 1000) / 1000;
+    const p = num(r.Pallets != null ? r.Pallets : r.Nr_of_Plts); if (p > 0) return p;
+    const v = num(String(r.PLT_Volume == null ? '' : r.PLT_Volume).replace('%', '')); if (v > 0) return Math.round((v > 1.0001 ? v / 100 : v) * 100) / 100;
     return 0; };
   let CACHE = null;   /* movement rows prepared once per ledger load */
   function prep(h) { if (CACHE && CACHE.h === h && CACHE.n === h.all.length) return CACHE.rows;
     const rows = h.all.map(r => { const i = num(r.Qty_Rcvd), o = num(r.Qty_Rlsd), lc = r._lc || '', rel = /relocat/i.test(String(r.Trans_Type || ''));
-      return { id: r._id || 0, d: day(r.Trans_Date), t: String(r.Trans_Type || ''), dir: i > 0 && o <= 0 ? 'In' : o > 0 && i <= 0 ? 'Out' : i > 0 ? 'In' : 'Out', rel, ref: String(r.Ref_Nr || ''), sku: String(r.SKU_Code || '').trim(), dt: String(r.SKU_Dtls || ''), b: String(r.Batch_Code == null ? '' : r.Batch_Code).trim(), ex: day(r.Expiry_Date), wh: whOf(lc), rk: lc, ps: r._ps || '', i, o, pal: palOf(r), uom: String(r.UOM_Desc || ''), src: String(r.Recevied_Trl_Nr || ''), usr: String(r.User_Name || ''), rm: String(r.Remarks || ''), eq: r._raw ? (r._raw.rcvd > 0 ? r._raw.rcvd.toLocaleString() : r._raw.rlsd.toLocaleString()) + ' ' + r._raw.uom + ' × ' + r._raw.f : '' }; });
+      return { id: r._id || 0, d: day(r.Trans_Date), t: String(r.Trans_Type || ''), dir: i > 0 && o <= 0 ? 'In' : o > 0 && i <= 0 ? 'Out' : i > 0 ? 'In' : 'Out', rel, ref: String(r.Ref_Nr || ''), sku: String(r.SKU_Code || '').trim(), dt: String(r.SKU_Dtls || ''), b: String(r.Batch_Code == null ? '' : r.Batch_Code).trim(), ex: day(r.Expiry_Date), wh: whOf(lc), rk: lc, ps: r._ps || '', i, o, pal: palOf(r, i || o), uom: String(r.UOM_Desc || ''), src: String(r.Recevied_Trl_Nr || ''), usr: String(r.User_Name || ''), rm: String(r.Remarks || ''), eq: r._raw ? (r._raw.rcvd > 0 ? r._raw.rcvd.toLocaleString() : r._raw.rlsd.toLocaleString()) + ' ' + r._raw.uom + ' × ' + r._raw.f : '' }; });
     CACHE = { h, n: h.all.length, rows }; return rows; }
   function rowsF() { const h = H(); if (!h) return []; const fs = MV.fs.trim().toLowerCase(), fb = MV.fb.trim().toLowerCase(), fr = MV.fr.trim().toLowerCase(), q = MV.q.trim().toLowerCase();
     return prep(h).filter(r => (!r.rel || MV.rel) && (!r.d || ((!MV.from || r.d >= MV.from) && (!MV.to || r.d <= MV.to))) && (MV.dir === 'all' || r.dir.toLowerCase() === MV.dir) && (!MV.fz || r.wh === MV.fz) && (!fs || (r.sku + ' ' + r.dt).toLowerCase().includes(fs)) && (!fb || r.b.toLowerCase().includes(fb)) && (!fr || r.rk.toLowerCase().includes(fr)) && (!q || [r.sku, r.dt, r.b, r.rk, r.ref, r.src, r.usr, r.rm, r.t].join(' ').toLowerCase().includes(q))); }

@@ -33,7 +33,8 @@ function spUpShow(b) {
   if (!bad) setTimeout(close, 12000); const bt = ov.querySelector('[data-ok]'); if (bt) bt.focus();
 }
 async function createItem(siteId, listId, fields, token) {
-  spUp.n++; const raw = fields; fields = spCoerceFields(listId, fields);
+  spUp.n++; try { if (window.UOMC && UOMC.stamp) fields = await UOMC.stamp(siteId, listId, fields, token); } catch (e) {}   /* stock movements: pieces per pallet + pallets at the time of the entry */
+  const raw = fields; fields = spCoerceFields(listId, fields);
   try {
     const r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items`, {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
