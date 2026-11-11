@@ -70,7 +70,8 @@
       doc.forEach(a => { const d = document.createElement('a'); d.className = 'lim-doc'; d.textContent = '📄 ' + a.name; d.href = '#'; d.addEventListener('click', e => { e.preventDefault(); srcOf(a).then(u => { const x = document.createElement('a'); x.href = u; x.download = a.name; document.body.appendChild(x); x.click(); x.remove(); }).catch(er => window.open(linkOf(a), '_blank')); }); box.appendChild(d); }); })
       .catch(e => { box.innerHTML = quiet ? '' : `<span class="lim-n" title="${esc(e.message)}">📷 photos not available — ${esc(e.message)}</span>`; }); }
   const aio = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { aio.unobserve(e.target); attLoad(e.target); } }), { rootMargin: '150px' }) : null;
-  function attScan(root) { (root || document).querySelectorAll('.lim-att:not([data-lim-done])').forEach(b => { b.dataset.limDone = '1'; if (!b.dataset.list || !b.dataset.item) return; if (!b.dataset.quiet) b.innerHTML = '<span class="lim-n">📷 …</span>'; if (aio) aio.observe(b); else attLoad(b); }); }
+  const attSeen = new WeakSet();
+  function attScan(root) { (root || document).querySelectorAll('.lim-att').forEach(b => { if (attSeen.has(b) || b.dataset.limSkip) return; attSeen.add(b); if (!b.dataset.list || !b.dataset.item) return; if (!b.dataset.quiet) b.innerHTML = '<span class="lim-n">📷 …</span>'; if (aio) aio.observe(b); else attLoad(b); }); }
   const ph = (list, id, o) => list && id ? `<div class="lim-att${o && o.sm ? ' sm' : ''}" data-list="${esc(list)}" data-item="${esc(id)}"${o && o.max ? ' data-max="' + o.max + '"' : ''}${o && o.quiet ? ' data-quiet="1"' : ''}></div>` : '';
   /* ---------- scan tables ---------- */
   const seen = new WeakSet();
@@ -94,5 +95,12 @@
     v.addEventListener('click', e => { const b = e.target.closest('[data-lv]'); if (e.target === v || (b && b.dataset.lv === 'x')) return close(); if (b && b.dataset.lv === 'n') { i = (i + 1) % all.length; draw(); } if (b && b.dataset.lv === 'p') { i = (i - 1 + all.length) % all.length; draw(); } });
     document.addEventListener('keydown', key, true); document.body.appendChild(v); draw(); }
   document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('.lim-th'); if (!t) return; e.preventDefault(); e.stopPropagation(); view(t); }, true);
-  window.LIM = { parse, scan, srcOf, ph, attScan, attOf };
+  /* the photos of list items as e-mail attachments (resized to max 1600 px JPEG so a mail stays under the ~3 MB Graph limit) */
+  async function shrink(blob) { try { const bm = await createImageBitmap(blob), k = Math.min(1, 1600 / Math.max(bm.width, bm.height)), c = document.createElement('canvas'); c.width = Math.round(bm.width * k); c.height = Math.round(bm.height * k); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); return await new Promise(r => c.toBlob(b => r(b || blob), 'image/jpeg', .82)); } catch (e) { return blob; } }
+  const b64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob); });
+  async function mailAtts(list, ids, max) { max = max || 8; const out = []; let tot = 0;
+    for (const id of ids) { let L = []; try { L = await attOf(list, id); } catch (e) { continue; }
+      for (const a of L.filter(x => IMG_EXT.test(x.name))) { if (out.length >= max) break; try { const u = await srcOf(a), raw = await (await fetch(u)).blob(), sm = await shrink(raw), d = await b64(sm); if (tot + d.length > 3000000) break; tot += d.length; out.push({ fileName: a.name.replace(/\.(png|gif|webp|bmp|heic|heif)$/i, '.jpg'), dataB64: d, contentType: sm.type || 'image/jpeg' }); } catch (e) {} } }
+    return out; }
+  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts };
 })();

@@ -346,20 +346,20 @@ async function mailSend_send(m) {   // m: { to, cc, subject, html, attachment:{f
   const c = mailSend_cfg(), to = mailSend_list(m.to), cc = mailSend_list(m.cc), bad = to.concat(cc).filter(x => !EMAIL_RX.test(x));
   if (!to.length) throw new Error('Enter at least one recipient in "To".');
   if (bad.length) throw new Error('Not a valid e-mail address: ' + bad.join(', '));
-  const ctype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', att = m.attachment;
+  const ctype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', att = m.attachment, more = (m.attachments || []).filter(x => x && x.dataB64), all = (att ? [{ fileName: att.fileName, dataB64: att.dataB64, contentType: ctype }] : []).concat(more.map(x => ({ fileName: x.fileName, dataB64: x.dataB64, contentType: x.contentType || 'application/octet-stream' }))), tot = all.reduce((a, x) => a + x.dataB64.length, 0);
   if (c.method === 'graph') {
     if (!ms_configured()) throw new Error('Microsoft sign-in is not set up (Settings → Microsoft sign-in). Use "Create Outlook draft" instead, or ask the admin.');
-    if (att && att.dataB64.length > 3300000) throw new Error('The Excel attachment is too large for Microsoft Graph (about 3 MB). Untick "Attach the full list" or use a filter.');
+    if (tot > 3300000) throw new Error(more.length ? 'The attachments are too large for Microsoft Graph (about 3 MB in total). Attach fewer photos.' : 'The Excel attachment is too large for Microsoft Graph (about 3 MB). Untick "Attach the full list" or use a filter.');
     const token = await mailSend_graphToken();
     const rcpt = a => a.map(x => ({ emailAddress: { address: x } }));
-    const body = { message: { subject: m.subject, body: { contentType: 'HTML', content: m.html }, toRecipients: rcpt(to), ccRecipients: rcpt(cc), attachments: att ? [{ '@odata.type': '#microsoft.graph.fileAttachment', name: att.fileName, contentType: ctype, contentBytes: att.dataB64 }] : [] }, saveToSentItems: true };
+    const body = { message: { subject: m.subject, body: { contentType: 'HTML', content: m.html }, toRecipients: rcpt(to), ccRecipients: rcpt(cc), attachments: all.map(x => ({ '@odata.type': '#microsoft.graph.fileAttachment', name: x.fileName, contentType: x.contentType, contentBytes: x.dataB64 })) }, saveToSentItems: true };
     const r = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) { let t = ''; try { t = (await r.json()).error.message; } catch (e) {} throw new Error(`Microsoft Graph said HTTP ${r.status}${t ? ': ' + t : ''}${r.status === 403 ? ' — Mail.Send permission is missing or not consented.' : ''}`); }
     return 'sent through your Microsoft 365 mailbox (a copy is in Sent Items)';
   }
   if (c.method === 'flow') {
     if (!/^https:\/\//i.test(c.flowUrl)) throw new Error('The Power Automate URL is not configured (Settings → Send email directly).');
-    const payload = JSON.stringify({ to: to.join(';'), cc: cc.join(';'), subject: m.subject, bodyHtml: m.html, sender: (currentUser && (currentUser.email || currentUser.username)) || '', attachments: att ? [{ name: att.fileName, contentType: ctype, contentBase64: att.dataB64 }] : [] });
+    const payload = JSON.stringify({ to: to.join(';'), cc: cc.join(';'), subject: m.subject, bodyHtml: m.html, sender: (currentUser && (currentUser.email || currentUser.username)) || '', attachments: all.map(x => ({ name: x.fileName, contentType: x.contentType, contentBase64: x.dataB64 })) });
     try {
       const r = await fetch(c.flowUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
       if (!r.ok) throw new Error(`The flow answered HTTP ${r.status}. Check the flow's run history.`);
