@@ -8,9 +8,12 @@ function atRefresh(keepFilters) {
   PLQ('#atCount').textContent = has ? `${plF(atView().length)} of ${plF(at.rows.length)} records` : '';
   if (!has) { if (at.tab !== 'up') { at.tab = 'up'; atTabsRender(); } }
   document.querySelectorAll('#view-att .at-pane').forEach(p => p.style.display = p.dataset.p === at.tab ? '' : 'none'); if (at.tab !== 'up') PLQ('#atFilterCard').style.display = has ? '' : 'none';
+  const atPop = !!(window.DSTAGE && has && at.tab !== 'dash'); if (window.DSTAGE) { const V = document.querySelector('#view-att'), dp = V && V.querySelector('.at-pane[data-p="dash"]'); if (atPop && dp) dp.style.display = '';
+    try { DSTAGE.move(V, { div: 'att', dashEl: has ? dp : null, open: atPop, nodes: atPop ? [at.tab !== 'up' ? document.querySelector('#atFilterCard') : null, V.querySelector('.at-pane[data-p="' + at.tab + '"]')] : [], title: (AT_TABS.find(t => t[0] === at.tab) || [, ''])[1], heroExtra: plF(new Set(at.rows.map(r => r.id)).size) + ' employee(s)', onClose: () => { at.tab = 'dash'; atRefresh(true); } }); } catch (e) { console.error(e); } }
   if (!has) { PLQ('#atUpInfo').textContent = ''; return; }
   PLQ('#atUpInfo').innerHTML = `Loaded: <strong>${plF(at.rows.length)}</strong> records · <strong>${new Set(at.rows.map(r => r.id)).size}</strong> employees · dates ${atDates().map(atDateLabel).join(', ')}.`;
   if (at.tab === 'dash') { atDashKpis(); atDrawGrid(PLQ('#atGrid'), AT_DEFS, { rows: () => atView() }); } else if (at.tab === 'cmp') cmRender(); else if (at.tab === 'ot') a2OtRender(); else if (at.tab === 'st') a2StRender(); else if (at.tab === 'ty') a2TyRender(); else if (at.tab === 'lk') a2LkRender(); else if (at.tab === 'pd') pdRender(); else if (at.tab === 'rec') rcRender(); else if (at.tab === 'oth') a2OthRender(); else if (at.tab === 'sw') a2SwRender(); else if (at.tab === 'kpi') kpRender();
+  if (atPop) { try { atDashKpis(); atDrawGrid(PLQ('#atGrid'), AT_DEFS, { rows: () => atView() }); } catch (e) { console.error(e); } }
 }
 function atTabsRender() { PLQ('#atTabs').innerHTML = AT_TABS.map(t => `<button type="button" data-t="${t[0]}" class="${at.tab === t[0] ? 'on' : ''}" ${t[0] !== 'up' && !at.rows.length ? 'disabled style="opacity:.45"' : ''}>${t[1]}</button>`).join(''); }
 
