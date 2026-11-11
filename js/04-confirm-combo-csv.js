@@ -34,6 +34,7 @@ function spUpShow(b) {
 }
 async function createItem(siteId, listId, fields, token) {
   spUp.n++; try { if (window.UOMC && UOMC.stamp) fields = await UOMC.stamp(siteId, listId, fields, token); } catch (e) {}   /* stock movements: pieces per pallet + pallets at the time of the entry */
+  if (window.MOVGUARD) fields = await MOVGUARD.check(siteId, listId, fields, token, false);   /* 📍 no stock movement without rack code, location and pallet position */
   const raw = fields; fields = spCoerceFields(listId, fields);
   try {
     const r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items`, {
@@ -45,6 +46,7 @@ async function createItem(siteId, listId, fields, token) {
   } catch (e) { spUpNote(listId, false); throw e; } finally { spUp.n--; }
 }
 async function updateItem(siteId, listId, itemId, fields, token) {
+  if (window.MOVGUARD) fields = await MOVGUARD.check(siteId, listId, fields, token, true);
   const r = await fetchWithRetry(`https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items/${itemId}/fields`, {
     method: 'PATCH', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(fields),
