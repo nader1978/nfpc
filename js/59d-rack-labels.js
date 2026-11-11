@@ -2,7 +2,7 @@
 window.RKL = (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const KEY = () => (typeof LS_BASE !== 'undefined' ? LS_BASE : 'orbit') + '_rklabels';
-  const SIZES = [['100x50', '100 × 50 mm · shelf / column label'], ['148x105', '148 × 105 mm · A6 (4 per A4)'], ['99x52.5', '99 × 52.5 mm · 12 per A4'], ['70x37', '70 × 37 mm · 24 per A4'], ['100x150', '100 × 150 mm · 4×6 in label printer'], ['150x100', '150 × 100 mm · 6×4 in label printer'], ['60x40', '60 × 40 mm · small'], ['50x25', '50 × 25 mm · mini'], ['210x148', '210 × 148 mm · A5 landscape'], ['297x210', '297 × 210 mm · full A4 sign'], ['custom', 'Custom size…']];
+  const SIZES = [['100x50', '100 × 50 mm · shelf / column label'], ['148x105', '148 × 105 mm · A6 (4 per A4)'], ['99x52.5', '99 × 52.5 mm · 12 per A4'], ['70x37', '70 × 37 mm · 24 per A4'], ['100x150', '100 × 150 mm · 4×6 in label printer'], ['150x100', '150 × 100 mm · 6×4 in label printer'], ['60x40', '60 × 40 mm · small'], ['50x25', '50 × 25 mm · mini'], ['105x70', '105 × 70 mm (10.5 × 7 cm) · 8 per A4'], ['210x148', '210 × 148 mm · A5 landscape'], ['297x210', '297 × 210 mm · full A4 sign'], ['custom', 'Custom size…']];
   const PAPER = { 'A4p': ['A4 portrait', 210, 297], 'A4l': ['A4 landscape', 297, 210], 'A3p': ['A3 portrait', 297, 420], 'A3l': ['A3 landscape', 420, 297], 'Lp': ['Letter portrait', 215.9, 279.4], 'Ll': ['Letter landscape', 279.4, 215.9] };
   const DESIGNS = [['pro', 'Pro — Aisle · Bay · Level boxes + barcode'], ['big', 'Big code — code first, barcode below'], ['dist', 'Distance — huge bay number & level colour (read from the forklift)'], ['mini', 'Compact — code + barcode strip (small labels)']];
   const LVC = ['#1f6feb', '#16a34a', '#f59e0b', '#dc2626', '#7c3aed', '#0891b2', '#be185d', '#475569'];
@@ -73,7 +73,7 @@ window.RKL = (function () {
   }
   function sync() {   /* read the controls into S */
     const g = id => Q('#rkl' + id), v = id => g(id).value, c = id => g(id).checked;
-    S.design = v('Design'); S.size = v('Size'); if (S.size !== 'custom') { const [w, h] = S.size.split('x').map(Number); S.w = w; S.h = h; g('W').value = w; g('H').value = h; } else { S.w = Math.max(15, num(v('W')) || 100); S.h = Math.max(10, num(v('H')) || 50); }
+    S.design = v('Design'); if (v('Size') === '105x70' && S.size !== '105x70') { g('Margin').value = 0; g('Gap').value = 0; } S.size = v('Size'); if (S.size !== 'custom') { const [w, h] = S.size.split('x').map(Number); S.w = w; S.h = h; g('W').value = w; g('H').value = h; } else { S.w = Math.max(15, num(v('W')) || 100); S.h = Math.max(10, num(v('H')) || 50); }
     g('W').disabled = g('H').disabled = S.size !== 'custom'; S.layout = v('Layout'); S.paper = v('Paper'); S.margin = num(v('Margin')); S.gap = num(v('Gap')); S.per = v('Per'); S.copies = num(v('Copies')) || 1; S.hdr = v('Hdr'); S.accent = v('Accent'); S.color = v('Color');
     ['Bar', 'Chip', 'Abl', 'Cap', 'Date', 'Cut'].forEach(k => { S[k.toLowerCase()] = c(k); }); S.bayFrom = v('BF'); S.bayTo = v('BT'); S.levels = v('Lv'); S.q = v('Q'); g('Paper').closest('label').style.display = g('Margin').closest('label').style.display = g('Gap').closest('label').style.display = S.layout === 'sheet' ? '' : 'none'; save(); draw();
   }

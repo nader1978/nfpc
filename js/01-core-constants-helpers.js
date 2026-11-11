@@ -334,6 +334,13 @@ const MAIL_SEND_DEFAULT = { method: 'graph', flowUrl: '' };   // method: 'graph'
 const MAIL_SEND_KEY = (typeof LS_BASE !== 'undefined' ? LS_BASE : 'app') + '_mailsend';
 function mailSend_cfg() { let c = {}; try { c = JSON.parse(localStorage.getItem(MAIL_SEND_KEY) || '{}'); } catch (e) {} return { method: c.method || MAIL_SEND_DEFAULT.method, flowUrl: (c.flowUrl !== undefined ? c.flowUrl : MAIL_SEND_DEFAULT.flowUrl) || '' }; }
 function mailSend_label() { const c = mailSend_cfg(); return c.method === 'flow' ? '🚀 Send now (Power Automate)' : c.method === 'graph' ? '🚀 Send now (Microsoft 365)' : '🚀 Send now (not configured)'; }
+/* e-mail of a person from his ORBIT user name / display name (users list), or the value itself when it is already an address */
+function orbEmailOf(name) { const v = String(name || '').trim(); if (!v) return ''; if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return v;
+  const L = (typeof users !== 'undefined' && users.list) || [], k = v.toLowerCase(), em = u => (u && u.email && /@/.test(u.email)) ? u.email : '';
+  let u = L.find(x => String(x.username || '').toLowerCase() === k || String(x.displayName || '').toLowerCase() === k); if (em(u)) return em(u);
+  u = L.find(x => { const a = String(x.username || '').toLowerCase(), b = String(x.displayName || '').toLowerCase(); return k.length > 2 && (a.startsWith(k) || b.startsWith(k) || k.startsWith(a + '.') || k.startsWith(a + ' ')); }); return em(u); }
+function orbMailJoin(...a) { const seen = new Set(), out = []; a.flat().join(';').split(/[;,\s]+/).forEach(x => { x = x.trim(); if (x && /@/.test(x) && !seen.has(x.toLowerCase())) { seen.add(x.toLowerCase()); out.push(x); } }); return out.join('; '); }
+function orbMailMinus(list, minus) { const M = new Set(String(minus || '').toLowerCase().split(/[;,\s]+/).filter(Boolean)); return String(list || '').split(/[;,\s]+/).filter(x => x && !M.has(x.toLowerCase())).join('; '); }
 function mailSend_list(t) { return String(t || '').split(/[;,\s]+/).map(x => x.trim()).filter(Boolean); }
 async function mailSend_graphToken() {
   const app = await ms_init(); let acct = app.getAllAccounts()[0];
