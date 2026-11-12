@@ -463,21 +463,21 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
   const EDIT = {}, TXT = { edit: '✥ Arrange cards', done: '✔ Done', reset: '↺ Reset layout' };
   const load = id => { try { const o = JSON.parse(localStorage.getItem(LSK(id)) || 'null'); return o && typeof o === 'object' ? { o: o.o || {}, s: o.s || {} } : { o: {}, s: {} }; } catch (e) { return { o: {}, s: {} }; } };
   const save = (id, L) => { try { if (!Object.keys(L.o).length && !Object.keys(L.s).length) localStorage.removeItem(LSK(id)); else localStorage.setItem(LSK(id), JSON.stringify(L)); } catch (e) {} };
-  const isK = el => el.classList.contains('sdb-k');
+  const isK = el => el.classList.contains('sdb-k') || el.classList.contains('dlay-k');
   const keyOf = el => { if (isK(el)) { const s = el.querySelector(':scope > span'); return 'k:' + (s ? s.textContent.trim() : ''); }
-    const h = el.querySelector(':scope > h4'); if (!h) return 'p:'; const c = h.cloneNode(true); c.querySelectorAll('small').forEach(x => x.remove()); return 'p:' + c.textContent.trim(); };
-  const zonesOf = root => { let k = 0, g = 0; return [...root.querySelectorAll('.sdb-kpis,.sdb-grid')].map(z => ({ el: z, key: z.classList.contains('sdb-kpis') ? 'K' + (k++) : 'G' + (g++), cols: z.classList.contains('sdb-kpis') ? 24 : 12 })); };
-  const defSpan = el => isK(el) ? 3 : el.classList.contains('wf') ? 12 : el.classList.contains('w2') ? 8 : 4;
-  const items = z => [...z.children].filter(n => n.classList && (n.classList.contains('sdb-k') || n.classList.contains('sdb-p')));
+    const h = el.querySelector(':scope > h4'); if (!h) return 'p:' + (el.dataset.dk || ''); const c = h.cloneNode(true); c.querySelectorAll('small,.pj-hint,button').forEach(x => x.remove()); return 'p:' + c.textContent.trim(); };
+  const zonesOf = root => { let k = 0, g = 0; return [...root.querySelectorAll('.sdb-kpis,.sdb-grid,.dlay-z')].map(z => { const kz = z.classList.contains('sdb-kpis') || z.classList.contains('dlay-kz'); return { el: z, key: kz ? 'K' + (k++) : 'G' + (g++), cols: kz ? 24 : 12 }; }); };
+  const defSpan = el => +el.dataset.dspan || (isK(el) ? 3 : el.classList.contains('wf') ? 12 : el.classList.contains('w2') ? 8 : 4);
+  const items = z => [...z.children].filter(n => n.classList && (n.classList.contains('sdb-k') || n.classList.contains('sdb-p') || n.classList.contains('dlay-i')));
   const keys = z => { const seen = {}; return items(z).map(el => { let k = keyOf(el); seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) k += '#' + seen[k]; el._dk = k; return el; }); };
 
   function paint(el, z, L) { const s = L.s[z.key + '|' + el._dk] || {}, sp = s.w || defSpan(el); el.style.gridColumn = 'span ' + Math.min(sp, z.cols); if (s.h) { el.style.height = s.h + 'px'; el.classList.add('dlay-fh'); } else { el.style.height = ''; el.classList.remove('dlay-fh'); }
     const t = el.querySelector(':scope > .dlay-sz'); if (t) t.textContent = Math.min(sp, z.cols) + '/' + z.cols + (s.h ? ' · ' + s.h + 'px' : ''); }
 
-  function apply(id, host) { const root = host || (document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]')); if (!root) return; const L = load(id), ed = !!EDIT[id];
+  function apply(id, host) { const root = host || (document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]') || document.querySelector('[data-dlr="' + id + '"]')); if (!root) return; const L = load(id), ed = !!EDIT[id];
     root.classList.toggle('dlay-edit', ed);
     /* the button + the edit bar */
-    const go = root.querySelector('.sdb-go'); if (go && !go.querySelector('[data-dlay="edit"]')) { const b = document.createElement('button'); b.type = 'button'; b.dataset.dlay = 'edit'; b.className = 'dlay-btn'; b.title = 'Move and resize the cards of this dashboard'; b.textContent = TXT.edit; go.appendChild(b); }
+    const go = root.querySelector('.sdb-go') || root.querySelector('.pd-bar'); if (go && !go.querySelector('[data-dlay="edit"]')) { const b = document.createElement('button'); b.type = 'button'; b.dataset.dlay = 'edit'; b.className = 'dlay-btn'; b.title = 'Move and resize the cards of this dashboard'; b.textContent = TXT.edit; go.appendChild(b); }
     let bar = root.querySelector(':scope > .dlay-bar'); if (ed && !bar) { bar = document.createElement('div'); bar.className = 'dlay-bar'; bar.innerHTML = '<b>✥ Arrange mode</b><span>drag a card to move it · drag its <i>◢</i> corner to resize (double-click the corner = automatic height)</span><span style="flex:1"></span><button type="button" data-dlay="reset">' + TXT.reset + '</button><button type="button" class="ok" data-dlay="done">' + TXT.done + '</button>'; (go || root.firstChild).insertAdjacentElement('afterend', bar); }
     if (!ed && bar) bar.remove(); if (go) { const b = go.querySelector('[data-dlay="edit"]'); if (b) b.style.display = ed ? 'none' : ''; }
     zonesOf(root).forEach(z => { keys(z.el); const custom = Object.keys(L.s).some(k => k.startsWith(z.key + '|')) || (L.o[z.key] || []).length;
@@ -490,9 +490,9 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
 
   const busy = id => !!EDIT[id];
   function edit(id, on) { EDIT[id] = !!on; apply(id); }
-  function reset(id) { try { localStorage.removeItem(LSK(id)); } catch (e) {} const r = document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]'); if (r) { r.querySelectorAll('.dlay-it,.sdb-k,.sdb-p').forEach(el => { el.style.gridColumn = ''; el.style.height = ''; el.classList.remove('dlay-fh'); }); }
-    if (window.SDB && SDB.draw) SDB.draw(id); else apply(id); }
-  const idOf = el => { const r = el.closest('.dst-bg[data-dv]'); return r ? r.dataset.dv : ''; };
+  function reset(id) { try { localStorage.removeItem(LSK(id)); } catch (e) {} const r = document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]') || document.querySelector('[data-dlr="' + id + '"]'); if (r) { r.querySelectorAll('.dlay-it,.sdb-k,.sdb-p').forEach(el => { el.style.gridColumn = ''; el.style.height = ''; el.classList.remove('dlay-fh'); }); }
+    if (window.SDB && SDB.draw && document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]')) SDB.draw(id); else if (id === 'prj' && window.PRJ && PRJ.render) PRJ.render(); else apply(id); }
+  const idOf = el => { const r = el.closest('.dst-bg[data-dv],[data-dlr]'); return r ? (r.dataset.dv || r.dataset.dlr) : ''; };
 
   /* ---------- clicks: the buttons; and in arrange mode no card opens its details ---------- */
   document.addEventListener('click', e => { const b = e.target.closest('[data-dlay]'); const id = b ? idOf(b) : ''; 
@@ -535,5 +535,17 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
 .dlay-sz{position:absolute;left:8px;bottom:6px;font-size:10px;font-weight:700;background:var(--dv1);color:#fff;border-radius:6px;padding:1px 6px;z-index:5;pointer-events:none}
 @media (max-width:900px){.sdb-grid.dlay-on,.sdb-kpis.dlay-on{grid-template-columns:1fr 1fr!important}.sdb-kpis.dlay-on>*,.sdb-grid.dlay-on>*{grid-column:auto!important;height:auto!important}.dlay-edit .dlay-h,.dlay-sz,.dlay-btn{display:none!important}}`;
   document.head.appendChild(st);
-  window.DLAY = { apply, busy, edit, reset };
+  st.textContent += `
+.dlay-prj{--dv1:#312e81;--dv2:#7c3aed;--dvt:124,58,237}
+.dlay-z.dlay-g{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px;margin-top:12px}.dlay-z.dlay-g>.dlay-i{grid-column:span 12;margin:0!important;min-width:0}
+.dlay-z.dlay-kz.dlay-on{display:grid}.dlay-z.dlay-kz.dlay-on{grid-template-columns:repeat(24,minmax(0,1fr))!important}.dlay-z.dlay-g.dlay-on{grid-template-columns:repeat(12,minmax(0,1fr))!important}
+.dlay-i.dlay-fh{overflow:auto}
+@media (max-width:900px){.dlay-z.dlay-g{grid-template-columns:1fr}.dlay-z.dlay-g>.dlay-i{grid-column:auto!important;height:auto!important}}`;
+  /* ---------- 🏗 Project Progress dashboard: group its cards into two blocks (KPI cards · sections), then arrange like the others ---------- */
+  function prj(body) { try { const k = body && body.querySelector('.pj-kpis'); if (!k || k.dataset.dlz) { if (k) apply('prj', k.parentElement); return; } const P = k.parentElement; P.dataset.dlr = 'prj'; P.classList.add('dlay-prj');
+      k.dataset.dlz = '1'; k.classList.add('dlay-z', 'dlay-kz'); k.querySelectorAll(':scope > .pd-k').forEach(c => c.classList.add('dlay-i', 'dlay-k'));
+      const g = document.createElement('div'); g.className = 'dlay-z dlay-g'; k.insertAdjacentElement('afterend', g);
+      [...P.children].forEach(n => { if (n === k || n === g || !n.classList) return; if (n.classList.contains('pd-cols')) { [...n.children].forEach(c => { c.classList.add('dlay-i'); c.dataset.dspan = '6'; g.appendChild(c); }); n.remove(); } else if (n.classList.contains('pj-sec')) { n.classList.add('dlay-i'); n.dataset.dspan = '12'; g.appendChild(n); } });
+      apply('prj', P); } catch (e) { console.error(e); } }
+  window.DLAY = { apply, busy, edit, reset, prj };
 })();

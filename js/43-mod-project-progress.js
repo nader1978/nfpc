@@ -143,7 +143,7 @@ body.dark #view-prj .pj-pill{background:#312e81;color:#c7d2fe}body.dark #view-pr
     const fn = () => need ? '<div class="pj-sec"><b>Choose a project</b><div class="pj-hint">Pick one in the project box at the top of this window, or open it from the <b>📂 Projects</b> tab. To start a new one use <b>➕ Register project</b>.</div></div>' : ({ portfolio, overview, update: updateTab, phases: phasesTab, costs: costsTab, manp: manpTab, history, req: requestsTab, new: registerTab, dash: dashTab }[S.tab] || portfolio)();
     if (!window.DSTAGE) { body.innerHTML = fn(); return; }
     const psel = ['portfolio', 'new', 'dash'].includes(S.tab) ? '' : `<select data-dstp="1" title="Project">${'<option value="">— choose a project —</option>' + S.d.prj.map(p => `<option value="${esc(p.Project_Code)}" ${p.Project_Code === S.sel ? 'selected' : ''}>${esc(p.Project_Code)} · ${esc(p.Project_Name)}</option>`).join('')}</select>`;
-    DSTAGE.stage(body, { div: 'prj', tab: S.tab, dash: dashTab, html: fn, title: (TABS.find(t => t[0] === S.tab) || [, ''])[1] + (S.sel && psel ? ' — ' + S.sel : ''), head: psel, heroExtra: S.d.prj.length + ' project(s)', onClose: () => { S.tab = 'dash'; S.edit = null; render(); } }); }
+    DSTAGE.stage(body, { div: 'prj', tab: S.tab, dash: dashTab, html: fn, title: (TABS.find(t => t[0] === S.tab) || [, ''])[1] + (S.sel && psel ? ' — ' + S.sel : ''), head: psel, heroExtra: S.d.prj.length + ' project(s)', onClose: () => { S.tab = 'dash'; S.edit = null; render(); } }); if (S.tab === 'dash' && window.DLAY) DLAY.prj(body); }
   /* ================= 📊 Dashboard: interactive timeline + scope / schedule / cost / manpower analysis of every project ================= */
   const DAY = 864e5, dP = v => { const t = String(v || '').slice(0, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(t)) return null; const [y, m, d] = t.split('-').map(Number); return Date.UTC(y, m - 1, d); }, dS = t => t == null ? '—' : new Date(t).toISOString().slice(0, 10);
   const dcss = document.createElement('style'); dcss.textContent = `
@@ -161,6 +161,11 @@ body.dark #view-prj .pj-pill{background:#312e81;color:#c7d2fe}body.dark #view-pr
 #view-prj .pd-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--gray-600);margin:6px 0}#view-prj .pd-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 #view-prj .pd-col{display:flex;align-items:flex-end;gap:6px;height:150px;padding:6px 4px;border-bottom:1px solid var(--border)}#view-prj .pd-col div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:10.5px;color:var(--gray-600)}#view-prj .pd-col div i{width:70%;max-width:38px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,#60a5fa,#1e40af);box-shadow:0 2px 6px rgba(30,64,175,.25)}`;
   document.head.appendChild(dcss);
+  /* top of the page: title, then ONE tool row — project box · Reload · Actions · Hide (the project box used to take the whole width and push every button onto its own line) */
+  const hcss = document.createElement('style'); hcss.id = 'pjHdrCss'; hcss.textContent = `#prjCard>.card-header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}#prjCard>.card-header .card-title{flex:1 1 300px;min-width:240px;line-height:1.3;font-size:18px;white-space:nowrap}#prjCard>.card-header .card-title .text-sm{display:block;margin-top:3px;font-size:12px;white-space:normal;max-width:460px;color:var(--gray-600)}
+#prjCard>.card-header .btn-row{flex:0 0 auto;margin-left:auto;justify-content:flex-end;flex-wrap:nowrap;gap:8px}#prjCard .btn-row #prjSel{width:260px!important;flex:0 1 260px;min-width:160px!important;margin:0!important}#prjCard .btn-row>button{white-space:nowrap}#prjCard .btn-row .cc-btn{order:9}
+#prjCard #prjTabs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px!important}#prjCard #prjStatus:empty{display:none}
+@media (max-width:1100px){#prjCard>.card-header .btn-row{margin-left:0;width:100%;justify-content:flex-start;flex-wrap:wrap}#prjCard .btn-row #prjSel{flex:1 1 100%}}`; document.head.appendChild(hcss);
   const CATC = ['#2563eb', '#16a34a', '#f59e0b', '#9333ea', '#0891b2', '#dc2626', '#64748b', '#db2777'];
   function anOf(p) { const s = stats(p.Project_Code), now = Date.now(), ph = s.ph;
     const ps = [dP(p.Start_Date)].concat(ph.map(x => dP(x.Plan_Start)), ph.map(x => dP(x.Actual_Start))).filter(x => x != null), pe = [dP(p.End_Date)].concat(ph.map(x => dP(x.Plan_End))).filter(x => x != null);
@@ -368,5 +373,6 @@ body.dark #view-prj .pj-pill{background:#312e81;color:#c7d2fe}body.dark #view-pr
     v.addEventListener('change', e => { const el = e.target; if (el.id === 'prjSel') { S.sel = el.value; if (S.sel && S.tab === 'portfolio') S.tab = 'overview'; render(); } else if (el.id === 'puPhase') { S.edit = { phase: el.value }; render(); addC('puCosts'); addM('puMan'); } });
     render(); }
   const nav = Q('.nav-item[data-view="prj"]'); if (nav) nav.addEventListener('click', () => { init(); setTimeout(() => load(false), 50); });
+  window.PRJ = { render: () => render() };
   const rb = Q('#sectionRefreshBtn'); if (rb) rb.addEventListener('click', e => { if (activeViewId() === 'prj') { e.stopImmediatePropagation(); load(true); } }, true);
 })();
