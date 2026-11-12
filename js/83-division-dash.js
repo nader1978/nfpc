@@ -27,7 +27,7 @@
 .dst-hero .hint{font-size:11.5px;background:rgba(255,255,255,.16);border-radius:999px;padding:3px 10px;display:inline-block;margin-top:5px}
 .dst-ov{position:fixed;z-index:950;background:rgba(15,23,42,.42);backdrop-filter:blur(2.5px);-webkit-backdrop-filter:blur(2.5px);display:flex;align-items:flex-start;justify-content:center;padding:18px 18px 14px;box-sizing:border-box;animation:dstIn .16s ease-out}
 @keyframes dstIn{from{opacity:0}to{opacity:1}}@keyframes dstUp{from{transform:translateY(14px);opacity:.4}to{transform:none;opacity:1}}
-.dst-win{background:var(--bg,#f8fafc);color:var(--text,#0f172a);width:min(1500px,100%);height:100%;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 34px 80px -24px rgba(15,23,42,.65),0 0 0 1px rgba(var(--dvt),.35);animation:dstUp .18s ease-out}
+.dst-win{position:relative;background:var(--bg,#f8fafc);color:var(--text,#0f172a);width:min(1500px,100%);height:100%;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 34px 80px -24px rgba(15,23,42,.65),0 0 0 1px rgba(var(--dvt),.35);animation:dstUp .18s ease-out}
 body.dark .dst-win{background:var(--card,#0f172a)}
 .dst-wh{display:flex;align-items:center;gap:12px;padding:10px 14px 10px 18px;color:#fff;background:linear-gradient(120deg,var(--dv1),var(--dv2));flex:none}
 .dst-wh .t{font-weight:800;font-size:15.5px}.dst-wh .d{font-size:11.5px;opacity:.85}.dst-wh select{max-width:340px;border-radius:9px;border:0;padding:5px 8px;color:#0f172a}
@@ -54,10 +54,10 @@ body.dark .pl-tabs button:hover:not(.on):not(:disabled){color:#fff!important;bac
   new MutationObserver(rePlace).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   function makeOv(div, title, onClose, head) { const ov = document.createElement('div'); ov.className = 'dst-ov'; ov.dataset.dv = div; ov.dataset.nohc = '1';
-    ov.innerHTML = `<div class="dst-win" data-nohc="1"><div class="dst-wh"><button type="button" class="dst-back" data-dstx="1" title="Back to the dashboard">← Dashboard</button><div style="min-width:0"><div class="t" data-dstt></div><div class="d">${esc((DIV[div] || {}).n || '')}</div></div><span data-dsth style="display:flex;gap:8px;align-items:center"></span><span style="flex:1"></span><button type="button" class="dst-x" data-dstx="1" title="Close — back to the dashboard">✕</button></div><div class="dst-b"></div></div>`;
+    ov.innerHTML = `<div class="dst-win" data-nohc="1"><div class="dst-wh"><button type="button" class="dst-back" data-dstx="1" title="Back to the dashboard">← Dashboard</button><div style="min-width:0"><div class="t" data-dstt></div><div class="d">${esc((DIV[div] || {}).n || '')}</div></div><span data-dsth style="display:flex;gap:8px;align-items:center"></span><span style="flex:1"></span><button type="button" class="dst-back" data-dstmx="1" title="Maximise / restore">⤢</button><button type="button" class="dst-x" data-dstx="1" title="Close — back to the dashboard">✕</button></div><div class="dst-b"></div></div>`;
     ov.querySelector('[data-dstt]').textContent = title || ''; if (head) ov.querySelector('[data-dsth]').innerHTML = head;
-    ov.addEventListener('click', e => { if (e.target.closest('[data-dstx]')) { e.preventDefault(); e.stopPropagation(); onClose && onClose(); } });
-    live.add(ov); requestAnimationFrame(() => place(ov)); return ov; }
+    ov.addEventListener('click', e => { const mx = e.target.closest('[data-dstmx]'); if (mx) { const w = ov.querySelector('.dst-win'); if (w && w._max) w._max(); return; } if (e.target.closest('[data-dstx]')) { e.preventDefault(); e.stopPropagation(); onClose && onClose(); } });
+    live.add(ov); requestAnimationFrame(() => { place(ov); try { if (window.SDBWIN) SDBWIN(ov.querySelector('.dst-win'), ov.querySelector('.dst-wh'), 'page-' + div); } catch (e) {} }); return ov; }
 
   /* ---- HTML-string modules ---- */
   function stage(body, o) { if (!body) return; const dashTab = o.dashTab || 'dash'; const vw = body.closest('.view'); if (vw) vw.dataset.dv = o.div;
