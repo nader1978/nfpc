@@ -19,20 +19,22 @@ nav#tbmPanel .tbm-h{flex:1 0 100%;font-size:11px;font-weight:700;letter-spacing:
   document.head.appendChild(css);
 
   let bar, btn, panel, lastBg = '';
-  const skip = n => n === btn || n === panel || n.nodeType !== 1;
+  const KEEP = ['phBtn', 'dsBtn', 'themeToggle', 'activityToggle'];   /* Help · 🎨 · 🌙 · 🕘 stay on the top bar, next to Tools */
+  const skip = n => n === btn || n === panel || n.nodeType !== 1 || KEEP.includes(n.id);
   const ORDER = ['mobBtn', 'locChip', 'arrBtn', 'sectionRefreshBtn', 'phBtn', 'msReloginBtn', 'tokenPill', 'importTokenBtn', 'importTokenInput', 'dsBtn', 'themeToggle', 'activityToggle'];
-  function sweep() { if (!bar || !panel) return; let moved = false; [...bar.children].forEach(n => { if (!skip(n)) { panel.appendChild(n); moved = true; } });
+  function keepOut() { if (!bar || !btn) return; let ref = btn; KEEP.forEach(id => { const n = document.querySelector('#' + id); if (!n || !(n instanceof Element)) return; if (n.parentElement !== bar || n.previousElementSibling !== ref) bar.insertBefore(n, ref.nextSibling); ref = n; }); if (panel.parentElement === bar && bar.lastElementChild !== panel) bar.appendChild(panel); }
+  function sweep() { if (!bar || !panel) return; keepOut(); let moved = false; [...bar.children].forEach(n => { if (!skip(n)) { panel.appendChild(n); moved = true; } });
     if (moved) { const rank = n => { const i = ORDER.indexOf(n.id); return i < 0 ? 50 : i; }; [...panel.children].filter(n => !n.classList.contains('tbm-h')).sort((a, b) => rank(a) - rank(b)).forEach(n => panel.appendChild(n)); } mirror(); }
-  function mirror() { if (!btn) return; const tp = document.getElementById('tokenPill'), d = btn.querySelector('.tbm-dot'), at = document.getElementById('activityToggle'), n = btn.querySelector('.tbm-n');
+  function mirror() { if (!btn) return; const tp = document.querySelector('#tokenPill'), d = btn.querySelector('.tbm-dot'), at = document.querySelector('#activityToggle'), n = btn.querySelector('.tbm-n');
     if (tp && d) { d.className = 'tbm-dot ' + (tp.classList.contains('ok') ? 'ok' : tp.classList.contains('throttled') ? 'throttled' : /no token|expired/i.test(tp.textContent) ? 'bad' : ''); d.title = tp.textContent.trim(); }
-    if (at && n) n.textContent = at.classList.contains('has-badge') ? (at.dataset.count || '') : ''; }
+    if (n) n.textContent = ''; }
   function place() { if (!panel || !panel.classList.contains('on')) return; const r = btn.getBoundingClientRect(), tb = bar.closest('.topbar') || bar;
     const cs = getComputedStyle(tb), bg = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage + ',' + cs.backgroundColor : cs.backgroundColor;
     if (bg !== lastBg) { panel.style.background = cs.backgroundImage && cs.backgroundImage !== 'none' ? cs.backgroundImage : ''; const m = cs.backgroundColor.match(/rgba?\(([^)]+)\)/), pr = m ? m[1].split(',').map(Number) : [15, 35, 71, 1], al = pr.length > 3 ? pr[3] : 1, tc = (cs.color.match(/\d+/g) || [255]).slice(0, 3).map(Number), lightTxt = tc.reduce((a, b) => a + b, 0) > 380; panel.style.backgroundColor = al >= .95 ? cs.backgroundColor : lightTxt ? '#0f2347' : '#ffffff'; if (al < .95 && !lightTxt) panel.style.background = '#ffffff'; panel.style.color = cs.color; lastBg = bg; }
     panel.style.top = (r.bottom + 8) + 'px'; const w = panel.offsetWidth; panel.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px'; }
   function toggle(on) { if (!panel) return; on = on == null ? !panel.classList.contains('on') : on; sweep(); panel.classList.toggle('on', on); btn.setAttribute('aria-expanded', on ? 'true' : 'false'); if (on) { lastBg = ''; place(); } }
   function init() { bar = document.querySelector('.topbar .topbar-actions') || document.querySelector('.topbar-actions'); if (!bar || bar.dataset.tbm) return; bar.dataset.tbm = '1';
-    btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tbmBtn'; btn.className = 'icon-btn'; btn.title = 'Tools — mobile, location, arrange, sign-in, refresh, help, style, dark mode, activity'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
+    btn = document.createElement('button'); btn.type = 'button'; btn.id = 'tbmBtn'; btn.className = 'icon-btn'; btn.title = 'Tools — mobile, location, arrange, refresh, sign-in, token'; btn.setAttribute('aria-haspopup', 'true'); btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span class="tbm-dot"></span>☰ Tools<span class="tbm-n"></span><span class="tbm-car">▾</span>';
     panel = document.createElement('nav'); panel.id = 'tbmPanel'; panel.dataset.nohc = '1'; panel.innerHTML = '<div class="tbm-h">Tools</div>';
     bar.appendChild(btn); bar.appendChild(panel); sweep();
@@ -41,7 +43,7 @@ nav#tbmPanel .tbm-h{flex:1 0 100%;font-size:11px;font-weight:700;letter-spacing:
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && panel.classList.contains('on')) toggle(false); });
     window.addEventListener('resize', place); window.addEventListener('scroll', place, true);
     new MutationObserver(() => sweep()).observe(bar, { childList: true });
-    const tp = document.getElementById('tokenPill'), at = document.getElementById('activityToggle'), mo = new MutationObserver(mirror);
+    const tp = document.querySelector('#tokenPill'), at = document.querySelector('#activityToggle'), mo = new MutationObserver(mirror);
     if (tp) mo.observe(tp, { attributes: true, childList: true, subtree: true, characterData: true }); if (at) mo.observe(at, { attributes: true });
     setInterval(mirror, 4000); }
   const boot = () => { init(); sweep(); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot(); setTimeout(boot, 1200); setTimeout(sweep, 3000);
