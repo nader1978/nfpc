@@ -430,7 +430,7 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
     let body; try { body = c.dash(); } catch (e) { console.error(e); body = '<div class="sdb-empty">⚠ ' + esc(e.message) + '</div>'; }
     const tabs = tabList(id); s.sig = c.sig();
     h.innerHTML = `<div class="dst-bg" data-dv="${id}">${DSTAGE.hero(id)}<div class="sdb-go"><button type="button" class="main" data-sdbo="">✍ Open ${esc(c.title)}</button>${tabs.map(t => `<button type="button" data-sdbo="${esc(t[0])}">${esc(t[1])}</button>`).join('')}</div>${body}</div>`;
-    h.querySelector('.dst-hero .hint') && (h.querySelector('.dst-hero .hint').textContent = 'The working page opens as a pop-up over this dashboard · close it (✕) to come back here'); }
+    h.querySelector('.dst-hero .hint') && (h.querySelector('.dst-hero .hint').textContent = 'The working page opens as a pop-up over this dashboard · close it (✕) to come back here'); try { window.DLAY && DLAY.apply(id, h.querySelector('.dst-bg')); } catch (e) {} }
   function mode(id, open, tab) { const v = document.getElementById('view-' + id); if (!v) return; const s = ST[id] || (ST[id] = {}); s.open = open; v.dataset.dv = id;
     const nodes = s.nodes && s.open ? s.nodes : pageNodes(v); if (!open) s.nodes = null;
     if (open) { s.nodes = nodes; nodes.forEach(n => n.classList.remove('sdb-hide')); DSTAGE.move(v, { div: id, open: true, nodes, title: CFG[id].title, onClose: () => { mode(id, false); } });
@@ -444,7 +444,96 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
     new MutationObserver(() => { const on = v.classList.contains('active'); const s = ST[id] || (ST[id] = {}); if (on && !s.on) { s.on = true; try { CFG[id].load && CFG[id].load(); } catch (e) {} mode(id, false); } else if (!on && s.on) { s.on = false; if (s.open) mode(id, false); } }).observe(v, { attributes: true, attributeFilter: ['class'] });
     if (v.classList.contains('active')) { (ST[id] = ST[id] || {}).on = true; mode(id, false); } }
   /* live refresh while the dashboard is on screen */
-  setInterval(() => Object.keys(CFG).forEach(id => { const s = ST[id]; if (!s || !s.on || s.open) return; let g = ''; try { g = CFG[id].sig(); } catch (e) {} if (g !== s.sig) draw(id); }), 2500);
+  setInterval(() => Object.keys(CFG).forEach(id => { const s = ST[id]; if (!s || !s.on || s.open || (window.DLAY && DLAY.busy(id))) return; let g = ''; try { g = CFG[id].sig(); } catch (e) {} if (g !== s.sig) draw(id); }), 2500);
   const boot = () => Object.keys(CFG).forEach(wire); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot(); setTimeout(boot, 1500);
   window.SDB = { open: (id, tab) => mode(id, true, tab), dash: id => mode(id, false), draw };
+})();
+
+/* ============================================================
+   ✥ DLAY — arrange & resize the cards of every section dashboard
+   (WHs Movements, Stock Movement Entry, Logistics / Trips, Milco planning, Rack Hits, Forklift Receiving, Forklift Activity)
+   · "✥ Arrange" button next to "Open …": drag a KPI card or a panel to move it, drag its ◢ corner to make it wider / taller
+   · ↺ Reset brings the standard layout back · the layout is kept per dashboard on this device
+   · cards are recognised by their title, so the layout survives refreshes and new data
+   window.DLAY = { apply(id, host), busy(id), edit(id, on), reset(id) }
+   ============================================================ */
+(function () {
+  'use strict';
+  const LSK = id => (typeof LS_BASE !== 'undefined' ? LS_BASE : 'orbit') + '_dlay_' + id;
+  const EDIT = {}, TXT = { edit: '✥ Arrange cards', done: '✔ Done', reset: '↺ Reset layout' };
+  const load = id => { try { const o = JSON.parse(localStorage.getItem(LSK(id)) || 'null'); return o && typeof o === 'object' ? { o: o.o || {}, s: o.s || {} } : { o: {}, s: {} }; } catch (e) { return { o: {}, s: {} }; } };
+  const save = (id, L) => { try { if (!Object.keys(L.o).length && !Object.keys(L.s).length) localStorage.removeItem(LSK(id)); else localStorage.setItem(LSK(id), JSON.stringify(L)); } catch (e) {} };
+  const isK = el => el.classList.contains('sdb-k');
+  const keyOf = el => { if (isK(el)) { const s = el.querySelector(':scope > span'); return 'k:' + (s ? s.textContent.trim() : ''); }
+    const h = el.querySelector(':scope > h4'); if (!h) return 'p:'; const c = h.cloneNode(true); c.querySelectorAll('small').forEach(x => x.remove()); return 'p:' + c.textContent.trim(); };
+  const zonesOf = root => { let k = 0, g = 0; return [...root.querySelectorAll('.sdb-kpis,.sdb-grid')].map(z => ({ el: z, key: z.classList.contains('sdb-kpis') ? 'K' + (k++) : 'G' + (g++), cols: z.classList.contains('sdb-kpis') ? 24 : 12 })); };
+  const defSpan = el => isK(el) ? 3 : el.classList.contains('wf') ? 12 : el.classList.contains('w2') ? 8 : 4;
+  const items = z => [...z.children].filter(n => n.classList && (n.classList.contains('sdb-k') || n.classList.contains('sdb-p')));
+  const keys = z => { const seen = {}; return items(z).map(el => { let k = keyOf(el); seen[k] = (seen[k] || 0) + 1; if (seen[k] > 1) k += '#' + seen[k]; el._dk = k; return el; }); };
+
+  function paint(el, z, L) { const s = L.s[z.key + '|' + el._dk] || {}, sp = s.w || defSpan(el); el.style.gridColumn = 'span ' + Math.min(sp, z.cols); if (s.h) { el.style.height = s.h + 'px'; el.classList.add('dlay-fh'); } else { el.style.height = ''; el.classList.remove('dlay-fh'); }
+    const t = el.querySelector(':scope > .dlay-sz'); if (t) t.textContent = Math.min(sp, z.cols) + '/' + z.cols + (s.h ? ' · ' + s.h + 'px' : ''); }
+
+  function apply(id, host) { const root = host || (document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]')); if (!root) return; const L = load(id), ed = !!EDIT[id];
+    root.classList.toggle('dlay-edit', ed);
+    /* the button + the edit bar */
+    const go = root.querySelector('.sdb-go'); if (go && !go.querySelector('[data-dlay="edit"]')) { const b = document.createElement('button'); b.type = 'button'; b.dataset.dlay = 'edit'; b.className = 'dlay-btn'; b.title = 'Move and resize the cards of this dashboard'; b.textContent = TXT.edit; go.appendChild(b); }
+    let bar = root.querySelector(':scope > .dlay-bar'); if (ed && !bar) { bar = document.createElement('div'); bar.className = 'dlay-bar'; bar.innerHTML = '<b>✥ Arrange mode</b><span>drag a card to move it · drag its <i>◢</i> corner to resize (double-click the corner = automatic height)</span><span style="flex:1"></span><button type="button" data-dlay="reset">' + TXT.reset + '</button><button type="button" class="ok" data-dlay="done">' + TXT.done + '</button>'; (go || root.firstChild).insertAdjacentElement('afterend', bar); }
+    if (!ed && bar) bar.remove(); if (go) { const b = go.querySelector('[data-dlay="edit"]'); if (b) b.style.display = ed ? 'none' : ''; }
+    zonesOf(root).forEach(z => { keys(z.el); const custom = Object.keys(L.s).some(k => k.startsWith(z.key + '|')) || (L.o[z.key] || []).length;
+      /* order */
+      const ord = L.o[z.key]; if (ord && ord.length) { const by = new Map(items(z.el).map(el => [el._dk, el])); const done = new Set(); ord.forEach(k => { const el = by.get(k); if (el) { z.el.appendChild(el); done.add(k); } }); items(z.el).forEach(el => { if (!done.has(el._dk)) z.el.appendChild(el); }); }
+      z.el.classList.toggle('dlay-on', !!(custom || ed)); z.el.dataset.dz = z.key; z.el.dataset.dc = z.cols;
+      items(z.el).forEach(el => { el.classList.toggle('dlay-it', ed); el.draggable = ed; let h = el.querySelector(':scope > .dlay-h'), t = el.querySelector(':scope > .dlay-sz');
+        if (ed) { if (!h) { h = document.createElement('span'); h.className = 'dlay-h'; h.title = 'Drag to resize'; h.draggable = false; el.appendChild(h); t = document.createElement('span'); t.className = 'dlay-sz'; el.appendChild(t); } } else { if (h) h.remove(); if (t) t.remove(); }
+        if (custom || ed) paint(el, z, L); else { el.style.gridColumn = ''; el.style.height = ''; el.classList.remove('dlay-fh'); } }); }); }
+
+  const busy = id => !!EDIT[id];
+  function edit(id, on) { EDIT[id] = !!on; apply(id); }
+  function reset(id) { try { localStorage.removeItem(LSK(id)); } catch (e) {} const r = document.querySelector('.sdb-host .dst-bg[data-dv="' + id + '"]'); if (r) { r.querySelectorAll('.dlay-it,.sdb-k,.sdb-p').forEach(el => { el.style.gridColumn = ''; el.style.height = ''; el.classList.remove('dlay-fh'); }); }
+    if (window.SDB && SDB.draw) SDB.draw(id); else apply(id); }
+  const idOf = el => { const r = el.closest('.dst-bg[data-dv]'); return r ? r.dataset.dv : ''; };
+
+  /* ---------- clicks: the buttons; and in arrange mode no card opens its details ---------- */
+  document.addEventListener('click', e => { const b = e.target.closest('[data-dlay]'); const id = b ? idOf(b) : ''; 
+    if (b && id) { e.preventDefault(); e.stopPropagation(); const a = b.dataset.dlay; if (a === 'edit') edit(id, true); else if (a === 'done') edit(id, false); else if (a === 'reset') { if (confirm('Bring the standard layout of this dashboard back?')) { EDIT[id] = false; reset(id); } } return; }
+    const r = e.target.closest && e.target.closest('.dlay-edit'); if (r) { e.preventDefault(); e.stopPropagation(); } }, true);
+
+  /* ---------- drag to move (HTML5 drag & drop inside one block of cards) ---------- */
+  let drag = null;
+  document.addEventListener('dragstart', e => { const el = e.target.closest && e.target.closest('.dlay-it'); if (!el) return; drag = el; el.classList.add('dragging'); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', el._dk || ''); } catch (x) {} });
+  document.addEventListener('dragover', e => { if (!drag) return; const z = drag.parentElement, t = e.target.closest && e.target.closest('.dlay-it'); if (!t || t === drag || t.parentElement !== z) { if (z && z.contains(e.target)) e.preventDefault(); return; } e.preventDefault();
+    const r = t.getBoundingClientRect(), d = drag.getBoundingClientRect(), sameRow = Math.abs((r.top + r.height / 2) - (d.top + d.height / 2)) < Math.max(r.height, d.height) / 2;
+    const after = sameRow ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2; z.insertBefore(drag, after ? t.nextSibling : t); });
+  document.addEventListener('dragend', () => { if (!drag) return; const el = drag; drag = null; el.classList.remove('dragging'); const id = idOf(el), z = el.parentElement; if (!id || !z) return; const L = load(id); L.o[z.dataset.dz] = items(z).map(n => n._dk); save(id, L); });
+  document.addEventListener('drop', e => { if (drag) e.preventDefault(); });
+
+  /* ---------- drag the corner to resize (width in columns, height in px) ---------- */
+  document.addEventListener('pointerdown', e => { const h = e.target.closest && e.target.closest('.dlay-h'); if (!h) return; e.preventDefault(); e.stopPropagation(); const el = h.parentElement, z = el.parentElement, id = idOf(el); if (!id) return;
+    const cols = +z.dataset.dc || 12, gap = parseFloat(getComputedStyle(z).columnGap) || 12, zr = z.getBoundingClientRect(), unit = (zr.width + gap) / cols, r0 = el.getBoundingClientRect(), L = load(id), sk = z.dataset.dz + '|' + el._dk, min = isK(el) ? 2 : 3;
+    const s0 = Object.assign({}, L.s[sk] || {}); el.draggable = false; try { h.setPointerCapture(e.pointerId); } catch (x) {}
+    const mv = ev => { const w = Math.max(min, Math.min(cols, Math.round((r0.width + (ev.clientX - e.clientX) + gap) / unit))), hh = Math.max(isK(el) ? 60 : 90, Math.round(r0.height + (ev.clientY - e.clientY)));
+      L.s[sk] = { w, h: Math.abs(ev.clientY - e.clientY) < 6 && !s0.h ? 0 : hh }; if (!L.s[sk].h) delete L.s[sk].h; paint(el, { key: z.dataset.dz, cols }, L); };
+    const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); el.draggable = true; save(id, L); };
+    h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up); }, true);
+  document.addEventListener('dblclick', e => { const h = e.target.closest && e.target.closest('.dlay-h'); if (!h) return; e.preventDefault(); e.stopPropagation(); const el = h.parentElement, z = el.parentElement, id = idOf(el); const L = load(id), sk = z.dataset.dz + '|' + el._dk; if (L.s[sk]) { delete L.s[sk].h; save(id, L); } paint(el, { key: z.dataset.dz, cols: +z.dataset.dc || 12 }, L); }, true);
+
+  /* ---------- styles ---------- */
+  const st = document.createElement('style'); st.id = 'dlayCss'; st.textContent = `
+.dlay-btn{background:var(--card,#fff)!important;border-style:dashed!important}
+.sdb-grid.dlay-on,.sdb-kpis.dlay-on{grid-template-columns:repeat(12,minmax(0,1fr))!important}.sdb-kpis.dlay-on{grid-template-columns:repeat(24,minmax(0,1fr))!important}
+.sdb-kpis.dlay-on>.sdb-k,.sdb-grid.dlay-on>.sdb-p{min-width:0}
+.sdb-p.dlay-fh{overflow:auto}.sdb-k.dlay-fh{overflow:auto}
+.dlay-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;padding:8px 12px;border-radius:12px;background:rgba(var(--dvt),.1);border:1px dashed rgba(var(--dvt),.55);font-size:12.5px;position:sticky;top:0;z-index:20;backdrop-filter:blur(4px)}
+.dlay-bar span{color:var(--gray-600,#64748b)}.dlay-bar i{font-style:normal;color:var(--dv1);font-weight:800}
+.dlay-bar button{border:1px solid rgba(var(--dvt),.4);background:var(--card,#fff);color:var(--dv1);border-radius:999px;padding:5px 14px;font-weight:700;font-size:12.5px;cursor:pointer}
+.dlay-bar button.ok{background:linear-gradient(120deg,var(--dv1),var(--dv2));color:#fff;border-color:transparent}
+.dlay-edit .dlay-it{outline:2px dashed rgba(var(--dvt),.6);outline-offset:-2px;cursor:grab;position:relative;user-select:none}
+.dlay-edit .dlay-it *{pointer-events:none}.dlay-edit .dlay-it .dlay-h{pointer-events:auto}
+.dlay-it.dragging{opacity:.35}
+.dlay-h{position:absolute;right:0;bottom:0;width:26px;height:26px;cursor:nwse-resize;z-index:5;background:linear-gradient(135deg,transparent 50%,var(--dv1) 50%);border-radius:0 0 14px 0;touch-action:none}
+.dlay-sz{position:absolute;left:8px;bottom:6px;font-size:10px;font-weight:700;background:var(--dv1);color:#fff;border-radius:6px;padding:1px 6px;z-index:5;pointer-events:none}
+@media (max-width:900px){.sdb-grid.dlay-on,.sdb-kpis.dlay-on{grid-template-columns:1fr 1fr!important}.sdb-kpis.dlay-on>*,.sdb-grid.dlay-on>*{grid-column:auto!important;height:auto!important}.dlay-edit .dlay-h,.dlay-sz,.dlay-btn{display:none!important}}`;
+  document.head.appendChild(st);
+  window.DLAY = { apply, busy, edit, reset };
 })();
