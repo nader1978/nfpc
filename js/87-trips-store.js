@@ -91,7 +91,18 @@
 
   let TC = { v: -1, a: [] }, RC = { v: -1, a: [] };
   const rows = () => { if (RC.v !== S.ver) RC = { v: S.ver, a: [...S.map.values()].filter(r => r.k.startsWith(S.list + '|')) }; return RC.a; };
-  const trips = () => { if (TC.v !== S.ver) TC = { v: S.ver, a: rows().filter(r => !r.log && r.date).map(r => (r.s = stat(r), r.h = r.st && r.en && r.en > r.st ? (r.en - r.st) / 36e5 : 0, r)) }; return TC.a; };
+  /* The driver of a trip is identified by the FILE NO. — the stored User_Name is sometimes the person who uploaded / closed the record (one name on hundreds of trips with different file numbers).
+     For every file no. we take the name that really belongs to it: the most frequent name of that file among names that are not "accounts" (a name seen on more than 3 different file numbers),
+     else the name in the Logistics plan for that file no.; if neither is known the row shows "File <no.>" instead of a wrong name. */
+  function fixDrivers(A) {
+    const nf = new Map(), fn = new Map(), plan = new Map();
+    A.forEach(r => { if (r.drv0 === undefined) r.drv0 = r.driver; const f = r.file, d = r.drv0; if (!f || !d) return; (nf.get(d) || nf.set(d, new Set()).get(d)).add(f); const m = fn.get(f) || fn.set(f, new Map()).get(f); m.set(d, (m.get(d) || 0) + 1); });
+    const acct = new Set(); nf.forEach((set, n) => { if (set.size > 3) acct.add(n); });
+    try { ((typeof lp !== 'undefined' && lp && lp.rows) || []).forEach(p => { const f = String(p.fileNo || '').replace(/\.0+$/, '').trim(), d = String(p.driver || '').trim(); if (f && d && !plan.has(f)) plan.set(f, d); }); } catch (e) {}
+    const res = new Map(); fn.forEach((m, f) => { let best = '', bn = 0; m.forEach((n, d) => { if (!acct.has(d) && n > bn) { best = d; bn = n; } }); res.set(f, best || plan.get(f) || ''); });
+    A.forEach(r => { const d0 = r.drv0 || ''; if (r.file) { const d = res.get(r.file) || plan.get(r.file) || ''; r.driver = d || (acct.has(d0) || !d0 ? 'File ' + r.file : d0); r.dfix = r.driver !== d0; } else r.driver = d0; });
+    return A; }
+  const trips = () => { if (TC.v !== S.ver) TC = { v: S.ver, a: fixDrivers(rows().filter(r => !r.log && r.date).map(r => (r.s = stat(r), r.h = r.st && r.en && r.en > r.st ? (r.en - r.st) / 36e5 : 0, r))) }; return TC.a; };
   const tm = t => t ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   function status() { const n = rows().length;
     if (S.busy) return `⏳ Reading SharePoint… ${S.todo ? S.done + ' / ' + S.todo + ' day(s)' : S.done + ' page(s)'} · ${S.got.toLocaleString()} record(s) so far${n ? ' · the figures below are already usable' : ''}`;
@@ -102,5 +113,5 @@
   function setDays(n) { S.days = Math.min(90, Math.max(7, +n || 60)); try { localStorage.setItem(BASE + '_trx_days', S.days); } catch (e) {} S.ver++; load(false); }
   /* quiet refresh of the last days every 5 minutes while the logistics dashboard is on screen */
   setInterval(() => { const v = document.querySelector('#view-logplan.active'); if (v && !S.busy && S.at && Date.now() - S.at > 5 * 60e3) load(false); }, 60e3);
-  window.TRX = { S, load, rows, trips, status, setDays, stat };
+  window.TRX = { S, load, rows, trips, status, setDays, stat, fixDrivers };
 })();
