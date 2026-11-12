@@ -451,7 +451,9 @@ function dpLstInit() {
     if (!hasPerm('uploader')) { alert('Permission denied.'); return; }
     const active = Object.entries(dpLst.map).filter(([, v]) => v && v !== SKIP_VALUE); if (!active.length) { st.textContent = '⚠ Map at least one field.'; return; }
     const listName = (document.querySelector('[data-list-picker="dp-upload"] .list-picker-input') || {}).value || 'selected list', total = rows.length;
-    if (!(await spAsk(`Upload ${plF(total)} item(s) of the daily plan ${s.planDate} to "${listName}"?` + (dpLst.done && dpLst.done[s.planDate + '|' + q('#dpLstDay').value + '|' + dpLst.listId] ? '\n\n⚠ This plan was already uploaded to this list in this session. Uploading again creates duplicate rows.' : '')))) return;
+    const FLd = rows.map(r => { const f = {}; active.forEach(([k, t]) => { if (k === CURRENT_USER_FIELD_KEY) return; const v = r[k]; if (v !== null && v !== undefined && v !== '') f[t] = v; }); return f; });
+    const gd = window.UPDUP ? await UPDUP.guard({ siteId: dpLst.siteId, listId: dpLst.listId, token: getGlobalAccessToken(), listName, label: 'Daily plan ' + s.planDate, fields: FLd, onProg: t => { st.textContent = t; } }) : 'new'; if (gd === 'cancel') { st.textContent = 'Upload cancelled.'; return; }
+    if (gd === 'new' && !(await spAsk(`Upload ${plF(total)} item(s) of the daily plan ${s.planDate} to "${listName}"?`))) return;
     const token = getGlobalAccessToken(), prog = q('#dpLstProg'); q('#dpLstConfirm').disabled = true; prog.style.display = 'block'; prog.max = total; prog.value = 0; let ok = 0, fail = 0, done = 0; const errors = [];
     let next = 0; const worker = async () => { while (next < total) { const i = next++, r = rows[i], fields = {};
       active.forEach(([k, target]) => { const v = k === CURRENT_USER_FIELD_KEY ? getCurrentUserValue() : r[k]; if (v !== null && v !== undefined && v !== '') fields[target] = v; });

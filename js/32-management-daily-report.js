@@ -76,10 +76,18 @@ function atSpInit() {
 async function atUpload(file) {
   const msg = PLQ('#atUpMsg'); msg.className = 'status-msg'; msg.textContent = 'Reading “' + file.name + '”…';
   try {
-    const P = await atReadFile(file), mode = PLQ('#atMode').value; let added = 0, upd = 0;
+    const P = await atReadFile(file); let mode = PLQ('#atMode').value, added = 0, upd = 0, removed = 0;
+    /* ⚠ the file repeats dates that are already loaded → ask: append (add / update) or overwrite those dates */
+    if (mode !== 'replace' && at.rows.length && window.UPDUP) { const have = new Set(at.rows.map(r => r.date)), fd = [...new Set(P.rows.map(r => r.date))].sort(), dup = fd.filter(d => have.has(d));
+      if (dup.length) { const nOld = at.rows.filter(r => dup.includes(r.date)).length, nNew = P.rows.filter(r => dup.includes(r.date)).length, lab = d => { try { return atDateLabel(d); } catch (e) { return d; } };
+        const ch = await UPDUP.ask({ title: 'This file has dates that are already uploaded', sub: file.name + ' · ' + dup.length + ' of ' + fd.length + ' date(s) already loaded',
+          what: `<p style="margin:0"><b>${dup.length}</b> date(s) in the file are already in the attendance data — <b>${plF(nOld)}</b> record(s) loaded now, <b>${plF(nNew)}</b> in the file for those dates.</p>`, sample: dup.map(lab),
+          labels: { append: ['➕', 'Append / update', 'Keep the loaded records; add the new employees and update the ones that are in the file (match on date + employee)'], overwrite: ['♻', 'Overwrite these dates', 'Remove every loaded record of these ' + dup.length + ' date(s), then load the file’s records for them'] } });
+        if (ch === 'cancel') { msg.className = 'status-msg'; msg.textContent = 'Upload cancelled — nothing changed.'; return; }
+        if (ch === 'overwrite') { const D = new Set(dup), before = at.rows.length; at.rows = at.rows.filter(r => !D.has(r.date)); removed = before - at.rows.length; at._ovDates = D; window.__opNoAsk = Date.now() + 10 * 60000; } } }
     if (mode === 'replace') { at.rows = P.rows; added = P.rows.length; } else { const idx = new Map(at.rows.map((r, i) => [r.date + '|' + atKey(r.id), i])); P.rows.forEach(r => { const k = r.date + '|' + atKey(r.id); if (idx.has(k)) { at.rows[idx.get(k)] = r; upd++; } else { at.rows.push(r); idx.set(k, at.rows.length - 1); added++; } }); }
     at.file = file.name; at.loaded = new Date().toLocaleString('en-GB'); at.f = {}; at.q = []; at.sort = { cm: null, rc: null }; at.cmRes = ''; atSave(); atSpAuto(P.rows);
-    msg.className = 'status-msg ok'; msg.textContent = `✓ ${plF(added)} record(s) added${upd ? `, ${plF(upd)} updated` : ''}${P.skipped ? ` · ${P.skipped} non-data row(s) skipped (totals / blanks)` : ''}.`;
+    msg.className = 'status-msg ok'; msg.textContent = `✓ ${removed ? plF(removed) + ' old record(s) of the repeated dates replaced · ' : ''}${plF(added)} record(s) added${upd ? `, ${plF(upd)} updated` : ''}${P.skipped ? ` · ${P.skipped} non-data row(s) skipped (totals / blanks)` : ''}.`;
     addActivity('upload', 'Attendance report loaded: ' + file.name); if (typeof a2AfterUpload === 'function') { try { a2AfterUpload(msg); } catch (e2) { console.error(e2); } } at.tab = 'dash'; atRefresh();
   } catch (e) { msg.className = 'status-msg err'; msg.textContent = '✘ ' + e.message; }
 }
@@ -548,7 +556,11 @@ async function atListBatch(C, ops, say) {
 }
 async function atListSave(R) {
   const C = await atListCtx(), say = (n, t) => atSpMsg(t ? `Saving to SharePoint… ${plF(n)} of ${plF(t)}` : `Reading the keys already in the list… ${plF(n)}`);
-  const have = new Map((await atListRead(C, n => say(n), true)).map(x => [String(x.f.Title || ''), x.id])), ops = R.map(r => { const f = atRowFields(r, have.has(atLKey(r))), id = have.get(atLKey(r)); return id ? { id, f } : { f }; });
+  const ov = at._ovDates, RD = await atListRead(C, n => say(n), !(ov && ov.size)), gone = new Set(); at._ovDates = null;
+  const dOf = v => window.UPDUP ? UPDUP.dayOf(v) : String(v || '').slice(0, 10);
+  if (ov && ov.size) { const keep = new Set(R.map(atLKey)), del = RD.filter(x => ov.has(dOf(x.f.Att_Date)) && !keep.has(String(x.f.Title || ''))); let n = 0;
+    for (const x of del) { try { await deleteItem(C.ids.siteId, C.ids.listId, x.id, C.token); gone.add(x.id); n++; atSpMsg(`Overwrite: removing old records of the repeated dates… ${n} / ${del.length}`); } catch (e) {} } }
+  const have = new Map(RD.filter(x => !gone.has(x.id)).map(x => [String(x.f.Title || ''), x.id])), ops = R.map(r => { const f = atRowFields(r, have.has(atLKey(r))), id = have.get(atLKey(r)); return id ? { id, f } : { f }; });
   const x = await atListBatch(C, ops, say); if (x.fail.length) throw new Error(plF(x.fail.length) + ' row(s) were refused, e.g. ' + x.fail.slice(0, 2).join(' · '));
   const mod = await atListRemoteMod(C); atSpCfgSave({ mod: mod || '' }); return { n: R.length, created: x.made.size, updated: R.length - x.made.size };
 }

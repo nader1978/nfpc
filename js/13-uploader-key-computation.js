@@ -61,7 +61,7 @@ async function inc_loadExistingKeys() {
   const items = await fetchAllItems(incUploadState.siteId, incUploadState.listId, token, n => {
     $('incUploadColsStatus').textContent = `Reading target list... ${n.toLocaleString()} rows`;
   });
-  const keys = new Set();
+  const keys = new Set(), ids = new Map();
   for (const it of items) {
     const f = it.fields || {};
     const parts = spKeyFields.map(sp => {
@@ -69,9 +69,9 @@ async function inc_loadExistingKeys() {
       if (v === null || v === undefined) return '';
       return String(v).trim().toLowerCase();
     });
-    keys.add(parts.join('\u0001'));
+    keys.add(parts.join('\u0001')); ids.set(parts.join('\u0001'), it.id);
   }
-  incUploadState.existingKeys = keys;
+  incUploadState.existingKeys = keys; incUploadState.existingIds = ids;
   incUploadState.existingCount = items.length;
   $('incUploadColsStatus').textContent = `✓ ${items.length.toLocaleString()} existing rows indexed`;
 }
@@ -247,16 +247,16 @@ async function inc_recomputeNewRows() {
   const existing = incUploadState.existingKeys || new Set();
   const keyCols = incUploadState.keyColumns;
   const seenInFile = new Set();
-  const newRows = [];
+  const newRows = [], dupRows = [];
   const dupCount = { existing: 0, inFile: 0 };
   for (const row of incUploadState.parsedRows) {
     const k = inc_computeKey(row, keyCols);
-    if (existing.has(k)) { dupCount.existing++; continue; }
+    if (existing.has(k)) { dupCount.existing++; if (!seenInFile.has(k)) { seenInFile.add(k); dupRows.push(row); } continue; }
     if (seenInFile.has(k)) { dupCount.inFile++; continue; }
     seenInFile.add(k);
     newRows.push(row);
   }
-  incUploadState.newRows = newRows;
+  incUploadState.newRows = newRows; incUploadState.dupRows = dupRows;
   incUploadState.lastResult = {
     total: incUploadState.parsedRows.length,
     existingDup: dupCount.existing,
@@ -448,8 +448,13 @@ function incUpDocLines(rows) {   // tells the user which printed document number
 $('incUploadGoBtn').addEventListener('click', async () => {
   if (!hasPerm('uploader')) { inc_setStatus('Permission denied.', 'error'); return; }
   if (!incUploadState.listId || !incUploadState.siteId) { inc_setStatus('Load target list columns first.', 'error'); return; }
-  if (!incUploadState.newRows.length) { inc_setStatus('No new rows to upload.', 'warn'); return; }
-  if (!inc_uploadRows().length) { inc_setStatus('No rows are selected — tick at least one new row (or clear the filters).', 'warn'); return; }
+  const dupR = incUploadState.dupRows || []; let dupMode = 'skip';
+  if (dupR.length && window.UPDUP) { dupMode = await UPDUP.ask({ title: 'Some rows are already in “' + incUploadState.listName + '”', sub: dupR.length + ' row(s) of the file match existing items on the key column(s) ' + incUploadState.keyColumns.join(' + '),
+      what: `<p style="margin:0">The file has <b>${incUploadState.newRows.length}</b> new row(s) and <b>${dupR.length}</b> row(s) that are already uploaded (same ${incUploadState.keyColumns.map(c => '<b>' + c + '</b>').join(' + ')}).</p>`, sample: dupR.slice(0, 60).map(r => incUploadState.keyColumns.map(c => r[c]).join(' · ')),
+      options: ['skip', 'overwrite', 'append'], labels: { overwrite: ['♻', 'Overwrite', 'Update the existing items with the values of the file (and upload the new rows)'], append: ['➕', 'Append', 'Upload the repeated rows again as extra items (and the new rows)'] } });
+    if (dupMode === 'cancel') { inc_setStatus('Upload cancelled.', 'warn'); return; } if (dupMode !== 'skip') window.__opNoAsk = Date.now() + 10 * 60000; }
+  if (!incUploadState.newRows.length && dupMode === 'skip') { inc_setStatus('No new rows to upload.', 'warn'); return; }
+  if (incUploadState.newRows.length && !inc_uploadRows().length) { inc_setStatus('No rows are selected — tick at least one new row (or clear the filters).', 'warn'); return; }
   { const g = incPlGate(); if (g) { inc_setStatus('🔒 ' + g, 'error'); sectionToast(g, 'warn'); return; } }
   const token = getGlobalAccessToken();
   if (!token) { inc_setStatus('Global token not configured.', 'error'); return; }
@@ -458,9 +463,10 @@ $('incUploadGoBtn').addEventListener('click', async () => {
   const activeMapping = Object.entries(incUploadState.mapping || {}).filter(([, v]) => v && v !== SKIP_VALUE);
   if (!activeMapping.length) { inc_setStatus('Map at least one column.', 'error'); return; }
 
-  const upRows = inc_uploadRows(); if (!upRows.length) { inc_setStatus('No rows are selected — tick at least one new row (or clear the filters).', 'warn'); return; }
+  const upRows = (incUploadState.newRows.length ? inc_uploadRows() : []).concat(dupMode === 'skip' ? [] : dupR); if (!upRows.length) { inc_setStatus('No rows are selected — tick at least one new row (or clear the filters).', 'warn'); return; }
+  const dupSet = new Set(dupMode === 'overwrite' ? dupR : []);
   const total = upRows.length;
-  if (!(await spAsk(`Upload ${total} of ${incUploadState.newRows.length} new row(s) to "${incUploadState.listName}"?` + (incX_filtersOn() ? ' (only the rows matching your filters)' : '') + incUpDocLines(upRows) + `\n\n` +
+  if (dupMode === 'skip' && !(await spAsk(`Upload ${total} of ${incUploadState.newRows.length} new row(s) to "${incUploadState.listName}"?` + (incX_filtersOn() ? ' (only the rows matching your filters)' : '') + incUpDocLines(upRows) + `\n\n` +
                `(Rows already in the list and duplicate rows in the file will be skipped.)`))) return;
 
   $('incUploadGoBtn').disabled = true; try { $('incUploadDoneSummary').style.display = 'none'; } catch (e) {}
@@ -489,7 +495,8 @@ $('incUploadGoBtn').addEventListener('click', async () => {
       continue;
     }
     try {
-      await createItem(incUploadState.siteId, incUploadState.listId, fields, token);
+      const exId = dupSet.has(row) && incUploadState.existingIds ? incUploadState.existingIds.get(inc_computeKey(row, incUploadState.keyColumns)) : null;
+      if (exId) await updateItem(incUploadState.siteId, incUploadState.listId, exId, fields, token); else await createItem(incUploadState.siteId, incUploadState.listId, fields, token);
       ok++; okRows.push(row);
       incUploadGoProgress.update(i + 1, total, `✔ ${ok} ok, ${fail} failed`);
     } catch (err) {

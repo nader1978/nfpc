@@ -276,10 +276,13 @@ async function utEffMap(id) {
   need.forEach(f => { const als = [f.key, f.label, ...(Array.isArray(f.alias) ? f.alias : [f.alias])].filter(Boolean).map(utNz), hit = c.cols.find(x => als.includes(utNz(x.name)) || als.includes(utNz(x.displayName))); if (hit) map[f.key] = hit.name; });
   return map;
 }
-async function utPush(id, rows, keyFn, onProg) {   // rows: array of objects keyed by field key
+async function utPush(id, rows, keyFn, onProg, opts) {   // rows: array of objects keyed by field key · opts.dup: ask Append / Overwrite when the list already holds this data (opts.keys = row keys that identify a row)
   const cfg = utGet(id), token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!cfg.list) throw new Error('No upload destination is set for this section — an administrator sets it in Upload Destinations.'); cfg.map = await utEffMap(id);
   const active = Object.entries(cfg.map).filter(([, v]) => v && v !== SKIP_VALUE); if (!active.length) throw new Error('The upload destination has no field mapping — an administrator must map the fields in Upload Destinations.');
   if (!token || !site) throw new Error('Configure the Site URL and sign-in first.'); const { siteId, listId } = await resolveIds(site, cfg.list, token); let ok = 0, fail = 0, done = 0, next = 0; const errors = [];
+  if (opts && opts.dup && window.UPDUP) { const FL = rows.map(r => { const f = {}; active.forEach(([k, col]) => { if (k === CURRENT_USER_FIELD_KEY || k === LOC_FIELD_KEY) return; const v = r[k]; if (v !== '' && v != null) f[col] = v; }); return f; });
+    const kc = (opts.keys || []).map(k => (active.find(a => a[0] === k) || [])[1]).filter(Boolean), g = await UPDUP.guard({ siteId, listId, token, listName: cfg.list, label: opts.label || '', fields: FL, keyCols: kc.length === (opts.keys || []).length ? kc : [], onProg: t => onProg && onProg(0, rows.length, t) });
+    if (g === 'cancel') return { ok: 0, fail: 0, errors: ['cancelled — nothing uploaded'], list: cfg.list, cancelled: true }; }
   const worker = async () => { while (next < rows.length) { const r = rows[next++], fields = {}; active.forEach(([k, col]) => { if (k === CURRENT_USER_FIELD_KEY) { fields[col] = getCurrentUserValue(); return; } if (k === LOC_FIELD_KEY) { const lv = locOne(); if (lv) fields[col] = lv; return; } const v = r[k]; if (v === '' || v == null) return; fields[col] = v; });
     if (!Object.keys(fields).length) fail++; else { try { await createItem(siteId, listId, fields, token); ok++; } catch (err) { fail++; if (errors.length < 30) errors.push(`${keyFn ? keyFn(r) : ''}: ${err.message}`); } } done++; if (onProg) onProg(done, rows.length); } };
   await Promise.all(Array.from({ length: 4 }, worker)); return { ok, fail, errors, list: cfg.list };

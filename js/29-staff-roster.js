@@ -404,7 +404,7 @@ function roUpInit() {
     const cfg = utGet(id), total = rows.length, key = id + '|' + q('#roUpScope').value + '|' + (q('#roUpScope').value === 'week' ? ro.week : ro.date) + '|' + cfg.list, prog = q('#roUpProg');
     if (!(await spAsk(`Upload ${plF(total)} roster item(s) to "${cfg.list}"?` + (roUp.done && roUp.done[key] ? '\n\n⚠ This plan was already uploaded to this list in this session. Uploading again creates duplicate rows.' : '')))) return;
     q('#roUpConfirm').disabled = true; prog.style.display = 'block'; prog.max = total; prog.value = 0;
-    try { const r = await utPush(id, rows, x => x.fileNr + '/' + x.date, (d, t) => { prog.value = d; st.textContent = `Uploading… ${d}/${t}`; }); if (r.ok) { roUp.done = roUp.done || {}; roUp.done[key] = 1; }
+    try { const r = await utPush(id, rows, x => x.fileNr + '/' + x.date, (d, t) => { prog.value = d; st.textContent = `Uploading… ${d}/${t}`; }, { dup: true, keys: ['fileNr', 'date'], label: 'Staff roster' }); if (r.cancelled) { st.textContent = 'Upload cancelled.'; q('#roUpConfirm').disabled = false; prog.style.display = 'none'; return; } if (r.ok) { roUp.done = roUp.done || {}; roUp.done[key] = 1; }
       st.textContent = `${r.fail ? '⚠' : '✓'} ${r.ok} uploaded to “${r.list}”, ${r.fail} failed.` + (r.errors.length ? ' ' + r.errors.join(' · ') : ''); w_logToActivity(`Staff roster ${key.split('|')[2]} → "${r.list}": ${r.ok} ok, ${r.fail} failed`); addActivity('upload', `Staff roster: ${r.ok} item(s)`);
     } catch (err) { st.textContent = '✘ ' + err.message; }
     roUpInfo();

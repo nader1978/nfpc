@@ -39,6 +39,7 @@
   /* ---------- classify a request ---------- */
   function classify(url, method) {
     url = String(url || ''); method = (method || 'GET').toUpperCase();
+    if (window.__opQuiet && window.__opQuiet > Date.now() && method === 'GET') return null;   /* quick look-ups (e.g. opening one original entry) show no progress window */
     const g = /graph\.microsoft\.com/i.test(url), sp = /\/_api\//i.test(url); if (!g && !sp) return null;
     if (/\/me\/sendMail/i.test(url)) return { k: 'mail' };
     const m = url.match(/\/lists\/([0-9a-f-]{36}|[^/?]+)\/items/i) || url.match(/lists\(guid'([0-9a-f-]{36})'\)\/items/i), list = m ? decodeURIComponent(m[1]) : '';
@@ -217,6 +218,7 @@
     const t = String(el.textContent || el.value || el.title || '').replace(/\s+/g, ' ').trim(); if (!t) return false; if (SAVE_WORDS.test(t) && !NO_WORDS.test(t.replace(SAVE_WORDS, ''))) return true; return SAVE_WORDS.test(t) && !/^(\W*)(reload|refresh|download|excel|export|print)\b/i.test(t); }
   async function gate(c, j) {
     if (!j.user) return true;                       /* background work: no question */
+    if (window.__opNoAsk && window.__opNoAsk > Date.now()) return true;   /* the user already chose Append / Overwrite for this upload */
     try { const ln = String(listName(c.list) || c.list || ''); if (c.k === 'w' && (AUTO_LISTS.test(ln) || AUTO_LISTS.test(String(c.list || '')))) return true; } catch (e) {}
     if (!c.del && !intent()) return true;           /* the click was not a save / upload button → automatic work, no question (deletes always ask) */
     if (noAt && lastUser <= noAt) return false;      /* already cancelled for this action */
