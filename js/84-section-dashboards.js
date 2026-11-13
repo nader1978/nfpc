@@ -445,7 +445,7 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
     new MutationObserver(() => { const on = v.classList.contains('active'); const s = ST[id] || (ST[id] = {}); if (on && !s.on) { s.on = true; try { CFG[id].load && CFG[id].load(); } catch (e) {} mode(id, false); } else if (!on && s.on) { s.on = false; if (s.open) mode(id, false); } }).observe(v, { attributes: true, attributeFilter: ['class'] });
     if (v.classList.contains('active')) { (ST[id] = ST[id] || {}).on = true; mode(id, false); } }
   /* live refresh while the dashboard is on screen */
-  setInterval(() => Object.keys(CFG).forEach(id => { const s = ST[id]; if (!s || !s.on || s.open || (window.DLAY && DLAY.busy(id))) return; let g = ''; try { g = CFG[id].sig(); } catch (e) {} if (g !== s.sig) draw(id); }), 2500);
+  setInterval(() => Object.keys(CFG).forEach(id => { const s = ST[id]; if (!s || !s.on || s.open || (window.DLAY && DLAY.busy(id)) || document.fullscreenElement || document.querySelector('.lm-full')) return; let g = ''; try { g = CFG[id].sig(); } catch (e) {} if (g !== s.sig) draw(id); }), 2500);
   const boot = () => Object.keys(CFG).forEach(wire); if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot(); setTimeout(boot, 1500);
   window.SDB = { open: (id, tab) => mode(id, true, tab), dash: id => mode(id, false), draw };
 })();
