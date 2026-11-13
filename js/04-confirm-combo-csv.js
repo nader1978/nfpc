@@ -469,3 +469,10 @@ function attachFieldSuggestions(inputEl, fieldName, poolOverride, listNameArg) {
   });
 }
 
+
+/* Fast read of a big transaction list: only the rows from `since` (YYYY-MM-DD) on, filtered by SharePoint on the date column; if that is not possible (column missing / list over the threshold) the whole list is read. Returns { items, win } — win = the window start that was really applied ('' = whole list). */
+async function fetchWindowItems(siteId, listId, token, dateCol, since, onProgress) {
+  try { const cols = await fetchColumns(siteId, listId, token), nzs = x => String(x || '').toLowerCase().replace(/_x0020_/g, '').replace(/[^a-z0-9]/g, ''), c = cols.find(x => nzs(x.name) === nzs(dateCol)); if (!c) throw new Error('no ' + dateCol + ' column');
+    const items = await exp_fetchFilteredItems(siteId, listId, token, `fields/${c.name} ge '${since}T00:00:00Z'`, onProgress); return { items, win: since }; }
+  catch (e) { console.warn('Date-filtered read failed, reading the whole list —', e.message); return { items: await fetchAllItems(siteId, listId, token, onProgress), win: '' }; }
+}

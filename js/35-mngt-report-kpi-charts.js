@@ -184,6 +184,7 @@ function mwFilterUi(except) {
     const old = w.querySelector('.combo'); if (old) old.remove(); const vals = mwOptions(k); w.appendChild(buildMultiCombo(mw.f[k].filter(v => vals.includes(v)), vals, arr => { mw.f[k] = arr; mwPrune(); mwFilterUi(k); mwRenderReport(); }, { placeholder: 'All' })); });
 }
 function mwRenderReport() {
+  if (mw.loaded && !mw.busyW && mw.winFrom && mw.f.from && mw.f.from < mw.winFrom) { mw.reqFrom = mw.f.from; mwLoad(true); return; }
   const pane = PLQ('#view-mgw .mg-pane[data-p="rep"]'); if (!pane) return;
   if (!mw.rows.length) { PLQ('#mwKpis').innerHTML = `<div class="pl-empty" style="grid-column:1/-1">${mwSetupOk() ? 'No report data yet — open <strong>🔌 Lists &amp; mapping</strong>, pick the lists and click <strong>Load report data</strong>.' : (mw.cfg.list.daily ? 'No report data yet — press <strong>Refresh</strong> to load it.' : 'The administrator has not set up the report lists yet.')}</div>`; PLQ('#mwGrid').innerHTML = ''; PLQ('#mwTable').innerHTML = ''; return; }
   if (document.querySelector('#mwFHost').dataset.sig !== mw.rows.length + '|' + mw.loaded) mwFilterUi(); PLQ('#mwFrom').value = mw.f.from; PLQ('#mwTo').value = mw.f.to; PLQ('#mwBy').value = mw.cfg.by;

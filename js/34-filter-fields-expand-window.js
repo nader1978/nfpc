@@ -422,11 +422,13 @@ function mwMapRender(w) {
   MW_FIELDS[w].forEach(f => { const tr = document.createElement('tr'); tr.innerHTML = `<td><strong>${plEsc(f.label)}</strong>${f.req ? ' <span style="color:#c0392b">*</span>' : ''}</td><td class="combo-cell"></td>`; tr.querySelector('.combo-cell').appendChild(buildCombo(mw.cfg.map[w][f.key] || SKIP_VALUE, cols, nv => { mw.cfg.map[w][f.key] = nv; mwSaveCfg(); })); host.appendChild(tr); });
 }
 /* ---------- loading ---------- */
-async function mwReadList(w, say) {
+async function mwReadList(w, say, since) {
   const token = getGlobalAccessToken(), siteUrl = getGlobalSiteUrl(), name = mw.cfg.list[w]; if (!name) return null;
   if (!isListVisible(name)) throw new Error(`No permission to access "${name}"`);
-  say(`Reading "${name}"…`); const a = await resolveIds(siteUrl, name, token);
-  return await fetchAllItems(a.siteId, a.listId, token, n => say(`"${name}": ${plF(n)} rows…`));
+  say(`Reading "${name}"…`); const a = await resolveIds(siteUrl, name, token), prog = n => say(`"${name}": ${plF(n)} rows…`);
+  if (w === 'daily' && since && mw.cfg.map.daily.date && mw.cfg.map.daily.date !== SKIP_VALUE) { const r = await fetchWindowItems(a.siteId, a.listId, token, mw.cfg.map.daily.date, since, prog); mw.winFrom = r.win; return r.items; }
+  if (w === 'daily') mw.winFrom = '';
+  return await fetchAllItems(a.siteId, a.listId, token, prog);
 }
 async function mwLoad(silent) {
   const st = PLQ('#mwLoadStatus'), say = (t, c) => { st.className = 'text-sm'; st.textContent = t; st.style.color = c === 'e' ? '#c0392b' : ''; }, prog = PLQ('#mwProg'), token = getGlobalAccessToken(), siteUrl = getGlobalSiteUrl();
@@ -440,12 +442,14 @@ async function mwLoad(silent) {
   prog.style.display = 'inline-block'; prog.removeAttribute('value'); PLQ('#mwLoadBtn').disabled = true;
   try {
     const g = (w, k) => { const c = mw.cfg.map[w][k]; return c && c !== SKIP_VALUE ? c : null; };
-    const dItems = await mwReadList('daily', say), M = mw.cfg.map.daily, gd = k => g('daily', k); let bad = 0; const rows = [];
+    const d0 = new Date(); d0.setDate(d0.getDate() - 92); const dYmd = x => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'), since = mw.reqFrom && mw.reqFrom < dYmd(d0) ? mw.reqFrom : dYmd(d0); mw.reqFrom = ''; mw.busyW = true;
+    const pW = mw.cfg.list.whs ? mwReadList('whs', say) : null, pT = mw.cfg.list.trgt ? mwReadList('trgt', say) : null; if (pW) pW.catch(() => {}); if (pT) pT.catch(() => {});
+    const dItems = await mwReadList('daily', say, since), M = mw.cfg.map.daily, gd = k => g('daily', k); let bad = 0; const rows = [];
     dItems.forEach(it => { const f = it.fields || {}, date = mdpDate(f[gd('date')] instanceof Object ? '' : f[gd('date')]); if (!date) { bad++; return; }
       rows.push({ date, wh: mwS(f[gd('wh')]), area: gd('area') ? mwS(f[gd('area')]) : '', region: gd('region') ? mwS(f[gd('region')]) : '', out: gd('out') ? mwN(f[gd('out')]) : 0, inb: gd('inb') ? mwN(f[gd('inb')]) : 0, ret: gd('ret') ? mwN(f[gd('ret')]) : 0, orders: gd('orders') ? mwN(f[gd('orders')]) : 0, nh: gd('nh') ? mwN(f[gd('nh')]) : 0, not: gd('not') ? mwN(f[gd('not')]) : 0, wo: gd('wo') ? mwN(f[gd('wo')]) : 0, po: gd('po') ? mwN(f[gd('po')]) : 0, vol: gd('vol') ? mwN(f[gd('vol')]) : 0, whid: gd('whid') ? mwS(f[gd('whid')]).replace(/\.0+$/, '') : '', cr: it.createdDateTime || f.Created || '', by: (it.createdBy && it.createdBy.user && it.createdBy.user.displayName) || '' }); });
     rows.forEach(r => { r.ot = r.not + r.wo + r.po; r.hrs = r.nh + r.ot; }); mw.rows = rows; mw.whs = []; mw.trg = [];
-    if (mw.cfg.list.whs) { const items = await mwReadList('whs', say); items.forEach(it => { const f = it.fields || {}, wh = mwS(f[g('whs', 'wh')]); if (wh) mw.whs.push({ wh, bud: mwN(f[g('whs', 'bud')]), act: mwN(f[g('whs', 'act')]), cap: g('whs', 'cap') ? mwNull(f[g('whs', 'cap')]) : null }); }); }
-    if (mw.cfg.list.trgt) { const items = await mwReadList('trgt', say); items.forEach(it => { const f = it.fields || {}, o = { area: mwS(f[g('trgt', 'area')]), region: mwS(f[g('trgt', 'region')]), code: mwS(f[g('trgt', 'code')]), prod: g('trgt', 'prod') ? mwNull(f[g('trgt', 'prod')]) : null, tot: g('trgt', 'tot') ? mwNull(f[g('trgt', 'tot')]) : null }; if (o.prod != null || o.tot != null) mw.trg.push(o); }); }
+    if (mw.cfg.list.whs) { const items = await pW; items.forEach(it => { const f = it.fields || {}, wh = mwS(f[g('whs', 'wh')]); if (wh) mw.whs.push({ wh, bud: mwN(f[g('whs', 'bud')]), act: mwN(f[g('whs', 'act')]), cap: g('whs', 'cap') ? mwNull(f[g('whs', 'cap')]) : null }); }); }
+    if (mw.cfg.list.trgt) { const items = await pT; items.forEach(it => { const f = it.fields || {}, o = { area: mwS(f[g('trgt', 'area')]), region: mwS(f[g('trgt', 'region')]), code: mwS(f[g('trgt', 'code')]), prod: g('trgt', 'prod') ? mwNull(f[g('trgt', 'prod')]) : null, tot: g('trgt', 'tot') ? mwNull(f[g('trgt', 'tot')]) : null }; if (o.prod != null || o.tot != null) mw.trg.push(o); }); }
     mw.util = []; mw.utilErr = mw.utilErr0 || ''; mw.utilErr0 = ''; if (mw.cfg.list.util && !mw.utilErr) { if (!mwMapOk('util')) mw.utilErr = 'map WHs_ID and the date of “' + mw.cfg.list.util + '”'; else try { mw.util = mwUtilRows(await mwReadList('util', say)); } catch (e) { mw.utilErr = e.message; } }
     mw.sp = { rows, whs: mw.whs, trg: mw.trg };
     mw.loaded = Date.now(); mw.f.area = []; mw.f.region = []; mw.f.wh = []; document.querySelector('#mwFHost').dataset.sig = '';
@@ -453,7 +457,7 @@ async function mwLoad(silent) {
     say(`✅ ${plF(rows.length)} daily rows (${ds[0] || '—'} → ${ds[ds.length - 1] || '—'})${mw.cfg.list.whs ? ` · ${plF(mw.whs.length)} headcount rows` : ''}${mw.cfg.list.trgt ? ` · ${plF(mw.trg.length)} target rows` : ''}${mw.cfg.list.util ? (mw.utilErr ? ` · ⚠ utilization: ${mw.utilErr}` : ` · ${plF(mw.util.length)} utilization rows`) : ''}${bad ? ` · ${bad} rows without a valid date skipped` : ''}`);
     addActivity('download', `Management daily report loaded from "${mw.cfg.list.daily}"`);
     if (rows.length) { mw.tab = 'rep'; } mwRefresh();
-  } catch (e) { say('✘ ' + e.message, 'e'); } finally { prog.style.display = 'none'; PLQ('#mwLoadBtn').disabled = false; }
+  } catch (e) { say('✘ ' + e.message, 'e'); } finally { mw.busyW = false; prog.style.display = 'none'; PLQ('#mwLoadBtn').disabled = false; }
 }
 /* ---------- calculations ---------- */
 function mwView() { const f = mw.f; return mw.rows.filter(r => (!f.from || r.date >= f.from) && (!f.to || r.date <= f.to) && (!f.area.length || f.area.includes(r.area)) && (!f.region.length || f.region.includes(r.region)) && (!f.wh.length || f.wh.includes(r.wh))); }
