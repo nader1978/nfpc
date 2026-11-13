@@ -1,0 +1,46 @@
+/* ============================================================
+   RACK LABELS — PRINT PAGE: pick the warehouse location(s) → print the rack labels of exactly those racks
+   Racks come from Store_Racks_Setup_tbl (SRK); printing / design is the existing label designer (RKL).
+   ============================================================ */
+(function () {
+  const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const S = { f: { whs: [], loc: [], area: [], level: [], q: '', from: '', to: '' }, off: new Set(), loaded: false, busy: false, limit: 300 };
+  const SR = () => (typeof SRK !== 'undefined' ? SRK : null);
+  const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+  /* aisle / bay / level of a rack row: its own columns, else Rack_3D_No (aisle-bay-level-pos), else the code (…A5-B01-L1) */
+  function parts(r) { const p = String(r.r3d || '').split('-').map(x => parseInt(x, 10)), c = r.code, m = re => { const x = re.exec(c); return x ? +x[1] : ''; };
+    const aisle = num(r.aisle) || (!isNaN(p[0]) && p.length >= 3 ? p[0] : '') || m(/(?:^|[-_ ])(?:A|R)(\d+)/i), bay = num(r.bay) || (!isNaN(p[1]) && p.length >= 3 ? p[1] : '') || m(/B(\d+)/i), level = num(r.level) || (!isNaN(p[2]) && p.length >= 3 ? p[2] : '') || m(/(?:^|[-_ ])L(\d+)/i); return { aisle, bay, level }; }
+  const rows = () => { const R = (SR() && SR().rows) || []; R.forEach(r => { if (!r._p) r._p = parts(r); }); return R; };
+  const pass = (r, skip) => { const f = S.f;
+    return (skip === 'whs' || !f.whs.length || f.whs.includes(r.whs || '—')) && (skip === 'loc' || !f.loc.length || f.loc.includes(r.loc || '—')) && (skip === 'area' || !f.area.length || f.area.includes(r.area || '—')) && (skip === 'level' || !f.level.length || f.level.includes(String(r._p.level || '—')))
+      && (!f.q || (r.code + ' ' + r.loc + ' ' + r.area + ' ' + r.whs).toLowerCase().includes(f.q.toLowerCase())) && (!num(f.from) || +r._p.bay >= num(f.from)) && (!num(f.to) || +r._p.bay <= num(f.to)); };
+  const shown = () => rows().filter(r => pass(r)), picked = () => shown().filter(r => !S.off.has(r.code));
+  function frame() { const v = Q('#view-rklp'); if (!v || v._i) return; v._i = 1;
+    v.innerHTML = `<div class="card"><div class="card-header"><div class="card-title">🏷 Rack Labels — print by warehouse location <span class="text-sm" style="font-weight:400">— racks of <span id="rlpSrc">Store_Racks_Setup_tbl</span> · choose the location(s), review, then print</span></div>
+        <div class="btn-row"><button class="secondary small" type="button" data-rl="re">🔄 Re-read racks</button><button class="success" type="button" data-rl="print" id="rlpPrint">🖨 Print labels</button></div></div>
+      <div class="card-desc">The label design, size, barcode and paper layout are set in the designer that opens when you press <b>Print labels</b> (it remembers your last settings).</div>
+      <div id="rlpFilt" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:6px 0 10px"></div>
+      <div id="rlpSum" class="text-sm" style="margin:4px 0 8px"></div><div id="rlpTbl"></div></div>`;
+    v.addEventListener('click', e => { const b = e.target.closest('[data-rl]'); if (!b) return; const a = b.dataset.rl;
+      if (a === 're') return load(true);
+      if (a === 'all') { S.off.clear(); return body(); } if (a === 'none') { shown().forEach(r => S.off.add(r.code)); return body(); } if (a === 'more') { S.limit += 300; return body(); } if (a === 'clr') { S.f = { whs: [], loc: [], area: [], level: [], q: '', from: '', to: '' }; S.off.clear(); return filt(); }
+      if (a === 'print') { const L = picked(); if (!L.length) return alert('No racks selected — pick a warehouse location first.'); if (!window.RKL) return alert('The label designer is not loaded.');
+        RKL.open(L.map(r => ({ Rack_Code: r.code, Location_Desc: r.loc, WHs_Desc: r.whs, Area_Desc: r.area, Default_Capacity: r.cap, Rack_3D_No: r.r3d, Location_ID: r.locId })), null); } });
+    v.addEventListener('change', e => { const c = e.target.closest('input[data-pk]'); if (c) { if (c.checked) S.off.delete(c.dataset.pk); else S.off.add(c.dataset.pk); const n = Q('#rlpPrint'); if (n) n.textContent = '🖨 Print labels (' + picked().length + ')'; sum(); } });
+    v.addEventListener('input', e => { if (e.target.dataset.k) { S.f[e.target.dataset.k] = e.target.value; S.limit = 300; clearTimeout(frame.t); frame.t = setTimeout(body, 200); } }); }
+  function filt() { const box = Q('#rlpFilt'); if (!box) return; const K = [['whs', '🏭 Warehouse', r => r.whs || '—'], ['loc', '📍 Warehouse location (store)', r => r.loc || '—'], ['area', 'Area', r => r.area || '—'], ['level', 'Level', r => String(r._p.level || '—')]];
+    if (!box.dataset.b) { box.dataset.b = 1; box.innerHTML = K.map(([k, l]) => `<div data-f="${k}" style="min-width:200px;max-width:320px;flex:1"><div class="text-sm" style="font-weight:600;margin-bottom:2px">${l}</div></div>`).join('') + `<div style="min-width:180px"><div class="text-sm" style="font-weight:600;margin-bottom:2px">Search</div><input type="search" data-k="q" placeholder="🔍 rack code…" style="margin:0"></div><div><div class="text-sm" style="font-weight:600;margin-bottom:2px">Bay from – to</div><input type="number" data-k="from" style="width:70px;margin:0"> – <input type="number" data-k="to" style="width:70px;margin:0"></div><button class="ghost small" type="button" data-rl="clr">✕ Clear</button>`; }
+    box.querySelectorAll('[data-k]').forEach(i => { i.value = S.f[i.dataset.k] || ''; });
+    K.forEach(([k, , fn]) => { const h = box.querySelector(`[data-f="${k}"]`); const old = h.querySelector('.combo'); if (old) old.remove(); const vals = [...new Set(rows().filter(r => pass(r, k)).map(fn))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })); S.f[k] = S.f[k].filter(v => vals.includes(v));
+      try { h.appendChild(buildMultiCombo(S.f[k], vals, arr => { S.f[k] = arr; S.limit = 300; filt(); body(); }, { placeholder: 'All' })); } catch (e) { console.error(e); } });
+    body(); }
+  const sum = () => { const el = Q('#rlpSum'); if (!el) return; const a = shown(), p = picked(); el.innerHTML = S.busy ? '⏳ Reading the racks…' : `<b>${p.length}</b> of ${a.length} filtered rack(s) selected for printing · ${rows().length} racks in total${(SR() && SR().hidden) ? ' · ' + SR().hidden + ' hidden (other Location IDs)' : ''}`; };
+  function body() { const t = Q('#rlpTbl'); if (!t) return; const A = shown(), pb = Q('#rlpPrint'); if (pb) pb.textContent = '🖨 Print labels (' + picked().length + ')'; sum();
+    if (S.busy) { t.innerHTML = '<div style="padding:40px;text-align:center" class="text-sm">⏳ Reading the racks…<div style="height:8px;border-radius:99px;background:var(--border,#e2e8f0);overflow:hidden;max-width:420px;margin:12px auto"><i style="display:block;height:100%;width:40%;border-radius:99px;background:linear-gradient(90deg,#7c3aed,#06b6d4);animation:dcslide 1.2s ease-in-out infinite"></i></div></div>'; return; }
+    if (SR() && !SR().ok && SR().err) { t.innerHTML = `<div style="padding:24px;text-align:center"><b>⚠ ${esc(SR().err)}</b></div>`; return; }
+    t.innerHTML = `<div class="btn-row" style="margin:0 0 6px"><button class="ghost small" type="button" data-rl="all">☑ Select all shown</button><button class="ghost small" type="button" data-rl="none">☐ Unselect all shown</button></div>
+      <div class="table-wrap" style="max-height:62vh;overflow:auto"><table class="fd-tbl" style="width:100%"><thead><tr><th></th><th>Rack code</th><th>Warehouse location</th><th>Warehouse</th><th>Area</th><th>Aisle</th><th>Bay</th><th>Level</th><th class="n">Capacity</th></tr></thead><tbody>${A.slice(0, S.limit).map(r => `<tr><td><input type="checkbox" data-pk="${esc(r.code)}"${S.off.has(r.code) ? '' : ' checked'}></td><td><b>${esc(r.code)}</b></td><td>${esc(r.loc)}</td><td>${esc(r.whs)}</td><td>${esc(r.area)}</td><td>${esc(r._p.aisle)}</td><td>${esc(r._p.bay)}</td><td>${esc(r._p.level)}</td><td class="n">${esc(r.cap)}</td></tr>`).join('') || '<tr><td colspan="9" class="pl-empty" style="padding:16px">No racks match — change the filters.</td></tr>'}</tbody></table></div>${A.length > S.limit ? `<div class="btn-row" style="margin-top:6px"><button class="ghost small" type="button" data-rl="more">Show 300 more (${A.length - S.limit} left)</button><span class="text-sm">— all ${A.length} filtered racks are printed, not only the ones listed.</span></div>` : ''}`; }
+  async function load(force) { frame(); if (S.busy) return; S.busy = true; body(); try { await srkLoad(!!force); } catch (e) {} S.busy = false; S.loaded = true; filt(); }
+  const nav = Q('.nav-item[data-view="rklp"]'); if (nav) nav.addEventListener('click', () => { frame(); if (!S.loaded) load(false); else filt(); });
+  window.RackPrintPage = { load, S };
+})();
