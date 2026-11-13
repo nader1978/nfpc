@@ -1,19 +1,24 @@
 /* ---------- KPI strip ---------- */
-const mwKpi = (l, v, s, c) => `<div class="pl-kpi"${c ? ` style="border-left:4px solid ${c}"` : ''}><div class="lbl">${plEsc(l)}</div><div class="val">${v}</div><div class="sub">${s || ''}</div></div>`;
+const mwKpi = (l, v, s, c, rows, cols) => { let d = ''; try { d = rows && rows.length && window.SDBD ? SDBD.a(l + ' · ' + rows.length, rows, cols) : ''; } catch (e) { } return `<div class="pl-kpi${d ? ' kp-dl' : ''}"${d}${c ? ` style="border-left:4px solid ${c}"` : ''}><div class="lbl">${plEsc(l)}</div><div class="val">${v}</div><div class="sub">${s || ''}</div></div>`; };
+/* source lists behind the KPI cards: the daily records (Mngt_Daily_Data) and a per-warehouse summary */
+const MW_RC = [['Date', r => r.date, 1], ['Area', r => r.area], ['Region', r => r.region], ['Warehouse', r => r.wh], ['Volume', r => r.vol], ['Working hrs', r => r.hrs], ['OT hrs', r => r.ot], ['Orders', r => r.orders], ['Entered by', r => r.by]];
+const MW_WC = [['Warehouse', r => r.wh, 1], ['Area', r => r.area], ['Region', r => r.region], ['Records', r => r.n], ['Volume', r => r.vol && Math.round(r.vol)], ['Working hrs', r => r.hrs && Math.round(r.hrs * 10) / 10], ['OT hrs', r => r.ot && Math.round(r.ot * 10) / 10], ['Productivity', r => r.prod != null ? Math.round(r.prod * 10) / 10 : ''], ['Target', r => r.tProd != null ? Math.round(r.tProd * 10) / 10 : ''], ['Prod %', r => r.prodPct != null ? Math.round(r.prodPct) + '%' : ''], ['OT %', r => r.otPct != null ? Math.round(r.otPct * 10) / 10 + '%' : ''], ['OT target', r => r.tOT != null ? Math.round(r.tOT * 10) / 10 + '%' : ''], ['Headcount', r => r.act], ['Budget', r => r.bud]];
 const mwPct = (v, d) => v == null ? '—' : plF(v, d == null ? 1 : d) + '%';
+function mwWhRows() { try { const rows = mwView(), T = mwTargets(), WM = mwWhsMap(), by = new Map(); rows.forEach(r => { const k = r.wh || '—'; (by.get(k) || by.set(k, []).get(k)).push(r); }); return [...by.entries()].sort((a, b) => mdpNat(a[0], b[0])).map(([wh, L]) => Object.assign({ wh, area: L[0].area, region: L[0].region }, mwAgg(L, T, WM, { area: L[0].area, region: L[0].region, wh }))); } catch (e) { console.error(e); return []; } }
 function mwKpis(a) {
+  const RR = mwView(), WR = mwWhRows();
   const T = plT(), ok = a.otDiff == null ? null : a.otDiff <= 0, f = (v, d) => v == null ? '—' : plF(v, d);
-  PLQ('#mwKpis').innerHTML = mwKpi('Productivity %', kpiArrow(a.prodPct, 100, true, 0) + mwPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit)
-    + mwKpi('Working volume', plF(a.vol), 'Ltrs / Kg')
-    + mwKpi('Working hrs', plF(a.hrs, 1), `${plF(a.whN)} warehouse(s)`)
-    + mwKpi('Working OT hrs', plF(a.ot, 1), `OT ${mwPct(a.otPct)} of working hrs${a.tOT != null ? ` · target ${mwPct(a.tOT)}` : ''}`)
-    + mwKpi('Over time % vs target', a.otDiff == null ? '—' : kpiArrow(a.otDiff, 0, false, 1) + (a.otDiff > 0 ? '+' : '') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit)
-    + mwKpi('Over time % (relative)', a.otDiff2 == null ? '—' : kpiArrow(a.otDiff2, 0, false, 0) + (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit)
-    + mwKpi('Orders processed', plF(a.orders), `${plF(a.n)} daily record(s)`)
-    + (a.bud != null ? mwKpi('Headcount', `${plF(a.act)} <span style="font-size:14px;font-weight:500;color:var(--gray-500)">/ ${plF(a.bud)}</span>`, `actual / budget · ${a.act - a.bud >= 0 ? '+' : ''}${plF(a.act - a.bud)}`, a.act > a.bud ? T.warn : null) : '')
+  PLQ('#mwKpis').innerHTML = mwKpi('Productivity %', kpiArrow(a.prodPct, 100, true, 0) + mwPct(a.prodPct, 0), a.prod != null ? `${plF(a.prod, 1)} per hour${a.tProd ? ` · target ${plF(a.tProd, 1)}` : ''}` : 'no hours', a.prodPct == null ? null : a.prodPct >= 100 ? T.good : a.prodPct >= 80 ? T.warn : T.crit, WR, MW_WC)
+    + mwKpi('Working volume', plF(a.vol), 'Ltrs / Kg', null, RR, MW_RC)
+    + mwKpi('Working hrs', plF(a.hrs, 1), `${plF(a.whN)} warehouse(s)`, null, RR, MW_RC)
+    + mwKpi('Working OT hrs', plF(a.ot, 1), `OT ${mwPct(a.otPct)} of working hrs${a.tOT != null ? ` · target ${mwPct(a.tOT)}` : ''}`, null, RR, MW_RC)
+    + mwKpi('Over time % vs target', a.otDiff == null ? '—' : kpiArrow(a.otDiff, 0, false, 1) + (a.otDiff > 0 ? '+' : '') + plF(a.otDiff, 1) + ' pp', a.otDiff == null ? 'no OT target' : ok ? '✔ within target' : '✖ above target', ok == null ? null : ok ? T.good : T.crit, WR, MW_WC)
+    + mwKpi('Over time % (relative)', a.otDiff2 == null ? '—' : kpiArrow(a.otDiff2, 0, false, 0) + (a.otDiff2 > 0 ? '+' : '') + plF(a.otDiff2, 0) + '%', 'difference ÷ OT target', ok == null ? null : ok ? T.good : T.crit, WR, MW_WC)
+    + mwKpi('Orders processed', plF(a.orders), `${plF(a.n)} daily record(s)`, null, RR, MW_RC)
+    + (a.bud != null ? mwKpi('Headcount', `${plF(a.act)} <span style="font-size:14px;font-weight:500;color:var(--gray-500)">/ ${plF(a.bud)}</span>`, `actual / budget · ${a.act - a.bud >= 0 ? '+' : ''}${plF(a.act - a.bud)}`, a.act > a.bud ? T.warn : null, WR, MW_WC) : '')
     + (a.entered ? (() => { const e = a.entered, d = new Date(e.cr), loc = isNaN(d) ? '' : d.toLocaleDateString('en-CA'), tm = isNaN(d) ? '' : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        return mwKpi('Latest entry date', loc || a.latest || '—', `last record entered in SharePoint at ${tm}${e.by ? ' by ' + escapeHtml(e.by) : ''}<br>record date ${escapeHtml(e.date)} · ${escapeHtml(e.wh || '')}${a.latest && a.latest !== e.date ? `<br><span title="the highest record date in the selection">latest record date ${escapeHtml(a.latest)}</span>` : ''}`); })()
-      : mwKpi('Latest entry date', a.latest || '—', 'most recent record in the selection'));
+        return mwKpi('Latest entry date', loc || a.latest || '—', `last record entered in SharePoint at ${tm}${e.by ? ' by ' + escapeHtml(e.by) : ''}<br>record date ${escapeHtml(e.date)} · ${escapeHtml(e.wh || '')}${a.latest && a.latest !== e.date ? `<br><span title="the highest record date in the selection">latest record date ${escapeHtml(a.latest)}</span>` : ''}`, null, RR.filter(r => r.date === a.latest), MW_RC); })()
+      : mwKpi('Latest entry date', a.latest || '—', 'most recent record in the selection', null, RR.filter(r => r.date === a.latest), MW_RC));
 }
 /* ---------- charts ---------- */
 function mwGauge(host, ctx) {
