@@ -18,6 +18,7 @@
   const FKT = { comp: ['region', 'driver', 'status'], use: ['region', 'driver', 'status', 'result'], det: ['region', 'driver', 'status'], ft: ['driver', 'trailer', 'unit'], fr: ['driver', 'trailer', 'unit'] };
   const FLAB = { region: 'Region', driver: 'Driver', status: 'Status', result: 'Result', trailer: 'Trailer', unit: 'Unit' };
   { const t = new Date(); S.to = ymdL(t); t.setDate(t.getDate() - 6); S.from = ymdL(t); }
+  const GRP = () => { const t = (typeof lp !== 'undefined' && lp.tab) || 'dcomp'; return t === 'fbt' ? ['ft'] : t === 'frf' ? ['fr'] : ['comp', 'use', 'det']; };
   const isFuel = () => S.tab === 'ft' || S.tab === 'fr';
 
   /* ---------- driver names: LoginUserList (EmpID = the file no. of the trip) ---------- */
@@ -109,7 +110,7 @@
   const TC = [['Date', r => r.day, 1], ['Driver', r => r.driver], ['File no.', r => r.file], ['Region', r => r.region], ['Unit', r => r.unit], ['Trailer', r => r.trailer], ['From', r => r.from], ['To', r => r.to], ['Status', r => st(r)], ['User', r => r.user]];
   const UC = [['Date', o => o.day, 1], ['Driver', o => o.driver], ['File no.', o => o.file], ['Region', o => o.region], ['Assigned', o => o.n], ['Updated', o => o.upd], ['Result', o => RES[o.res][0]], ['User', o => o.user]];
   const FC = [['Date', r => r.day, 1], ['Driver', r => r.driver], ['EMP ID', r => r.emp], ['Unit', r => r.unit], ['Trailer', r => r.trailer], ['Litres', r => r.ltr], ['ODO', r => r.odo], ['KM', r => r.km], ['Trips that day', r => r.trips], ['Remarks', r => r.rem]];
-  function body(retab) { const el = Q('#dcBox'); if (!el) return; Q('#dcTabs').innerHTML = TABS.map(([k, l]) => `<button type="button" data-dt="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join(''); if (retab) combos(); else if (!Q('#dcFilt .dc-f')) combos();
+  function body(retab) { const el = Q('#dcBox'); if (!el) return; { const g = GRP(); if (!g.includes(S.tab)) { S.tab = g[0]; retab = true; } } Q('#dcTabs').style.display = GRP().length > 1 ? '' : 'none'; Q('#dcTabs').innerHTML = TABS.filter(t => GRP().includes(t[0])).map(([k, l]) => `<button type="button" data-dt="${k}" class="${S.tab === k ? 'on' : ''}">${l}</button>`).join(''); if (retab) combos(); else if (!Q('#dcFilt .dc-f')) combos();
     const fuel = isFuel(); let kp = '', h = '';
     if (!fuel) { const R = shown(), C = comp(R), due = C.reduce((a, o) => a + o.due, 0), cnt = s => R.filter(r => st(r) === s), U = daily(R), dd = U.filter(o => o.res !== 'Upcoming'), UD = dailyF(R), res = k => dd.filter(o => o.res === k);
       kp = S.tab === 'use' ? K('Driver-days', dd.length, 'assigned and due', dd, UC) + K('✔ Used the system', res('Used').length, 'updated every trip', res('Used'), UC) + K('◐ Partly', res('Partly').length, 'updated some trips', res('Partly'), UC) + K("✖ Didn't use", res("Didn't use").length, 'no trip updated', res("Didn't use"), UC) + K('Use rate', (pct(res('Used').length, dd.length) ?? '—') + (dd.length ? '%' : ''), 'driver-days fully updated')
@@ -131,7 +132,7 @@
   async function load() { const el = frame(); if (!el) return; S.busy = true; body(true); Q('#dcTbl').innerHTML = '<div style="padding:40px;text-align:center" class="text-sm">⏳ Reading the trips and fuel refills ' + S.from + ' → ' + S.to + '…</div>';
     try { await read(); S.busy = false; body(true); } catch (e) { S.busy = false; Q('#dcTbl').innerHTML = `<div style="padding:30px;text-align:center"><b>⚠ ${esc(e.message)}</b></div>`; } }
   /* called by Logistics Trip Planning when the tab is shown */
-  function show() { const el = frame(); if (!el) return; if (!S.loaded && !S.busy) load(); else body(false); }
+  function show() { const el = frame(); if (!el) return; { const g = GRP(); if (!g.includes(S.tab)) S.tab = g[0]; } if (!S.loaded && !S.busy) load(); else body(false); }
 
   /* the old "Actions → Driver compliance" button just goes to the tab */
   setInterval(() => { const act = Q('#lpActBody'), ref = act && (act.querySelector('[data-rv3]') || act.querySelector('[data-a="imp-rdy"]')); if (!ref || act.querySelector('[data-dc0]')) return;

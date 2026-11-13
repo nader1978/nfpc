@@ -428,7 +428,7 @@ body.ds-elegant .ds-k.ds-k small.sdb-pill,body.ds-elegant .ds-k.ds-k small{opaci
   const ST = {};
   function host(v) { let h = v.querySelector(':scope > .sdb-host'); if (!h) { h = document.createElement('div'); h.className = 'sdb-host'; v.insertBefore(h, v.firstChild); } return h; }
   const pageNodes = v => [...v.children].filter(n => !n.classList.contains('sdb-host') && !n.classList.contains('dst-ov') && n.nodeType === 1);
-  function tabList(id) { const c = CFG[id], v = document.getElementById('view-' + id), bar = v && v.querySelector(c.tabs); const L = bar ? [...bar.querySelectorAll('button[data-t]')].filter(b => !b.disabled && b.offsetParent !== null || b.closest('.sdb-hide')).map(b => [b.dataset.t, b.textContent.trim()]) : []; return L.slice(0, 8); }
+  function tabList(id) { const c = CFG[id], v = document.getElementById('view-' + id), bar = v && v.querySelector(c.tabs); const L = bar ? [...bar.querySelectorAll('button[data-t]')].filter(b => !b.disabled && b.offsetParent !== null || b.closest('.sdb-hide')).map(b => [b.dataset.t, b.textContent.trim()]) : []; return L.slice(0, 12); }
   function draw(id) { const c = CFG[id], v = document.getElementById('view-' + id); if (!v) return; const s = ST[id] || (ST[id] = {}); const h = host(v);
     let body; try { body = c.dash(); } catch (e) { console.error(e); body = '<div class="sdb-empty">⚠ ' + esc(e.message) + '</div>'; }
     const tabs = tabList(id); s.sig = c.sig();
