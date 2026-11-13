@@ -114,9 +114,9 @@ const LP_DL = ['fileNo', 'driver', 'regNo', 'trailer', 'trailerType', 'bu', 'fro
 function lpLinkDriver(r, k) { const M = lp.rows.filter(x => !x.auto && x !== r && x.fileNo && x.driver); const h = k === 'fileNo' ? M.find(x => lpNorm(x.fileNo) === lpNorm(r.fileNo)) : M.find(x => lpNorm(x.driver) === lpNorm(r.driver)); if (!h) return; if (k === 'fileNo') r.driver = h.driver; else r.fileNo = h.fileNo; if (h.mobile) r.mobile = h.mobile; }
 const lpEsc = v => plEsc(v == null ? '' : v);
 function lpRender() {
-  const P = q => document.querySelector(q); if (!P('#lpTabs')) return; lpDaysInit(); const tabs = [['plan', '📝 Trip plan'], ['tp', '🚛 Truck planner'], ['tpl', '📄 Daily template'], ['req', '📋 Required trips'], ['ch', '📊 Charts'], ['up', '⬆ Upload to SharePoint']];
-  P('#lpTabs').innerHTML = tabs.map(t => `<button type="button" data-t="${t[0]}" class="${lp.tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join(''); [['plan', '#lpPanePlan'], ['tp', '#lpPaneTP'], ['tpl', '#lpPaneTpl'], ['req', '#lpPaneReq'], ['ch', '#lpPaneCh'], ['up', '#lpPaneUp']].forEach(([k, s]) => { P(s).style.display = lp.tab === k ? '' : 'none'; });
-  lpRenderDays(); if (lp.tab === 'plan') lpRenderPlan(); else if (lp.tab === 'tp') lpRenderTP(); else if (lp.tab === 'tpl') lpRenderTpl(); else if (lp.tab === 'req') lpRenderReq(); else if (lp.tab === 'ch') lpRenderCh(); else lpUpInfo();
+  const P = q => document.querySelector(q); if (!P('#lpTabs')) return; lpDaysInit(); const tabs = [['plan', '📝 Trip plan'], ['tp', '🚛 Truck planner'], ['tpl', '📄 Daily template'], ['req', '📋 Required trips'], ['ch', '📊 Charts'], ['dcomp', '👷 Driver compliance'], ['up', '⬆ Upload to SharePoint']];
+  P('#lpTabs').innerHTML = tabs.map(t => `<button type="button" data-t="${t[0]}" class="${lp.tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join(''); [['plan', '#lpPanePlan'], ['tp', '#lpPaneTP'], ['tpl', '#lpPaneTpl'], ['req', '#lpPaneReq'], ['ch', '#lpPaneCh'], ['dcomp', '#lpPaneDC'], ['up', '#lpPaneUp']].forEach(([k, s]) => { if (!P(s)) return; P(s).style.display = lp.tab === k ? '' : 'none'; });
+  lpRenderDays(); if (lp.tab === 'plan') lpRenderPlan(); else if (lp.tab === 'tp') lpRenderTP(); else if (lp.tab === 'tpl') lpRenderTpl(); else if (lp.tab === 'req') lpRenderReq(); else if (lp.tab === 'ch') lpRenderCh(); else if (lp.tab === 'dcomp') { try { window.driverCompliance && driverCompliance.show(); } catch (e) { console.error(e); } } else lpUpInfo();
 }
 function lpRenderDays() {
   const D = document.querySelector('#lpDays'); if (!D) return; const all = lp.rows, today = lpToday();
