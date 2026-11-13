@@ -9,10 +9,10 @@
 <script>window.ORBIT_MOBILE = 1;   /* mobile.html = the ORBIT mobile app entry page (same files as index.html) */</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=355">
-<link rel="stylesheet" href="css/02-mobile.css?v=355">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=355">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=355">
+<link rel="stylesheet" href="css/01-base.css?v=356">
+<link rel="stylesheet" href="css/02-mobile.css?v=356">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=356">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=356">
 </head>
 <body>
 
@@ -99,6 +99,7 @@
       <div class="nav-section-label">Warehouse Locations</div>
       <div class="nav-item" data-view="locsign" data-perm="locsign"><span class="icon">🪧</span><span>Signboards &amp; Rack Labels</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="rklp" data-perm="locsign"><span class="icon">🏷</span><span>Rack Labels Print</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="rkst" data-perm="users"><span class="icon">🛠</span><span>Rack Setup</span><span class="badge new">ADMIN</span></div>
       <div class="nav-item" data-view="wh3d" data-perm="locsign"><span class="icon">🧊</span><span>3D Warehouse View</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="whov"><span class="icon">🏢</span><span>Warehouses Overview (3D)</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="cinv"><span class="icon">📦</span><span>Consolidated Inventory</span><span class="badge new">NEW</span></div>
@@ -1620,6 +1621,7 @@
 
       <!-- ============ LOCATION SIGNBOARDS & RACK LABELS ============ -->
       <div class="view" id="view-rklp"></div>
+      <div class="view" id="view-rkst"></div>
       <div class="view fd-root" id="view-locsign">
         <div class="card" style="padding-bottom:8px;">
           <div class="card-header"><div class="card-title">🪧 Location Signboards &amp; Rack Labels <span class="text-sm" style="font-weight:400;">— signboards · rack location labels · rack code register (feeds Batch Allocation FEFO)</span></div><div class="pl-tabs" id="rkTabs"></div></div>
@@ -3042,115 +3044,115 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=355"></script>
-<script src="js/01-core-constants-helpers.js?v=355"></script>
-<script src="js/02-users-and-roles-ui.js?v=355"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=355"></script>
-<script src="js/04-confirm-combo-csv.js?v=355"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=355"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=355"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=355"></script>
-<script src="js/08-uom-tracker-attachments.js?v=355"></script>
-<script src="js/08b-list-images.js?v=355"></script>
-<script src="js/08b-uom-normalise.js?v=355"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=355"></script>
-<script src="js/10-refresh-all-good-return.js?v=355"></script>
-<script src="js/11-fefo-filter-engine.js?v=355"></script>
-<script src="js/12-uploader-main-lookup.js?v=355"></script>
-<script src="js/13-uploader-key-computation.js?v=355"></script>
-<script src="js/14-exporter-prefilters.js?v=355"></script>
-<script src="js/15-value-cache-record-editor.js?v=355"></script>
-<script src="js/16-data-editor-download.js?v=355"></script>
-<script src="js/17-mapping-sample-check.js?v=355"></script>
-<script src="js/18-schedules-notifications-settings.js?v=355"></script>
-<script src="js/19-email-results.js?v=355"></script>
-<script src="js/20-prefilters-compose.js?v=355"></script>
-<script src="js/21-planning-filters-charts.js?v=355"></script>
-<script src="js/22-planning-dept.js?v=355"></script>
-<script src="js/23-daily-plan-model-charts.js?v=355"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=355"></script>
-<script src="js/25-fd-plan-trips.js?v=355"></script>
-<script src="js/26-production-vs-distribution.js?v=355"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=355"></script>
-<script src="js/28-oasis-prism-signboards.js?v=355"></script>
-<script src="js/29-staff-roster.js?v=355"></script>
-<script src="js/30-roster-edits-templates.js?v=355"></script>
-<script src="js/31-attendance-leave-planner.js?v=355"></script>
-<script src="js/32-management-daily-report.js?v=355"></script>
-<script src="js/33-logistics-trip-planning.js?v=355"></script>
-<script src="js/34-filter-fields-expand-window.js?v=355"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=355"></script>
-<script src="js/36-attendance-ot-calc.js?v=355"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=355"></script>
-<script src="js/38-mod-switchboard.js?v=355"></script>
-<script src="js/39-mod-tab-hide.js?v=355"></script>
-<script src="js/40-mod-activity-archive.js?v=355"></script>
-<script src="js/40b-create-popup.js?v=355"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=355"></script>
-<script src="js/42-mod-relogin-button.js?v=355"></script>
-<script src="js/43-mod-project-progress.js?v=355"></script>
-<script src="js/44-mod-fleet-management.js?v=355"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=355"></script>
-<script src="js/45c-pick-transit.js?v=355"></script>
-<script src="js/45a-combobox.js?v=355"></script>
-<script src="js/45d-pallet-relocation.js?v=355"></script>
-<script src="js/45f-receipt-import.js?v=355"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=355"></script>
-<script src="js/46b-rmpm-mobile.js?v=355"></script>
-<script src="js/47-foc-release-voucher.js?v=355"></script>
-<script src="js/47b-foc-stock-link.js?v=355"></script>
-<script src="js/48-list-analytics.js?v=355"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=355"></script>
-<script src="js/50-logistics-ready-plan.js?v=355"></script>
-<script src="js/51-location-scope.js?v=355"></script>
-<script src="js/52-title-profiles.js?v=355"></script>
-<script src="js/52a-nav-central.js?v=355"></script>
-<script src="js/52b-brand-central.js?v=355"></script>
-<script src="js/53-rack-locations.js?v=355"></script>
-<script src="js/55-central-config.js?v=355"></script>
-<script src="js/58-session-renew.js?v=355"></script>
-<script src="js/59-mod-warehouse-3d.js?v=355"></script>
-<script src="js/59b-wh3d-rack-setup.js?v=355"></script>
-<script src="js/59d-rack-labels.js?v=355"></script>
-<script src="js/59e-rack-print-page.js?v=355"></script>
-<script src="js/59e-wh-overview.js?v=355"></script>
-<script src="js/59f-consolidated-inventory.js?v=355"></script>
-<script src="js/59c-wh3d-picks-link.js?v=355"></script>
-<script src="js/60-update-check.js?v=355"></script>
-<script src="js/56-mod-equipment-workshop.js?v=355"></script>
-<script src="js/61-col-tools.js?v=355"></script>
-<script src="js/62-mod-rack-condition.js?v=355"></script>
-<script src="js/62b-whs-inspection.js?v=355"></script>
-<script src="js/63-mod-ot-recovery.js?v=355"></script>
-<script src="js/64-smv-mobile.js?v=355"></script>
-<script src="js/65-select-search.js?v=355"></script>
-<script src="js/66-orbit-brand.js?v=355"></script>
-<script src="js/67-rack-balance.js?v=355"></script>
-<script src="js/68-movement-report.js?v=355"></script>
-<script src="js/68-whs-utilization.js?v=355"></script>
-<script src="js/69-progress-popup.js?v=355"></script>
-<script src="js/70-chart-motion.js?v=355"></script>
-<script src="js/71-mobile-app.js?v=355"></script>
-<script src="js/72-mgw-shared-utilization.js?v=355"></script>
-<script src="js/73-fd-weekly-transfer.js?v=355"></script>
-<script src="js/75-driver-compliance.js?v=355"></script>
-<script src="js/74-popup-front.js?v=355"></script>
-<script src="js/76-batch-code.js?v=355"></script>
-<script src="js/77-admin-console.js?v=355"></script>
-<script src="js/78-master-data.js?v=355"></script>
-<script src="js/79-mobile-suite.js?v=355"></script>
-<script src="js/79a-mobile-fleet.js?v=355"></script>
-<script src="js/79b-mobile-stock.js?v=355"></script>
-<script src="js/79c-mobile-people.js?v=355"></script>
-<script src="js/79d-lcd-reader.js?v=355"></script>
-<script src="js/79e-mobile-connection.js?v=355"></script>
-<script src="js/79f-mobile-projects.js?v=355"></script>
-<script src="js/99-boot.js?v=355"></script>
-<script src="js/82-movement-guard.js?v=355"></script>
-<script src="js/83-division-dash.js?v=355"></script>
-<script src="js/84-section-dashboards.js?v=355"></script>
-<script src="js/86-upload-duplicates.js?v=355"></script>
-<script src="js/87-trips-store.js?v=355"></script>
+<script src="js/00-users-data.js?v=356"></script>
+<script src="js/01-core-constants-helpers.js?v=356"></script>
+<script src="js/02-users-and-roles-ui.js?v=356"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=356"></script>
+<script src="js/04-confirm-combo-csv.js?v=356"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=356"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=356"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=356"></script>
+<script src="js/08-uom-tracker-attachments.js?v=356"></script>
+<script src="js/08b-list-images.js?v=356"></script>
+<script src="js/08b-uom-normalise.js?v=356"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=356"></script>
+<script src="js/10-refresh-all-good-return.js?v=356"></script>
+<script src="js/11-fefo-filter-engine.js?v=356"></script>
+<script src="js/12-uploader-main-lookup.js?v=356"></script>
+<script src="js/13-uploader-key-computation.js?v=356"></script>
+<script src="js/14-exporter-prefilters.js?v=356"></script>
+<script src="js/15-value-cache-record-editor.js?v=356"></script>
+<script src="js/16-data-editor-download.js?v=356"></script>
+<script src="js/17-mapping-sample-check.js?v=356"></script>
+<script src="js/18-schedules-notifications-settings.js?v=356"></script>
+<script src="js/19-email-results.js?v=356"></script>
+<script src="js/20-prefilters-compose.js?v=356"></script>
+<script src="js/21-planning-filters-charts.js?v=356"></script>
+<script src="js/22-planning-dept.js?v=356"></script>
+<script src="js/23-daily-plan-model-charts.js?v=356"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=356"></script>
+<script src="js/25-fd-plan-trips.js?v=356"></script>
+<script src="js/26-production-vs-distribution.js?v=356"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=356"></script>
+<script src="js/28-oasis-prism-signboards.js?v=356"></script>
+<script src="js/29-staff-roster.js?v=356"></script>
+<script src="js/30-roster-edits-templates.js?v=356"></script>
+<script src="js/31-attendance-leave-planner.js?v=356"></script>
+<script src="js/32-management-daily-report.js?v=356"></script>
+<script src="js/33-logistics-trip-planning.js?v=356"></script>
+<script src="js/34-filter-fields-expand-window.js?v=356"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=356"></script>
+<script src="js/36-attendance-ot-calc.js?v=356"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=356"></script>
+<script src="js/38-mod-switchboard.js?v=356"></script>
+<script src="js/39-mod-tab-hide.js?v=356"></script>
+<script src="js/40-mod-activity-archive.js?v=356"></script>
+<script src="js/40b-create-popup.js?v=356"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=356"></script>
+<script src="js/42-mod-relogin-button.js?v=356"></script>
+<script src="js/43-mod-project-progress.js?v=356"></script>
+<script src="js/44-mod-fleet-management.js?v=356"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=356"></script>
+<script src="js/45c-pick-transit.js?v=356"></script>
+<script src="js/45a-combobox.js?v=356"></script>
+<script src="js/45d-pallet-relocation.js?v=356"></script>
+<script src="js/45f-receipt-import.js?v=356"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=356"></script>
+<script src="js/46b-rmpm-mobile.js?v=356"></script>
+<script src="js/47-foc-release-voucher.js?v=356"></script>
+<script src="js/47b-foc-stock-link.js?v=356"></script>
+<script src="js/48-list-analytics.js?v=356"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=356"></script>
+<script src="js/50-logistics-ready-plan.js?v=356"></script>
+<script src="js/51-location-scope.js?v=356"></script>
+<script src="js/52-title-profiles.js?v=356"></script>
+<script src="js/52a-nav-central.js?v=356"></script>
+<script src="js/52b-brand-central.js?v=356"></script>
+<script src="js/53-rack-locations.js?v=356"></script>
+<script src="js/55-central-config.js?v=356"></script>
+<script src="js/58-session-renew.js?v=356"></script>
+<script src="js/59-mod-warehouse-3d.js?v=356"></script>
+<script src="js/59b-wh3d-rack-setup.js?v=356"></script>
+<script src="js/59d-rack-labels.js?v=356"></script>
+<script src="js/59e-rack-print-page.js?v=356"></script>
+<script src="js/59e-wh-overview.js?v=356"></script>
+<script src="js/59f-consolidated-inventory.js?v=356"></script>
+<script src="js/59c-wh3d-picks-link.js?v=356"></script>
+<script src="js/60-update-check.js?v=356"></script>
+<script src="js/56-mod-equipment-workshop.js?v=356"></script>
+<script src="js/61-col-tools.js?v=356"></script>
+<script src="js/62-mod-rack-condition.js?v=356"></script>
+<script src="js/62b-whs-inspection.js?v=356"></script>
+<script src="js/63-mod-ot-recovery.js?v=356"></script>
+<script src="js/64-smv-mobile.js?v=356"></script>
+<script src="js/65-select-search.js?v=356"></script>
+<script src="js/66-orbit-brand.js?v=356"></script>
+<script src="js/67-rack-balance.js?v=356"></script>
+<script src="js/68-movement-report.js?v=356"></script>
+<script src="js/68-whs-utilization.js?v=356"></script>
+<script src="js/69-progress-popup.js?v=356"></script>
+<script src="js/70-chart-motion.js?v=356"></script>
+<script src="js/71-mobile-app.js?v=356"></script>
+<script src="js/72-mgw-shared-utilization.js?v=356"></script>
+<script src="js/73-fd-weekly-transfer.js?v=356"></script>
+<script src="js/75-driver-compliance.js?v=356"></script>
+<script src="js/74-popup-front.js?v=356"></script>
+<script src="js/76-batch-code.js?v=356"></script>
+<script src="js/77-admin-console.js?v=356"></script>
+<script src="js/78-master-data.js?v=356"></script>
+<script src="js/79-mobile-suite.js?v=356"></script>
+<script src="js/79a-mobile-fleet.js?v=356"></script>
+<script src="js/79b-mobile-stock.js?v=356"></script>
+<script src="js/79c-mobile-people.js?v=356"></script>
+<script src="js/79d-lcd-reader.js?v=356"></script>
+<script src="js/79e-mobile-connection.js?v=356"></script>
+<script src="js/79f-mobile-projects.js?v=356"></script>
+<script src="js/99-boot.js?v=356"></script>
+<script src="js/82-movement-guard.js?v=356"></script>
+<script src="js/83-division-dash.js?v=356"></script>
+<script src="js/84-section-dashboards.js?v=356"></script>
+<script src="js/86-upload-duplicates.js?v=356"></script>
+<script src="js/87-trips-store.js?v=356"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {
