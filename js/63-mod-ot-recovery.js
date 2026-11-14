@@ -164,7 +164,7 @@
      header + lines get Approval_ActionBy / Approval_ActionTimeStamp / Approval_Status (+ Approval_Remarks on the header);
      "Replaced Day Off" also creates one OT_Staff_List_Data_tbl row per staff file no. (status Open), like the mobile app
      ============================================================ */
-  const AP = { sel: null, dlg: '', instr: '', rem: '', busy: false, err: '', f: { st: 'pend', loc: '', q: '', from: ymd(new Date(now.getFullYear(), now.getMonth() - 2, 1)), to: ymd(now) } };
+  const AP = { sel: null, dlg: '', instr: '', rem: '', busy: false, err: '', f: { st: 'pend', loc: '', q: '', from: ymd(new Date(now.getFullYear(), now.getMonth() - 2, 1)), to: ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 45)) } };
   const apLvl = () => typeof acLevel === 'function' ? acLevel('otapp') : 'full', apCan = () => apLvl() === 'full';
   const gk = (o, re) => { for (const k in o) if (re.test(k) && o[k] != null && o[k] !== '') return o[k]; return ''; };
   const stOf = h => { const s = String(h.approvalstatus || ''); return /reject/i.test(s) ? 'rej' : /approv|actual/i.test(s) ? 'ok' : 'pend'; };
@@ -176,7 +176,7 @@
     return S.D.hdr.map(h => { const ls = (L.get(h.id) || []).map(l => ({ id: l.id, type: String(gk(l, /^stafftype/) || ''), hc: num(gk(l, /^nrofrqrdhc/)), per: num(gk(l, /^rqrdhrsper/)) || (num(gk(l, /^nrofrqrdhc/)) ? num(gk(l, /^totalrqrdhrs/)) / num(gk(l, /^nrofrqrdhc/)) : 0), tot: num(gk(l, /^totalrqrdhrs/)), files: String(l.stafffilenr || ''), why: String(l.activityreasons || ''), dept: String(l.deptlink || ''), rem: String(l.requestremarks || ''), st: String(l.approvalstatus || '') }));
       const staff = num(h.totalreqrdstaff) || ls.reduce((a, l) => a + l.hc, 0), hrs = num(h.totalrqrdhrs) || ls.reduce((a, l) => a + l.tot, 0), kg = num(gk(h, /^rqstvoul.*kgs/)), plt = num(gk(h, /^rqstvoul.*plt/));
       return { id: h.id, date: dt(h.requestdate), loc: String(h.whsdesc || ''), by: String(h.username || ''), type: String(h.ottype || ''), st: stOf(h), stTxt: String(h.approvalstatus || ''), hrs, staff, kg, plt, avg: num(gk(h, /^avrgworking/)) || (staff ? hrs / staff : 0), why: String(h.activityreasons || '') || [...new Set(ls.map(l => l.why).filter(Boolean))].join(', '), dept: String(h.deptlink || '') || [...new Set(ls.map(l => l.dept).filter(Boolean))].join(', '), by2: String(h.approvalactionby || ''), at: String(h.approvalactiontimestamp || ''), rem: String(h.approvalremarks || ''), ls, h }; })
-      .filter(r => (!r.date || (r.date >= AP.f.from && r.date <= AP.f.to)) && (!AP.f.loc || r.loc === AP.f.loc) && (AP.f.st === 'all' || r.st === AP.f.st) && (!q || (r.loc + ' ' + r.by + ' ' + r.type + ' ' + r.id + ' ' + r.why).toLowerCase().includes(q)))
+      .filter(r => (AP.f.st === 'pend' || !r.date || (r.date >= AP.f.from && r.date <= AP.f.to)) && (!AP.f.loc || r.loc === AP.f.loc) && (AP.f.st === 'all' || r.st === AP.f.st) && (!q || (r.loc + ' ' + r.by + ' ' + r.type + ' ' + r.id + ' ' + r.why).toLowerCase().includes(q)))
       .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id);
   }
   const PILL = { pend: ['#fef3c7', '#92400e', 'Pending approval'], ok: ['#dcfce7', '#166534', 'Approved'], rej: ['#fee2e2', '#991b1b', 'Rejected'] };
@@ -184,7 +184,8 @@
   function apRender() {
     const v = Q('#view-otapp'); if (!v) return; const all = S.D.hdr, locs = [...new Set(all.map(r => String(r.whsdesc || '').trim()).filter(Boolean))].sort();
     if (!apLvl() || apLvl() === 'none') { v.innerHTML = '<div class="card"><div class="card-desc">OT Approvals is not enabled for your user. Ask the administrator (Admin Console → Module access).</div></div>'; return; }
-    const R = S.loaded ? apReqs() : [], cur = AP.sel == null || !S.loaded ? null : (R.find(r => r.id === AP.sel) || apAll().find(r => r.id === AP.sel)), P = S.loaded ? S.D.hdr.map(h => ({ st: stOf(h), hrs: num(h.totalrqrdhrs) })) : [];
+    let cur; const R = S.loaded ? apReqs() : []; cur = AP.sel == null || !S.loaded ? null : (R.find(r => r.id === AP.sel) || (AP.keep === AP.sel ? apAll().find(r => r.id === AP.sel) : null)); const P = S.loaded ? S.D.hdr.map(h => ({ st: stOf(h), hrs: num(h.totalrqrdhrs) })) : [];
+    if (S.loaded && !cur && R.length) { AP.sel = R[0].id; AP.keep = null; cur = R[0]; } else if (S.loaded && !cur && AP.sel != null && !R.length) AP.sel = null;
     const kp = (t, val, s, c) => `<div class="ap-k" style="border-top:3px solid ${c}"><span>${t}</span><b>${val}</b><small>${s}</small></div>`, cnt = s => P.filter(x => x.st === s).length, hh = s => P.filter(x => x.st === s).reduce((a, x) => a + x.hrs, 0);
     const pills = [['pend', 'Pending'], ['ok', 'Approved'], ['rej', 'Rejected'], ['all', 'All']].map(([k, t]) => `<button type="button" class="${AP.f.st === k ? 'on' : ''}" data-ap="st" data-v="${k}">${t}</button>`).join('');
     v.innerHTML = `<div class="ap-wrap"><div class="ap-top"><div><div class="ap-h1">OT Approvals</div><div class="ap-sub">Review the overtime requests sent by the locations, then approve or reject with remarks${apCan() ? '' : ' · <b>view only</b>'}</div></div><div class="ap-actions"><span id="apStatus" class="ap-sub">${esc(Q('#otrStatus') ? Q('#otrStatus').textContent : '')}</span><button type="button" class="ap-btn" data-ap="reload">🔄 Reload</button></div></div>
@@ -219,9 +220,9 @@
       r.h.approvalstatus = status; r.h.approvalactionby = me; r.h.approvalactiontimestamp = ts; r.h.approvalremarks = rem; S.D.ln.forEach(l => { if (num(l.headerlink) === r.id) { l.approvalstatus = status; l.approvalactionby = me; } });
       sectionToast('✔ Request #' + r.id + (rej ? ' rejected' : ' approved') + (made ? ' · ' + made + ' staff row(s) added to the OT staff list' : ''), 'success'); AP.dlg = ''; AP.rem = ''; AP.instr = '';
     } catch (e) { AP.err = '⚠ ' + e.message + ' (some updates may already be saved — reload to check)'; }
-    AP.busy = false; render(); apRender();
+    AP.keep = AP.sel; AP.busy = false; render(); apRender();
   }
-  const apAll = () => { const q = AP.f.q, st = AP.f.st, fr = AP.f.from; AP.f.q = ''; AP.f.st = 'all'; AP.f.from = '2000-01-01'; AP.f.loc = AP.f.loc; const o = apReqs(); AP.f.q = q; AP.f.st = st; AP.f.from = fr; return o; };
+  const apAll = () => { const q = AP.f.q, st = AP.f.st, fr = AP.f.from; AP.f.q = ''; AP.f.st = 'all'; AP.f.from = '2000-01-01'; const to = AP.f.to; AP.f.to = '2999-12-31'; const o = apReqs(); AP.f.q = q; AP.f.st = st; AP.f.from = fr; AP.f.to = to; return o; };
   /* writes only the columns the target list really has (reads them once per list) — an unknown column no longer fails the whole save with HTTP 400 */
   const FIT_ALT = { HOD_Remarks: /^hod.*(rem|note|comm)|^(approv|mgr|manager).*(rem|note|comm)/i };
   async function fit(ref, f) { let T = (window.SP_COLT || {})[ref.listId];
@@ -256,9 +257,9 @@
   function apInit() {
     const v = Q('#view-otapp'); if (!v || v._i) return; v._i = 1;
     v.addEventListener('click', e => { const t = e.target.closest('[data-ap]'); if (!t) return; const a = t.dataset.ap;
-      if (a === 'sel') { AP.sel = +t.dataset.id; AP.dlg = ''; AP.rem = ''; AP.instr = ''; AP.err = ''; } else if (a === 'st') AP.f.st = t.dataset.v; else if (a === 'reload') return load(true);
+      if (a === 'sel') { AP.sel = +t.dataset.id; AP.dlg = ''; AP.rem = ''; AP.instr = ''; AP.err = ''; } else if (a === 'st') { AP.f.st = t.dataset.v; AP.keep = null; } else if (a === 'reload') return load(true);
       else if (a === 'dlg') { AP.dlg = t.dataset.v; AP.err = ''; } else if (a === 'cancel') { AP.dlg = ''; AP.err = ''; } else if (a === 'confirm') return apDecide(); apRender(); });
-    v.addEventListener('change', e => { const k = e.target.dataset.apf; if (!k || k === 'q' || k === 'rem') return; if (k === 'instr') AP.instr = e.target.value; else AP.f[k] = e.target.value; apRender(); });
+    v.addEventListener('change', e => { const k = e.target.dataset.apf; if (!k || k === 'q' || k === 'rem') return; if (k === 'instr') AP.instr = e.target.value; else { AP.f[k] = e.target.value; AP.keep = null; } apRender(); });
     v.addEventListener('input', e => { const k = e.target.dataset.apf; if (k === 'rem') AP.rem = e.target.value; else if (k === 'q') { AP.f.q = e.target.value.trim(); clearTimeout(AP.tm); AP.tm = setTimeout(() => { apRender(); const i = Q('#view-otapp [data-apf=q]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 350); } });
     apCss(); apRender();
   }
