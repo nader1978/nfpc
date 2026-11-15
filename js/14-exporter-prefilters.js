@@ -481,11 +481,11 @@ const odQuoteDates = s => String(s).replace(/\b(ge|gt|le|lt|eq|ne) (\d{4}-\d\d-\
 async function exp_fetchFilteredItems(siteId, listId, token, filterExpr, onProgress) {
   let quoted = false;
   const items = [];
-  let url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200`;
+  let url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999`;
   if (filterExpr) url += `&$filter=${encodeURIComponent(filterExpr)}`;
   while (url) {
     let r = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' } }, 'fetch filtered items');
-    if (r.status === 400 && filterExpr && !quoted && odQuoteDates(filterExpr) !== filterExpr) { quoted = true; filterExpr = odQuoteDates(filterExpr); url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200&$filter=${encodeURIComponent(filterExpr)}`; r = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' } }, 'fetch filtered items (quoted dates)'); }
+    if (r.status === 400 && filterExpr && !quoted && odQuoteDates(filterExpr) !== filterExpr) { quoted = true; filterExpr = odQuoteDates(filterExpr); url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999&$filter=${encodeURIComponent(filterExpr)}`; r = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' } }, 'fetch filtered items (quoted dates)'); }
     if (!r.ok) {
       let e; try { e = await r.text(); } catch { e = r.statusText; }
       if (r.status === 422 || /threshold|tooManyResources/i.test(e)) throw new Error('SharePoint blocked this filter: the list is over the list view threshold and the filtered column is not indexed. Index that column (List settings → Indexed columns) or filter on an indexed column such as Created or ID.');

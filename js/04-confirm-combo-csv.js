@@ -61,7 +61,7 @@ async function deleteItem(siteId, listId, itemId, token) {
   if (!r.ok && r.status !== 204) { let e; try { e = await r.text(); } catch { e = r.statusText; } throw new Error(`HTTP ${r.status}: ${e}`); }
 }
 async function fetchAllItems(siteId, listId, token, onProgress) {
-  const items = []; let url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200`;
+  const items = []; let url = `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=999`;
   while (url) {
     const r = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } }, 'fetch items');
     if (!r.ok) { let e; try { e = await r.text(); } catch { e = r.statusText; } throw new Error(`Item fetch failed (${r.status}): ${e}`); }

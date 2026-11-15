@@ -2,7 +2,7 @@
    Data Editor: resumable download · latest rows · search-before-download · field visibility
    ============================================================ */
 const ED_HDR = token => ({ Authorization: `Bearer ${token}`, Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly' });
-const ed_baseUrl = () => `https://graph.microsoft.com/v1.0/sites/${editorState.siteId}/lists/${editorState.listId}/items?$expand=fields&$top=200`;
+const ed_baseUrl = () => `https://graph.microsoft.com/v1.0/sites/${editorState.siteId}/lists/${editorState.listId}/items?$expand=fields&$top=999`;
 editorState.dl = { nextUrl: null, running: false, kind: '', complete: false };
 editorState.fieldCfg = {}; editorState.qValues = [];
 
