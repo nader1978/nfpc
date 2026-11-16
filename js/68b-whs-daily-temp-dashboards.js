@@ -44,6 +44,18 @@
   }
   async function readAll(list) { const I = await ids(list); const M = await colMap(list, I); return { items: await fetchAllItems(I.siteId, I.listId, I.token), M, I }; }
 
+  /* ---------- 📍 location scope: a user sees only the warehouses of his Location ID; admins see all ---------- */
+  const scoped = () => { try { return typeof locScoped === 'function' && locScoped(); } catch (e) { return false; } };
+  let SC = null;   /* { ids:Set, names:Set(nz) } once read */
+  async function scope() {
+    if (!scoped()) return null; if (SC && SC.u === currentUser.id) return SC;
+    const ids = new Set((typeof locIds === 'function' ? locIds(currentUser) : []).map(x => String(+x || x))), names = new Set();
+    String((typeof locWhName === 'function' && locWhName(currentUser)) || '').split(' / ').map(x => x.trim()).filter(Boolean).forEach(x => names.add(nz(x)));
+    try { const W = await readAll('WHs_tbl'); W.items.forEach(it => { const K = keys(it.fields, W.M), lid = [it.id, K[nz('Location_ID')], K[nz('LocationID')], K[nz('WHs_ID')]].filter(x => x != null && x !== '').map(x => String(+x || x)); if (lid.some(x => ids.has(x))) { [K[nz('WHs_Desc')], K.title].forEach(n => { if (sv(n)) names.add(nz(sv(n))); }); } }); } catch (e) { console.warn('WHs_tbl scope', e); }
+    return (SC = { ids, names, u: currentUser.id });
+  }
+  const scopeOk = (sc, name, whid) => !sc || sc.names.has(nz(name)) || (whid && sc.ids.has(String(+whid || whid)));
+  const scopeNote = () => scoped() ? `<div class="text-sm" style="margin:-4px 0 8px">📍 You see your own location's warehouses only${typeof locWhName === 'function' && locWhName(currentUser) ? ' — ' + esc(locWhName(currentUser)) : ''}.</div>` : '';
   /* ---------- small chart helpers ---------- */
   const bars = (rows, o) => { o = o || {}; const mx = Math.max(1e-9, o.max != null ? o.max : Math.max(...rows.map(r => r.v)));
     return `<div class="wd-bars">${rows.map(r => `<div class="wd-br" title="${esc(r.tip || r.l + ': ' + r.t)}"><span class="l">${esc(r.l)}</span><span class="t"><i style="width:${Math.max(1, Math.min(100, r.v / mx * 100)).toFixed(1)}%;background:${r.c || o.c || 'var(--primary,#4f46e5)'}"></i>${r.m != null ? `<u style="left:${Math.min(100, r.m / mx * 100).toFixed(1)}%" title="limit ${r.m}"></u>` : ''}</span><b>${esc(r.t)}</b></div>`).join('')}</div>`; };
@@ -90,16 +102,16 @@
     D.lk = new Map(); const c = M.lookup.get(nz('WHs_Dtls')); if (!c) return;
     const sample = items.slice(0, 300).map(x => keys(x.fields, M)); if (sample.some(K => sv(K[nz('WHs_Dtls')]))) return; if (!sample.some(K => K[nz('WHs_Dtls') + 'lookupid'] != null)) return;
     try { const its = await fetchAllItems(I.siteId, c.lookup.listId, I.token), cn = nz(c.lookup.columnName || 'Title'); its.forEach(x => { const K = keys(x.fields); D.lk.set(String(x.id), sv(K[cn] != null ? K[cn] : K.title)); }); } catch (e) { console.warn('WHs lookup', e); } }
-  function build1(items, M) {
+  function build1(items, M, sc) {
     const rows = [];
     items.forEach(x => { const K = keys(x.fields, M), date = dOnly(K[nz('Record_Date')]); if (!date || date < D.per.from || date > D.per.to) return;
-      const whid = sv(K[nz('WHs_ID')]).replace(/\.0+$/, ''), lkid = K[nz('WHs_Dtls') + 'lookupid'], wh = sv(K[nz('WHs_Dtls')]) || (lkid != null ? D.lk.get(String(lkid)) || '' : '') || (whid ? 'WHs ' + whid : ''); if (!wh) return;
+      const whid = sv(K[nz('WHs_ID')]).replace(/\.0+$/, ''), lkid = K[nz('WHs_Dtls') + 'lookupid'], wh = sv(K[nz('WHs_Dtls')]) || (lkid != null ? D.lk.get(String(lkid)) || '' : '') || (whid ? 'WHs ' + whid : ''); if (!wh || !scopeOk(sc, wh, whid)) return;
       rows.push({ date, wh, whid, sec: sv(K[nz('Data_Main_Sector')]) || '(no sector)', hdr: nn(K[nz('Header_ID')]) || 0, by: person(x), at: x.createdDateTime || '' }); });
     D.rows = rows; D.raw = items.length;
   }
   async function load1() {
     if (D.loading) return; D.loading = true; D.err = ''; render1();
-    try { if (D.per.from > D.per.to) throw new Error('the period From is after To'); const t0 = Date.now(), R = await readPeriod(LIST1, 'Record_Date', D.per.from, D.per.to, say1); await whLookup(R.M, R.I, R.items); build1(R.items, R.M); D.how = R.how; D.loaded = true;
+    try { if (D.per.from > D.per.to) throw new Error('the period From is after To'); const t0 = Date.now(), R = await readPeriod(LIST1, 'Record_Date', D.per.from, D.per.to, say1); await whLookup(R.M, R.I, R.items); build1(R.items, R.M, await scope()); D.how = R.how; D.loaded = true;
       say1(D.rows.length ? '✔ ' + fx(D.rows.length) + ' row(s) · ' + new Set(D.rows.map(r => r.wh)).size + ' warehouse(s) · ' + D.how + ' · ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' : '⚠ No rows for this period.', !D.rows.length);
     } catch (e) { D.err = e.message; say1('⚠ ' + e.message, 1); } finally { D.loading = false; } render1();
   }
@@ -116,7 +128,7 @@
     const M = model1(), { whs, secs, days, st } = M, bd = D.loaded && D.rows.length;
     const extra = sel('whdu', 'wh', 'Warehouse', [...new Set(D.rows.map(r => r.wh))].sort(), D.f.wh) + sel('whdu', 'sec', 'Data sector', M.secs, D.f.sec)
       + `<label>Days counted<select data-whduf="days"><option value="all"${D.f.days === 'all' ? ' selected' : ''}>Every day</option><option value="wk6"${D.f.days === 'wk6' ? ' selected' : ''}>Mon–Sat</option><option value="wk5"${D.f.days === 'wk5' ? ' selected' : ''}>Mon–Fri</option></select></label>`;
-    let h = card('📅 WHs Daily Data Update', 'did every warehouse post its daily data? read from ' + LIST1, hostBar('whdu', D, extra).replace('</div>\n', '</div>') + tools('whdu') + `<div id="whduStatus" class="status-msg" style="font-size:12px"></div>${loadingBar(D)}`);
+    let h = card('📅 WHs Daily Data Update', 'did every warehouse post its daily data? read from ' + LIST1, hostBar('whdu', D, extra).replace('</div>\n', '</div>') + tools('whdu') + scopeNote() + `<div id="whduStatus" class="status-msg" style="font-size:12px"></div>${loadingBar(D)}`);
     if (!bd) { v.innerHTML = h + (D.loading ? '' : `<div class="card"><div class="wd-none">${D.err ? '⚠ ' + esc(D.err) : D.loaded ? 'No data in this period.' : 'Choose the period and press Load.'}</div></div>`); say1(D.err ? '⚠ ' + D.err : ''); return; }
     /* per warehouse */
     const sumW = whs.map(w => { let ok = 0, pt = 0, no = 0, last = '', by = '', streak = 0; days.forEach(d => { const s = st(w, d); if (s.s === 'ok') ok++; else if (s.s === 'pt') pt++; else no++; if (s.c && d >= last) { last = d; by = [...s.c.by].join(', '); } });
@@ -148,10 +160,10 @@
   const LIST2 = 'WHs_Temperature_Reading_tbl', LIM = 'Stores_Locations_tbl';
   const T = { loaded: false, loading: false, err: '', how: '', per: { from: shift(today(), -6), to: today() }, rows: [], lim: new Map(), f: { wh: '', by: '', alarm: '' } };
   const say2 = (t, w) => { const e = Q('#whtmpStatus'); if (e) { e.textContent = t; e.style.color = w ? '#b45309' : ''; } };
-  function build2(items, M, limItems) {
+  function build2(items, M, limItems, sc) {
     T.lim = new Map(); (limItems || []).forEach(x => { const K = keys(x.fields), n = sv(K[nz('StoreDesc')] || K.title); if (!n) return; const t = nn(K[nz('StrMiniTemp')]), h0 = nn(K[nz('MiniHumdtyLevel')]), h = h0 == null ? null : (h0 > 1.5 ? h0 / 100 : h0); T.lim.set(nz(n), { n, t, h }); });
     const rows = []; items.forEach(x => { const K = keys(x.fields, M), date = dOnly(K[nz('Trans_Date')]); if (!date || date < T.per.from || date > T.per.to) return;
-      const wh = sv(K[nz('WHs_Desc')]); if (!wh) return; const tk = Object.keys(K).find(k => /time/.test(k) && K[k] != null && K[k] !== '' && !/date/.test(k)), temp = nn(K[nz('Temperature_Degree')]), hum = nn(K[nz('Humidity_Reading')]), L = T.lim.get(nz(wh)) || {};
+      const wh = sv(K[nz('WHs_Desc')]); if (!wh || !scopeOk(sc, wh)) return; const tk = Object.keys(K).find(k => /time/.test(k) && K[k] != null && K[k] !== '' && !/date/.test(k)), temp = nn(K[nz('Temperature_Degree')]), hum = nn(K[nz('Humidity_Reading')]), L = T.lim.get(nz(wh)) || {};
       const aT = temp != null && L.t != null && temp > L.t, aH = hum != null && L.h && hum / 100 > L.h;
       rows.push({ id: +x.id || 0, date, time: tk ? sv(K[tk]) : '', wh, temp, hum, by: sv(K[nz('Reading_By')]) || person(x), lt: L.t, lh: L.h, aT, aH, at: x.createdDateTime || '' }); });
     T.rows = rows.sort((a, b) => (b.date + b.time + b.id).localeCompare(a.date + a.time + a.id));
@@ -159,7 +171,7 @@
   async function load2() {
     if (T.loading) return; T.loading = true; T.err = ''; render2();
     try { if (T.per.from > T.per.to) throw new Error('the period From is after To'); const t0 = Date.now(), R = await readPeriod(LIST2, 'Trans_Date', T.per.from, T.per.to, say2); let li = []; try { li = (await readAll(LIM)).items; } catch (e) { console.warn('limits', e); }
-      build2(R.items, R.M, li); T.how = R.how; T.loaded = true; say2(T.rows.length ? '✔ ' + fx(T.rows.length) + ' reading(s) · ' + new Set(T.rows.map(r => r.wh)).size + ' warehouse(s) · ' + R.how + ' · ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' : '⚠ No readings for this period.', !T.rows.length);
+      build2(R.items, R.M, li, await scope()); T.how = R.how; T.loaded = true; say2(T.rows.length ? '✔ ' + fx(T.rows.length) + ' reading(s) · ' + new Set(T.rows.map(r => r.wh)).size + ' warehouse(s) · ' + R.how + ' · ' + ((Date.now() - t0) / 1000).toFixed(1) + ' s' : '⚠ No readings for this period.', !T.rows.length);
     } catch (e) { T.err = e.message; say2('⚠ ' + e.message, 1); } finally { T.loading = false; } render2();
   }
   const tcol = (r, v) => v == null ? '' : r.lt != null && v > r.lt ? 'wd-no' : r.lt != null && v > r.lt - 1 ? 'wd-pt' : 'wd-ok';
@@ -168,7 +180,7 @@
     const all = T.rows, whsAll = [...new Set(all.map(r => r.wh))].sort(), byAll = [...new Set(all.map(r => r.by).filter(Boolean))].sort();
     const R = all.filter(r => (!T.f.wh || r.wh === T.f.wh) && (!T.f.by || r.by === T.f.by) && (T.f.alarm !== '1' || r.aT || r.aH));
     const extra = sel('whtmp', 'wh', 'Warehouse', whsAll, T.f.wh) + sel('whtmp', 'by', 'Read by', byAll, T.f.by) + `<label>Show<select data-whtmpf="alarm"><option value="">All readings</option><option value="1"${T.f.alarm === '1' ? ' selected' : ''}>Alarms only</option></select></label>`;
-    let h = card('🌡 Temperature Daily Records', 'readings and alarms per warehouse, read from ' + LIST2, hostBar('whtmp', T, extra) + tools('whtmp') + `<div id="whtmpStatus" class="status-msg" style="font-size:12px"></div>${loadingBar(T)}`);
+    let h = card('🌡 Temperature Daily Records', 'readings and alarms per warehouse, read from ' + LIST2, hostBar('whtmp', T, extra) + tools('whtmp') + scopeNote() + `<div id="whtmpStatus" class="status-msg" style="font-size:12px"></div>${loadingBar(T)}`);
     if (!T.loaded || !all.length) { v.innerHTML = h + (T.loading ? '' : `<div class="card"><div class="wd-none">${T.err ? '⚠ ' + esc(T.err) : T.loaded ? 'No readings in this period.' : 'Choose the period and press Load.'}</div></div>`); say2(T.err ? '⚠ ' + T.err : ''); return; }
     const temps = R.map(r => r.temp).filter(x => x != null), hums = R.map(r => r.hum).filter(x => x != null), aT = R.filter(r => r.aT), aH = R.filter(r => r.aH), t = today();
     const whsAct = [...new Set(R.map(r => r.wh))], noToday = (T.f.wh ? [T.f.wh] : whsAll).filter(w => !all.some(r => r.wh === w && r.date === t)), last = R[0];
