@@ -350,6 +350,8 @@ const VIEW_META = {
   fla: { title: 'Forklift Activity', sub: 'Start / end activities of the forklift operators — by unit, by operator, units × dates and idle units' },
   flr: { title: 'Forklift Receiving', sub: 'Units received / parked in the mobile app — condition reported by the users and what changed since the previous inspection' },
   rkst: { title: 'Rack Setup', sub: 'Create lanes, add / edit / delete racks of the warehouse locations (administrator)' },
+  whdu: { title: 'WHs Daily Data Update', sub: 'Which warehouses posted their daily data, on which day and for which sector' },
+  whtmp: { title: 'Temperature Daily Records', sub: 'Temperature and humidity readings, alarms and trends per warehouse' },
   rklp: { title: 'Rack Labels Print', sub: 'Print the rack labels of a warehouse location — choose the location(s), review the racks, print' },
   rkc: { title: 'Rack Hits & Damages', sub: 'Rack inspections from the mobile app — racks × dates per location, shown on the 3D' },
   eqw: { title: 'Marketing Equipment Workshop', sub: 'Receive equipment from sales, estimate repair vs book value, assign technicians, track KPIs and asset history' },
