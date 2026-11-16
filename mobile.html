@@ -19,12 +19,12 @@
 <script>window.ORBIT_MOBILE = 1;   /* mobile.html = the ORBIT mobile app entry page (same files as index.html) */</script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<link rel="stylesheet" href="css/01-base.css?v=360">
-<link rel="stylesheet" href="css/02-mobile.css?v=360">
-<link rel="stylesheet" href="css/03-pro-theme.css?v=360">
-<link rel="stylesheet" href="css/04-logistics-plan.css?v=360">
-<link rel="stylesheet" href="css/05-phone-app.css?v=360">
-<link rel="stylesheet" href="css/06-mobile-layouts.css?v=360">
+<link rel="stylesheet" href="css/01-base.css?v=362">
+<link rel="stylesheet" href="css/02-mobile.css?v=362">
+<link rel="stylesheet" href="css/03-pro-theme.css?v=362">
+<link rel="stylesheet" href="css/04-logistics-plan.css?v=362">
+<link rel="stylesheet" href="css/05-phone-app.css?v=362">
+<link rel="stylesheet" href="css/06-mobile-layouts.css?v=362">
 </head>
 <body>
 
@@ -140,6 +140,8 @@
       <div class="nav-item" data-view="mgt" data-perm="mgt"><span class="icon">📊</span><span>Mngt Daily Report</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="mgw" data-perm="mgw"><span class="icon">📈</span><span>Mngt Daily Report (SharePoint)</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="whu" data-perm="mgw"><span class="icon">🏭</span><span>WHs Utilization</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="whdu" data-perm="mgw"><span class="icon">📅</span><span>WHs Daily Data Update</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="whtmp" data-perm="mgw"><span class="icon">🌡</span><span>Temperature Daily Records</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Automation</div>
       <div class="nav-item" data-view="scheduler" data-perm="scheduler"><span class="icon">⏰</span><span>Scheduled Exports</span><span class="badge" id="navSchedulerBadge">0</span></div>
       <div class="nav-item" data-view="scheduler-upload" data-perm="scheduler-upload"><span class="icon">⏫</span><span>Scheduled Uploads</span><span class="badge" id="navSchedulerUploadBadge">0</span></div>
@@ -305,6 +307,8 @@
         <div class="pl-grid" id="whuGrid" style="margin-top:12px;"></div>
         <div class="card" id="whuTblCard" style="margin-top:12px;"><div class="card-header"><div class="card-title">📋 By storage area <span class="text-sm" style="font-weight:400;">— average over the date filter and on the To date</span></div></div><div id="whuTbl"></div></div>
       </div>
+      <div class="view" id="view-whdu"></div>
+      <div class="view" id="view-whtmp"></div>
       <div class="view" id="view-md-inv"></div>
       <div class="view" id="view-md-uom"></div>
       <div class="view" id="view-md-usr"></div>
@@ -3056,116 +3060,117 @@
 
 <div id="fefoPrintArea" style="display:none;"></div>
 
-<script src="js/00-users-data.js?v=360"></script>
-<script src="js/01-core-constants-helpers.js?v=360"></script>
-<script src="js/02-users-and-roles-ui.js?v=360"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=360"></script>
-<script src="js/04-confirm-combo-csv.js?v=360"></script>
-<script src="js/05-dropdown-sources-uploader.js?v=360"></script>
-<script src="js/06-warehouse-fefo-batch-allocation.js?v=360"></script>
-<script src="js/07-warehouse-fefo-lookup-uom.js?v=360"></script>
-<script src="js/08-uom-tracker-attachments.js?v=360"></script>
-<script src="js/08b-list-images.js?v=360"></script>
-<script src="js/08b-uom-normalise.js?v=360"></script>
-<script src="js/09-row-details-expand-picking-list.js?v=360"></script>
-<script src="js/10-refresh-all-good-return.js?v=360"></script>
-<script src="js/11-fefo-filter-engine.js?v=360"></script>
-<script src="js/12-uploader-main-lookup.js?v=360"></script>
-<script src="js/13-uploader-key-computation.js?v=360"></script>
-<script src="js/14-exporter-prefilters.js?v=360"></script>
-<script src="js/15-value-cache-record-editor.js?v=360"></script>
-<script src="js/16-data-editor-download.js?v=360"></script>
-<script src="js/17-mapping-sample-check.js?v=360"></script>
-<script src="js/18-schedules-notifications-settings.js?v=360"></script>
-<script src="js/19-email-results.js?v=360"></script>
-<script src="js/20-prefilters-compose.js?v=360"></script>
-<script src="js/21-planning-filters-charts.js?v=360"></script>
-<script src="js/22-planning-dept.js?v=360"></script>
-<script src="js/23-daily-plan-model-charts.js?v=360"></script>
-<script src="js/24-daily-plan-fd-plan.js?v=360"></script>
-<script src="js/25-fd-plan-trips.js?v=360"></script>
-<script src="js/26-production-vs-distribution.js?v=360"></script>
-<script src="js/27-sharepoint-stock-upload-destinations.js?v=360"></script>
-<script src="js/28-oasis-prism-signboards.js?v=360"></script>
-<script src="js/29-staff-roster.js?v=360"></script>
-<script src="js/30-roster-edits-templates.js?v=360"></script>
-<script src="js/31-attendance-leave-planner.js?v=360"></script>
-<script src="js/32-management-daily-report.js?v=360"></script>
-<script src="js/33-logistics-trip-planning.js?v=360"></script>
-<script src="js/34-filter-fields-expand-window.js?v=360"></script>
-<script src="js/35-mngt-report-kpi-charts.js?v=360"></script>
-<script src="js/36-attendance-ot-calc.js?v=360"></script>
-<script src="js/37-warehouse-grouping-nav-back.js?v=360"></script>
-<script src="js/38-mod-switchboard.js?v=360"></script>
-<script src="js/39-mod-tab-hide.js?v=360"></script>
-<script src="js/40-mod-activity-archive.js?v=360"></script>
-<script src="js/40b-create-popup.js?v=360"></script>
-<script src="js/41-mod-stock-movement-entry.js?v=360"></script>
-<script src="js/42-mod-relogin-button.js?v=360"></script>
-<script src="js/43-mod-project-progress.js?v=360"></script>
-<script src="js/44-mod-fleet-management.js?v=360"></script>
-<script src="js/45-mod-whs-movements-fefo.js?v=360"></script>
-<script src="js/45c-pick-transit.js?v=360"></script>
-<script src="js/45a-combobox.js?v=360"></script>
-<script src="js/45d-pallet-relocation.js?v=360"></script>
-<script src="js/45f-receipt-import.js?v=360"></script>
-<script src="js/46-mod-rmpm-inventory.js?v=360"></script>
-<script src="js/46b-rmpm-mobile.js?v=360"></script>
-<script src="js/47-foc-release-voucher.js?v=360"></script>
-<script src="js/47b-foc-stock-link.js?v=360"></script>
-<script src="js/48-list-analytics.js?v=360"></script>
-<script src="js/49-side-panel-batch-allocation-tabs.js?v=360"></script>
-<script src="js/50-logistics-ready-plan.js?v=360"></script>
-<script src="js/51-location-scope.js?v=360"></script>
-<script src="js/52-title-profiles.js?v=360"></script>
-<script src="js/52a-nav-central.js?v=360"></script>
-<script src="js/52b-brand-central.js?v=360"></script>
-<script src="js/53-rack-locations.js?v=360"></script>
-<script src="js/55-central-config.js?v=360"></script>
-<script src="js/58-session-renew.js?v=360"></script>
-<script src="js/59-mod-warehouse-3d.js?v=360"></script>
-<script src="js/59b-wh3d-rack-setup.js?v=360"></script>
-<script src="js/59d-rack-labels.js?v=360"></script>
-<script src="js/59e-rack-print-page.js?v=360"></script>
-<script src="js/59e-wh-overview.js?v=360"></script>
-<script src="js/59f-consolidated-inventory.js?v=360"></script>
-<script src="js/59c-wh3d-picks-link.js?v=360"></script>
-<script src="js/60-update-check.js?v=360"></script>
-<script src="js/56-mod-equipment-workshop.js?v=360"></script>
-<script src="js/61-col-tools.js?v=360"></script>
-<script src="js/62-mod-rack-condition.js?v=360"></script>
-<script src="js/62b-whs-inspection.js?v=360"></script>
-<script src="js/63-mod-ot-recovery.js?v=360"></script>
-<script src="js/64-smv-mobile.js?v=360"></script>
-<script src="js/65-select-search.js?v=360"></script>
-<script src="js/66-orbit-brand.js?v=360"></script>
-<script src="js/67-rack-balance.js?v=360"></script>
-<script src="js/68-movement-report.js?v=360"></script>
-<script src="js/68-whs-utilization.js?v=360"></script>
-<script src="js/69-progress-popup.js?v=360"></script>
-<script src="js/70-chart-motion.js?v=360"></script>
-<script src="js/71-mobile-app.js?v=360"></script>
-<script src="js/72-mgw-shared-utilization.js?v=360"></script>
-<script src="js/73-fd-weekly-transfer.js?v=360"></script>
-<script src="js/75-driver-compliance.js?v=360"></script>
-<script src="js/74-popup-front.js?v=360"></script>
-<script src="js/76-batch-code.js?v=360"></script>
-<script src="js/77-admin-console.js?v=360"></script>
-<script src="js/78-master-data.js?v=360"></script>
-<script src="js/79-mobile-suite.js?v=360"></script>
-<script src="js/79a-mobile-fleet.js?v=360"></script>
-<script src="js/79b-mobile-stock.js?v=360"></script>
-<script src="js/79c-mobile-people.js?v=360"></script>
-<script src="js/79d-lcd-reader.js?v=360"></script>
-<script src="js/79e-mobile-connection.js?v=360"></script>
-<script src="js/80-install-app.js?v=360"></script>
-<script src="js/79f-mobile-projects.js?v=360"></script>
-<script src="js/99-boot.js?v=360"></script>
-<script src="js/82-movement-guard.js?v=360"></script>
-<script src="js/83-division-dash.js?v=360"></script>
-<script src="js/84-section-dashboards.js?v=360"></script>
-<script src="js/86-upload-duplicates.js?v=360"></script>
-<script src="js/87-trips-store.js?v=360"></script>
+<script src="js/00-users-data.js?v=362"></script>
+<script src="js/01-core-constants-helpers.js?v=362"></script>
+<script src="js/02-users-and-roles-ui.js?v=362"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=362"></script>
+<script src="js/04-confirm-combo-csv.js?v=362"></script>
+<script src="js/05-dropdown-sources-uploader.js?v=362"></script>
+<script src="js/06-warehouse-fefo-batch-allocation.js?v=362"></script>
+<script src="js/07-warehouse-fefo-lookup-uom.js?v=362"></script>
+<script src="js/08-uom-tracker-attachments.js?v=362"></script>
+<script src="js/08b-list-images.js?v=362"></script>
+<script src="js/08b-uom-normalise.js?v=362"></script>
+<script src="js/09-row-details-expand-picking-list.js?v=362"></script>
+<script src="js/10-refresh-all-good-return.js?v=362"></script>
+<script src="js/11-fefo-filter-engine.js?v=362"></script>
+<script src="js/12-uploader-main-lookup.js?v=362"></script>
+<script src="js/13-uploader-key-computation.js?v=362"></script>
+<script src="js/14-exporter-prefilters.js?v=362"></script>
+<script src="js/15-value-cache-record-editor.js?v=362"></script>
+<script src="js/16-data-editor-download.js?v=362"></script>
+<script src="js/17-mapping-sample-check.js?v=362"></script>
+<script src="js/18-schedules-notifications-settings.js?v=362"></script>
+<script src="js/19-email-results.js?v=362"></script>
+<script src="js/20-prefilters-compose.js?v=362"></script>
+<script src="js/21-planning-filters-charts.js?v=362"></script>
+<script src="js/22-planning-dept.js?v=362"></script>
+<script src="js/23-daily-plan-model-charts.js?v=362"></script>
+<script src="js/24-daily-plan-fd-plan.js?v=362"></script>
+<script src="js/25-fd-plan-trips.js?v=362"></script>
+<script src="js/26-production-vs-distribution.js?v=362"></script>
+<script src="js/27-sharepoint-stock-upload-destinations.js?v=362"></script>
+<script src="js/28-oasis-prism-signboards.js?v=362"></script>
+<script src="js/29-staff-roster.js?v=362"></script>
+<script src="js/30-roster-edits-templates.js?v=362"></script>
+<script src="js/31-attendance-leave-planner.js?v=362"></script>
+<script src="js/32-management-daily-report.js?v=362"></script>
+<script src="js/33-logistics-trip-planning.js?v=362"></script>
+<script src="js/34-filter-fields-expand-window.js?v=362"></script>
+<script src="js/35-mngt-report-kpi-charts.js?v=362"></script>
+<script src="js/36-attendance-ot-calc.js?v=362"></script>
+<script src="js/37-warehouse-grouping-nav-back.js?v=362"></script>
+<script src="js/38-mod-switchboard.js?v=362"></script>
+<script src="js/39-mod-tab-hide.js?v=362"></script>
+<script src="js/40-mod-activity-archive.js?v=362"></script>
+<script src="js/40b-create-popup.js?v=362"></script>
+<script src="js/41-mod-stock-movement-entry.js?v=362"></script>
+<script src="js/42-mod-relogin-button.js?v=362"></script>
+<script src="js/43-mod-project-progress.js?v=362"></script>
+<script src="js/44-mod-fleet-management.js?v=362"></script>
+<script src="js/45-mod-whs-movements-fefo.js?v=362"></script>
+<script src="js/45c-pick-transit.js?v=362"></script>
+<script src="js/45a-combobox.js?v=362"></script>
+<script src="js/45d-pallet-relocation.js?v=362"></script>
+<script src="js/45f-receipt-import.js?v=362"></script>
+<script src="js/46-mod-rmpm-inventory.js?v=362"></script>
+<script src="js/46b-rmpm-mobile.js?v=362"></script>
+<script src="js/47-foc-release-voucher.js?v=362"></script>
+<script src="js/47b-foc-stock-link.js?v=362"></script>
+<script src="js/48-list-analytics.js?v=362"></script>
+<script src="js/49-side-panel-batch-allocation-tabs.js?v=362"></script>
+<script src="js/50-logistics-ready-plan.js?v=362"></script>
+<script src="js/51-location-scope.js?v=362"></script>
+<script src="js/52-title-profiles.js?v=362"></script>
+<script src="js/52a-nav-central.js?v=362"></script>
+<script src="js/52b-brand-central.js?v=362"></script>
+<script src="js/53-rack-locations.js?v=362"></script>
+<script src="js/55-central-config.js?v=362"></script>
+<script src="js/58-session-renew.js?v=362"></script>
+<script src="js/59-mod-warehouse-3d.js?v=362"></script>
+<script src="js/59b-wh3d-rack-setup.js?v=362"></script>
+<script src="js/59d-rack-labels.js?v=362"></script>
+<script src="js/59e-rack-print-page.js?v=362"></script>
+<script src="js/59e-wh-overview.js?v=362"></script>
+<script src="js/59f-consolidated-inventory.js?v=362"></script>
+<script src="js/59c-wh3d-picks-link.js?v=362"></script>
+<script src="js/60-update-check.js?v=362"></script>
+<script src="js/56-mod-equipment-workshop.js?v=362"></script>
+<script src="js/61-col-tools.js?v=362"></script>
+<script src="js/62-mod-rack-condition.js?v=362"></script>
+<script src="js/62b-whs-inspection.js?v=362"></script>
+<script src="js/63-mod-ot-recovery.js?v=362"></script>
+<script src="js/64-smv-mobile.js?v=362"></script>
+<script src="js/65-select-search.js?v=362"></script>
+<script src="js/66-orbit-brand.js?v=362"></script>
+<script src="js/67-rack-balance.js?v=362"></script>
+<script src="js/68-movement-report.js?v=362"></script>
+<script src="js/68-whs-utilization.js?v=362"></script>
+<script src="js/68b-whs-daily-temp-dashboards.js?v=362"></script>
+<script src="js/69-progress-popup.js?v=362"></script>
+<script src="js/70-chart-motion.js?v=362"></script>
+<script src="js/71-mobile-app.js?v=362"></script>
+<script src="js/72-mgw-shared-utilization.js?v=362"></script>
+<script src="js/73-fd-weekly-transfer.js?v=362"></script>
+<script src="js/75-driver-compliance.js?v=362"></script>
+<script src="js/74-popup-front.js?v=362"></script>
+<script src="js/76-batch-code.js?v=362"></script>
+<script src="js/77-admin-console.js?v=362"></script>
+<script src="js/78-master-data.js?v=362"></script>
+<script src="js/79-mobile-suite.js?v=362"></script>
+<script src="js/79a-mobile-fleet.js?v=362"></script>
+<script src="js/79b-mobile-stock.js?v=362"></script>
+<script src="js/79c-mobile-people.js?v=362"></script>
+<script src="js/79d-lcd-reader.js?v=362"></script>
+<script src="js/79e-mobile-connection.js?v=362"></script>
+<script src="js/80-install-app.js?v=362"></script>
+<script src="js/79f-mobile-projects.js?v=362"></script>
+<script src="js/99-boot.js?v=362"></script>
+<script src="js/82-movement-guard.js?v=362"></script>
+<script src="js/83-division-dash.js?v=362"></script>
+<script src="js/84-section-dashboards.js?v=362"></script>
+<script src="js/86-upload-duplicates.js?v=362"></script>
+<script src="js/87-trips-store.js?v=362"></script>
 <script>
 /* load check: shows a clear message when the css / js folders were not found (wrong upload or not opened through GitHub Pages) */
 window.addEventListener('load', function () { setTimeout(function () {
