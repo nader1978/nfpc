@@ -332,23 +332,34 @@ function lulJudge(items) {
   return { found: true, allowed: hits.some(h => h.allow), ids, detail, f: (hits.find(h => h.allow) || hits[0]).f };
 }
 async function lulSha(t) { return sha256(t); }
+const lulClean = x => String(x == null ? '' : x).normalize('NFKC').replace(/[​-‏‪-‮⁠﻿]/g, '');
+const lulDigits = x => String(x).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x660).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x6f0);
 async function lulLogin(username, password) {
-  const c = lulCfg(), un = String(username || '').trim().toLowerCase(), bad = { state: 'bad', msg: 'Invalid username or password.' };
-  const r = await lulFetch(); if (r.state !== 'ok') return { state: 'unreach', msg: r.msg || r.state };
-  const rows = r.items.filter(it => { const f = it.fields || {}; return lulUserKeys(f, c.user).some(k => lulVals(f[k]).some(v => String(v).trim().toLowerCase() === un)); });
-  if (!rows.length) return bad;
+  /* build 374: a correct user is never refused for a technical reason — see the notes inline */
+  const c = lulCfg(), un = lulClean(username).trim().toLowerCase(), bad = { state: 'bad', msg: 'Invalid username or password.' };
+  let r = await lulFetch();
+  if (r.state !== 'ok') { try { if (await ms_signIn(false)) r = await lulFetch(); } catch (e) {} }          /* 1) renew the Microsoft token quietly */
+  if (r.state !== 'ok') { try { if (await ms_signIn(true)) r = await lulFetch(); } catch (e) {} }           /* 2) the sign-in click itself may open the Microsoft window once */
+  if (r.state !== 'ok') return { state: 'unreach', msg: r.msg || r.state };                                 /* never "invalid password" when SharePoint was not read */
+  const vals = it => { const f = it.fields || {}; return lulUserKeys(f, c.user).flatMap(k => lulVals(f[k])).map(v => lulClean(v).trim().toLowerCase()).filter(Boolean); };
+  let rows = r.items.filter(it => vals(it).includes(un));
+  if (!rows.length) { const nu = lulNorm(un); rows = r.items.filter(it => vals(it).some(v => v.split('@')[0] === un || (nu.length >= 3 && (lulNorm(v) === nu || lulNorm(v.split('@')[0]) === nu)))); }   /* e-mail without the domain, dots / spaces / case */
+  if (!rows.length) return { ...bad, why: 'no row in ' + c.list + ' matches this username' };
+  const pw0 = lulClean(password), cands = [...new Set([String(password), pw0, pw0.trim(), lulDigits(pw0).trim()])].filter(x => x !== '');
+  const numEq = (a, b) => /^-?[\d.,]+$/.test(a) && /^-?[\d.,]+$/.test(b) && Number(a.replace(/,/g, '')) === Number(b.replace(/,/g, ''));
   let ok = false, off = false, role = '', email = '', name = '', prof = null;
-  for (const it of rows) { const f = it.fields || {}, pk = lulAllowKey(f, c.pw); if (!pk) continue; const stored = String(lulVals(f[pk])[0] || '').trim(); if (!stored) continue;
-    const pass = /^[a-f0-9]{64}$/i.test(stored) ? (await lulSha(password)).toLowerCase() === stored.toLowerCase() : stored === password; if (!pass) continue;
+  for (const it of rows) { const f = it.fields || {}, pk = lulAllowKey(f, c.pw); if (!pk) continue; const stored = lulClean(lulVals(f[pk])[0] || '').trim(); if (!stored) continue;
+    let pass = false; if (/^[a-f0-9]{64}$/i.test(stored)) { for (const cd of cands) if ((await lulSha(cd)).toLowerCase() === stored.toLowerCase()) { pass = true; break; } } else pass = cands.some(cd => cd === stored || cd.trim() === stored || numEq(cd.trim(), stored)); if (!pass) continue;
     const ak = lulAllowKey(f, c.allow); if (ak && !lulTrue(f[ak])) { off = true; continue; } if (!ak) { off = true; continue; }
     ok = true; const rk = lulAllowKey(f, c.role); role = rk ? String(lulVals(f[rk])[0] || '').trim().toLowerCase() : ''; const ek = Object.keys(f).find(k => /^e-?mail$|^email|mail$/i.test(k)); email = ek ? String(lulVals(f[ek])[0] || '') : ''; const nk = Object.keys(f).find(k => /display ?name|fullname|^name$/i.test(k)); name = nk ? String(lulVals(f[nk])[0] || '') : ''; try { prof = locProfile(f); } catch (e) {} break; }
-  if (!ok) return off ? { state: 'off', msg: 'Your account is deactivated. Please contact the administrator.' } : bad;
+  if (!ok) return off ? { state: 'off', msg: 'Your account is deactivated. Please contact the administrator.', why: 'password right but ' + c.allow + ' is not Yes' } : { ...bad, why: rows.length + ' row(s) found for the username, but the password did not match' + (rows.some(it => { const f = it.fields || {}, pk = lulAllowKey(f, c.pw); return !pk || !String(lulVals(f[pk])[0] || '').trim(); }) ? ' (a row has no ' + c.pw + ' value)' : '') };
   if (!['viewer', 'operator', 'admin'].includes(role)) role = 'operator';
   let u = findUser(username);
   if (u && u.builtin) { return { state: 'ok', user: u }; }
   if (!u) { u = { id: uid(), username: String(username).trim(), displayName: name || String(username).trim(), role, salt: '', hash: '', email, managerEmail: '', mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null, fromSP: true }; users.list.push(u); }
   else { u.role = role; if (email && !u.email) u.email = email; if (name && !u.displayName) u.displayName = name; u.fromSP = true; }
   if (prof) Object.assign(u, prof);
+  try { u.cSalt = randomSalt(); u.cHash = await hashPassword(password, u.cSalt); u.cAt = Date.now(); } catch (e) {}   /* proves this password for up to 14 days if SharePoint is unreachable */
   u.lastLogin = Date.now(); saveUsers(); return { state: 'ok', user: u };
 }
 function lulLockEl() {

@@ -6,9 +6,14 @@ const FEAT_LIST = [
   ['expand', '⤢ Expand', 'Open lists in the full-screen expanded view'],
   ['fdedit', '✏ F&D trip editing', 'Change actual quantities, add / remove items and batches, status, plate, driver'],
   ['xlstyle', '🎨 Excel style settings', 'Change the Excel export style and the company name'],
-  ['mgsetup', '🔌 Management report — lists & mapping', 'See and change the SharePoint lists and column mapping of the Management Daily Report. OFF unless ticked — everyone else just uses the settings fixed by the administrator.', 'optin']
+  ['mgsetup', '🔌 Management report — lists & mapping', 'See and change the SharePoint lists and column mapping of the Management Daily Report. OFF unless ticked — everyone else just uses the settings fixed by the administrator.', 'optin'],
+  ['wmv_manual', '✋ WHs Movements — Manual outbound', 'Show the “Manual outbound” tab: the user records the batches that were really picked (a different batch than FEFO suggested). OFF unless ticked.', 'optin'],
+  ['wmv_demand', '📋 WHs Movements — Demand & pick list', 'Show the “Demand & pick list” tab.'],
+  ['wmv_transit', '🚚 WHs Movements — Pick transit (to confirm)', 'Show the “Pick transit (to confirm)” tab.'],
+  ['wmv_reloc', '🔁 WHs Movements — Relocate pallets', 'Show the “Relocate pallets” tab.']
 ];
-const featOk = k => !currentUser || currentUser.role === 'admin' || (k === 'mgsetup' ? !!(currentUser.features && currentUser.features.mgsetup === true) : (!currentUser.features || currentUser.features[k] !== false));
+const FEAT_OPTIN = new Set(FEAT_LIST.filter(f => f[3] === 'optin').map(f => f[0]));
+const featOk = k => !currentUser || currentUser.role === 'admin' || (FEAT_OPTIN.has(k) ? !!(currentUser.features && currentUser.features[k] === true) : (!currentUser.features || currentUser.features[k] !== false));
 const featBlock = k => { if (featOk(k)) return false; const f = FEAT_LIST.find(x => x[0] === k); try { sectionToast('🔒 ' + (f ? f[1].replace(/^\S+\s/, '') : k) + ' is switched off for your account. Contact an administrator.', 'warn'); } catch (e) {} return true; };
 
 function getUserAllowedLists() {
@@ -61,18 +66,24 @@ $('loginForm').addEventListener('submit', async (e) => {
 
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
-    let user = null, viaSP = false; const lc = lulCfg(), spOn = lc.on && lc.pwOn;
+    let user = null, viaSP = false, spWhy = ''; const lc = lulCfg(), spOn = lc.on && lc.pwOn;
     if (spOn) {   // username + password are validated against the SharePoint list
       btn.textContent = 'Checking SharePoint…'; const r = await lulLogin(username, password);
-      if (r.state === 'ok') { user = r.user; viaSP = true; }
-      else if (r.state === 'bad' || r.state === 'off') { errEl.textContent = r.msg; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (' + r.state + ')'); } catch (e) {} return; }
+      if (r.state === 'ok') { user = r.user; viaSP = true; } else if (r.state === 'unreach') spWhy = r.msg || '';
+      else if (r.state === 'bad' || r.state === 'off') { errEl.textContent = r.msg; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' — ' + (r.why || r.state)); } catch (e) {} return; }
     }
     if (!viaSP) {
       user = findUser(username);
-      if (!user) { errEl.textContent = spOn ? 'SharePoint could not be reached — only administrators can sign in offline.' : 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (unknown user)'); } catch (e) {} return; }
-      const hash = await hashPassword(password, user.salt);
-      if (hash !== user.hash) { errEl.textContent = 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (wrong password)'); } catch (e) {} return; }
-      if (spOn && !(user.builtin || (lc.adm && user.role === 'admin'))) { errEl.textContent = 'SharePoint (' + lc.list + ') could not be reached — only administrators can sign in while it is offline. Try again in a moment.'; errEl.classList.add('visible'); return; }
+      const retry = 'We could not verify your account right now — SharePoint could not be reached' + (spWhy ? ' (' + spWhy.slice(0, 90) + ')' : '') + '. Please check the connection and press Sign in again.';
+      if (!user) { errEl.textContent = spOn ? retry : 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + (spOn ? ' (SharePoint unreachable)' : ' (unknown user)')); } catch (e) {} return; }
+      const hash = user.salt ? await hashPassword(password, user.salt) : '';
+      if (user.fromSP && spOn && !user.builtin) {   /* a SharePoint user while SharePoint is unreachable: the password proven in the last 14 days counts */
+        const okC = user.cHash && user.cSalt && Date.now() - (user.cAt || 0) < 14 * 864e5 && (await hashPassword(password, user.cSalt)) === user.cHash;
+        if (!okC) { errEl.textContent = retry; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in not verified: ' + username + ' (SharePoint unreachable)'); } catch (e) {} return; }
+      } else {
+        if (hash !== user.hash) { errEl.textContent = 'Invalid username or password.'; errEl.classList.add('visible'); try { addActivity('auth', 'Sign-in refused: ' + username + ' (wrong password)'); } catch (e) {} return; }
+        if (spOn && !(user.builtin || (lc.adm && user.role === 'admin'))) { errEl.textContent = retry; errEl.classList.add('visible'); return; }
+      }
     }
     if (user.mustChangePassword && !viaSP) {
       const newPass = prompt('First-time sign-in. Set a new password (min 6 characters):');
