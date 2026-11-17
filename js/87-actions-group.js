@@ -63,7 +63,7 @@
     if (rl) { rl.style.marginLeft = 'auto'; ab.style.marginLeft = '0'; } else ab.style.marginLeft = 'auto'; }
 
   /* every pop-up's title bar: the first element of the window box (whatever its class is called: pl-h, mv-h, rmv-h, rps-h, …) */
-  function heads() { const out = new Set(); document.querySelectorAll(POP).forEach(b => { const f = [...b.children].find(k => !k.matches('.mdl-ctlw,.mdl-ctl,style,script')); if (f) out.add(f); b.querySelectorAll(':scope > [class$="-h"],:scope > [class*="-head"]').forEach(x => out.add(x)); }); document.querySelectorAll('[id$="Box"] > div > [class$="-h"]').forEach(x => out.add(x)); document.querySelectorAll(STRIP).forEach(x => out.add(x)); return out; }
+  function heads() { const out = new Set(); document.querySelectorAll(POP).forEach(b => { const f = [...b.children].find(k => !k.matches('.mdl-ctlw,.mdl-ctl,style,script')); if (f && !f.matches(POP) && !f.querySelector(':scope > .mdl-box,:scope > [class$="-h"],table,.card-body')) out.add(f); b.querySelectorAll(':scope > [class$="-h"],:scope > [class*="-head"]').forEach(x => out.add(x)); }); document.querySelectorAll('[id$="Box"] > div > [class$="-h"]').forEach(x => out.add(x)); document.querySelectorAll(STRIP).forEach(x => out.add(x)); return out; }
   function scan() { heads().forEach(c => { try { strip(c); } catch (e) {} }); document.querySelectorAll(SEL).forEach(c => { try { group(c); } catch (e) {} }); }
   let t = 0; const sched = () => { if (t) return; t = setTimeout(() => { t = 0; scan(); }, 150); };
   function init() { try { new MutationObserver(sched).observe(document.body, { childList: true, subtree: true }); } catch (e) {} sched(); }

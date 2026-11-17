@@ -33,10 +33,10 @@
   (function () { const st = document.createElement('style'); st.textContent = [
     /* one pop-up look everywhere = the Import window: solid section-colour border + title bar, square navy window buttons */
     'html body .mdl-box,html body #tblExpandOverlay.te-win{background:var(--card,#fff)!important;border:3px solid var(--pop-c1,#12306b)!important;border-radius:14px!important}',
-    'html body .mdl-ctlw>.mdl-ctl{background:none!important;border-radius:0!important;overflow:visible!important;gap:6px;right:10px!important;top:8px!important}',
+    'html body .mdl-ctlw>.mdl-ctl{background:none!important;border-radius:0!important;overflow:visible!important;gap:6px;right:10px!important;top:9px!important}',
     'html body .mdl-ctl button{width:50px!important;height:34px!important;border-radius:6px!important;background:var(--brand,#1e3a8a)!important;color:#fff!important}',
     'html body .mdl-ctl button:hover{background:rgba(15,23,42,.85)!important}html body .mdl-ctl button.mdl-x:hover{background:#e81123!important}',
-    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:var(--pop-c1,#12306b)!important;color:#fff!important;border-radius:10px!important;padding:10px 14px!important;margin-bottom:12px!important;border-bottom:0!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:var(--pop-c1,#12306b)!important;color:#fff!important;border-radius:11px 11px 0 0!important;padding:9px 190px 9px 16px!important;margin:0 0 12px!important;min-height:52px!important;box-sizing:border-box!important;border-bottom:0!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(h1,h2,h3,h4,.card-title,.card-desc,b,strong,label,.text-sm,small){color:#fff!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn,a.btn):not(.mdl-ctl button){background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn):not(.mdl-ctl button):hover{background:rgba(255,255,255,.3)!important}'
