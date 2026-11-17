@@ -443,10 +443,19 @@ const BRAND_ORIG = { name: 'ORBIT', tag: 'Operations · Racks · Batches · Inve
     document.querySelectorAll('[data-brand="logo"]').forEach((e, i) => { const lg = !!e.closest('.login-brand'), orig = lg ? BRAND_ORIG.logoLogin : BRAND_ORIG.logoSide, pic = lg ? c.img : (c.imgDark || c.img); if (pic) { e.innerHTML = '<img alt="" src="' + esc(pic) + '" style="width:100%;height:100%;object-fit:contain;border-radius:inherit">'; e.style.background = 'transparent'; e.style.padding = '0'; e.style.boxShadow = 'none'; } else { e.textContent = c.logo || orig; e.style.background = ''; e.style.padding = ''; } });
     document.title = name === 'ORBIT' ? 'ORBIT — NFPC Operations Platform' : 'ORBIT · ' + name; coShow(c); sbApply(c.sb); favApply(c); radApply(c.rad);
   }
+  let radOn = false, radT = 0;
+  /* tag the box of any other full-screen overlay so it takes the corner setting too */
+  function radTag() { if (!radOn || !document.body) return; Array.from(document.body.children).forEach(ov => { try { if (!(ov instanceof HTMLElement) || /^(SCRIPT|STYLE|LINK)$/.test(ov.tagName) || getComputedStyle(ov).position !== 'fixed') return;
+    const b = Array.from(ov.children).find(c => c instanceof HTMLElement && !/^(SCRIPT|STYLE)$/.test(c.tagName) && c.offsetWidth > 120 && c.offsetHeight > 80 && getComputedStyle(c).position !== 'fixed'); if (!b) return;
+    b.classList.toggle('rad-pop', b.offsetWidth < innerWidth - 6 || b.offsetHeight < innerHeight - 6); } catch (e) {} }); }
+  try { new MutationObserver(() => { if (radT || !radOn) return; radT = setTimeout(() => { radT = 0; radTag(); }, 200); }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] }); } catch (e) {}
   function radApply(v) {
     let st = document.querySelector('#radCss'); if (!st) { st = document.createElement('style'); st.id = 'radCss'; document.head.appendChild(st); }
-    const n = v === '' || v == null ? NaN : parseInt(v, 10); if (!isFinite(n) || n < 0) { st.textContent = ''; return; } const r = Math.min(40, n), i = Math.round(r * .75), P = 'html body ';
-    st.textContent = P + '.card,' + P + '.pl-card,' + P + '.mdl-box,' + P + '.fd-modal>.card,' + P + '#fdTripModal>.card,' + P + '#mdpRtModal>.card,' + P + '[data-mdl].mdl-win,' + P + '#tblExpandOverlay.te-win,' + P + '.login-box,' + P + '.login-card{border-radius:' + r + 'px!important}'
+    const n = v === '' || v == null ? NaN : parseInt(v, 10); if (!isFinite(n) || n < 0) { st.textContent = ''; radOn = false; return; } const r = Math.min(40, n), i = Math.round(r * .75), P = 'html body '; radOn = true; radTag();
+    /* every pop-up window follows the same administrator corner setting */
+    st.textContent = P + '.dst-win,' + P + '.sdb-dw:not(.sdb-max),' + P + '.sdb-rw,' + P + '.sdb-mw,' + P + '#gdModal .gd-card,' + P + '.ud,' + P + '#orbAlert .oa-c,' + P + '#uomEd .ue-c,' + P + '#spUpConf>div,' + P + '.rad-pop,' + P + '[role="dialog"]:not(.mdl-full){border-radius:' + r + 'px!important}'
+      + P + '#gdModal.gd-max .gd-card,' + P + '.sdb-max{border-radius:0!important}'
+      + P + '.card,' + P + '.pl-card,' + P + '.mdl-box,' + P + '.fd-modal>.card,' + P + '#fdTripModal>.card,' + P + '#mdpRtModal>.card,' + P + '[data-mdl].mdl-win,' + P + '#tblExpandOverlay.te-win,' + P + '.login-box,' + P + '.login-card{border-radius:' + r + 'px!important}'
       + P + '.tm-card,' + P + '.tm-k,' + P + '.pl-kpi,' + P + '.target-card,' + P + '.schedule-card,' + P + '.profile-card{border-radius:' + i + 'px!important}'
       + P + '.fd-modal.fd-max>.card,' + P + '#fdTripModal.fd-max>.card,' + P + '#mdpRtModal.fd-max>.card,' + P + '.mdl-box.mdl-full,' + P + '[data-mdl].mdl-full,' + P + '.pl-card.pl-full{border-radius:0!important}';
   }
