@@ -18,7 +18,7 @@ const locColOf = (listId, fields) => {
 function locProfile(f) {   /* read the profile columns of a LoginUserList row */
   const get = re => { const k = Object.keys(f).find(x => re.test(normalize(x))); return k == null ? undefined : String(lulVals(f[k])[0] == null ? '' : lulVals(f[k])[0]).trim(); }, o = {};
   const P = get(/^websysaccessprofile$/), W = get(/^whsname$|^whname$|^warehousename$|^warehouse$|^locationname$|^locname$|^whsdesc$|^whdesc$/), L = get(/^locationid$/), B = get(/^budesc$|^bu$/), R = get(/^region$/), M = get(/^linemngr$|^linemanager$/), A = get(/^accesslevel$/), E = get(/^empid$/), T = get(/^title$|^jobtitle$/);
-  if (P !== undefined) o.spProfile = P; if (W !== undefined && W) o.whName = W; if (L !== undefined) o.locationId = L; if (B !== undefined) o.bu = B; if (R !== undefined) o.region = R; if (M !== undefined) o.lineMngr = M; if (A !== undefined) o.accessLevel = A; if (E !== undefined) o.empId = E; if (T !== undefined && T) o.jobTitle = T;
+  if (P !== undefined) o.spProfile = P; o.whName = W || ''; o.locationId = L === undefined ? '' : L;   /* the LoginUserList row is the only source: a missing / empty column clears any old value */ if (B !== undefined) o.bu = B; if (R !== undefined) o.region = R; if (M !== undefined) o.lineMngr = M; if (A !== undefined) o.accessLevel = A; if (E !== undefined) o.empId = E; if (T !== undefined && T) o.jobTitle = T;
   return o;
 }
 function locApplyRow(f) {   /* refresh the signed-in user's profile from SharePoint */

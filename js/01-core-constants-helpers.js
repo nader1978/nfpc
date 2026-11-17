@@ -469,6 +469,7 @@ async function loadUsers() {
     const raw = localStorage.getItem(LS_BASE + "_users");
     if (raw) users.list = JSON.parse(raw);
   } catch (e) { users.list = []; }
+  users.list.forEach(u => { if (u && u.fromSP && !u.builtin) { u.locationId = ''; u.whName = ''; } });   /* old browser copies of the SharePoint Location ID are dropped — it is read from LoginUserList again */
   { const b = users.list.find(x => String(x.username).toLowerCase() === BUILTIN_USER.username);
     if (b) { b.builtin = true; b.role = 'admin'; b.mustChangePassword = false; if (!b.salt || !b.hash) { b.salt = BUILTIN_USER.salt; b.hash = BUILTIN_USER.hash; } }
     else { users.list.unshift({ id: uid(), username: BUILTIN_USER.username, displayName: BUILTIN_USER.displayName, role: 'admin', salt: BUILTIN_USER.salt, hash: BUILTIN_USER.hash, builtin: true, mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.now(), lastLogin: null }); }
@@ -496,7 +497,8 @@ async function loadUsers() {
     $('firstRunHint').style.display = 'block';
   }
 }
-function saveUsers() { try { localStorage.setItem(LS_BASE + "_users", JSON.stringify(users.list)); } catch (e) {} }
+/* users that come from the SharePoint LoginUserList: their Location ID / warehouse name are NEVER kept in the browser — they are read from LoginUserList at every sign-in / refresh */
+function saveUsers() { try { localStorage.setItem(LS_BASE + "_users", JSON.stringify(users.list.map(u => u && u.fromSP && !u.builtin ? Object.assign({}, u, { locationId: '', whName: '' }) : u))); } catch (e) {} }
 function findUser(username) {
   const u = String(username || '').trim().toLowerCase();
   return users.list.find(x => x.username.toLowerCase() === u);
