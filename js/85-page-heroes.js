@@ -28,7 +28,17 @@
     if (mine) return; if (!DSTAGE.DIV[p.div]) DSTAGE.DIV[p.div] = { n: p.n, ic: p.ic, s: p.s, c1: p.c1, c2: p.c2, t: p.t };
     v.dataset.dv = p.div; v.style.setProperty('--dv1', p.c1); v.style.setProperty('--dv2', p.c2); v.style.setProperty('--dvt', p.t);
     const w = document.createElement('div'); w.className = 'ph-hero'; w.innerHTML = DSTAGE.hero(p.div, '').replace(' — Dashboard</b>', '</b>'); v.insertBefore(w, v.firstChild); }
-  function autoAll() { Object.keys(auto()).forEach(id => { const v = document.getElementById('view-' + id); if (v && v.classList.contains('active')) putAuto(id); }); }
+  /* pop-up windows take the colour of the section / model they were opened from (the same colours as the page header band) */
+  function popCol() { const v = document.querySelector('.view.active'); if (!v) return; const id = v.id.replace(/^view-/, ''), p = PG[id] || auto()[id]; const r = document.documentElement.style; if (!p) { r.removeProperty('--pop-c1'); r.removeProperty('--pop-c2'); return; } r.setProperty('--pop-c1', p.c1); r.setProperty('--pop-c2', p.c2); r.setProperty('--pop-t', p.t); }
+  (function () { const st = document.createElement('style'); st.textContent = [
+    'html body .mdl-box{background:linear-gradient(var(--card,#fff),var(--card,#fff)) padding-box,linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6)) border-box!important}',
+    'html body .mdl-ctlw>.mdl-ctl{background:linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6))!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6))!important;color:#fff!important;border-radius:10px!important;padding:10px 14px!important;margin-bottom:12px!important;border-bottom:0!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(h1,h2,h3,h4,.card-title,.card-desc,b,strong,label,.text-sm,small){color:#fff!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn,a.btn):not(.mdl-ctl button){background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn):not(.mdl-ctl button):hover{background:rgba(255,255,255,.3)!important}'
+  ].join('\n'); document.head.appendChild(st); })();
+  function autoAll() { try { popCol(); } catch (e) {} Object.keys(auto()).forEach(id => { const v = document.getElementById('view-' + id); if (v && v.classList.contains('active')) putAuto(id); }); }
   function initAuto() { let t = 0; const run = () => { clearTimeout(t); t = setTimeout(autoAll, 60); setTimeout(autoAll, 900); };
     document.querySelectorAll('.view').forEach(v => { try { new MutationObserver(run).observe(v, { attributes: true, attributeFilter: ['class'] }); } catch (e) {} });
     document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.nav-item,[data-view]')) run(); }, true); run(); }
