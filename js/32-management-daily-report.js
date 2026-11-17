@@ -327,7 +327,10 @@ function lulJudge(items) {
   items.forEach(it => { const f = it.fields || {}, keys = lulUserKeys(f, c.user); let tier = -1; for (let i = 0; i < ids.length && tier < 0; i++) if (keys.some(k => lulVals(f[k]).some(v => String(v).trim().toLowerCase() === ids[i]))) tier = i;
     if (tier >= 0) { const ak = lulAllowKey(f, c.allow); M.push({ f, tier, ak, allow: ak ? lulTrue(f[ak]) : false, hasCol: !!ak, raw: ak ? lulVals(f[ak]).join('/') || '(empty)' : '(no column)' }); } });
   if (!M.length) return { found: false, allowed: false, ids };
-  const t = Math.min(...M.map(h => h.tier)), hits = M.filter(h => h.tier === t), detail = 'Matched on “' + ids[t] + '” — ' + hits.length + ' row(s), ' + c.allow + ' = ' + hits.map(h => h.raw).join(' , ');
+  const t = Math.min(...M.map(h => h.tier)); let hits = M.filter(h => h.tier === t);
+  /* two users can share one e-mail (e.g. Gamal.M and Gamal.L): when several rows match, the signed-in USER NAME decides which row is his — never the first row of the shared e-mail */
+  { const un = currentUser && !currentUser.builtin ? String(currentUser.username || '').trim().toLowerCase() : ''; if (un && hits.length > 1) { const own = hits.filter(h => lulUserKeys(h.f, c.user).some(k => lulVals(h.f[k]).some(v => String(v).trim().toLowerCase() === un))); if (own.length) hits = own; } }
+  const detail = 'Matched on “' + ids[t] + '” — ' + hits.length + ' row(s), ' + c.allow + ' = ' + hits.map(h => h.raw).join(' , ');
   if (!hits.some(h => h.hasCol)) return { found: true, allowed: false, noCol: true, ids, detail };
   return { found: true, allowed: hits.some(h => h.allow), ids, detail, f: (hits.find(h => h.allow) || hits[0]).f };
 }
