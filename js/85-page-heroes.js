@@ -31,9 +31,12 @@
   /* pop-up windows take the colour of the section / model they were opened from (the same colours as the page header band) */
   function popCol() { const v = document.querySelector('.view.active'); if (!v) return; const id = v.id.replace(/^view-/, ''), p = PG[id] || auto()[id]; const r = document.documentElement.style; if (!p) { r.removeProperty('--pop-c1'); r.removeProperty('--pop-c2'); return; } r.setProperty('--pop-c1', p.c1); r.setProperty('--pop-c2', p.c2); r.setProperty('--pop-t', p.t); }
   (function () { const st = document.createElement('style'); st.textContent = [
-    'html body .mdl-box{background:linear-gradient(var(--card,#fff),var(--card,#fff)) padding-box,linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6)) border-box!important}',
-    'html body .mdl-ctlw>.mdl-ctl{background:linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6))!important}',
-    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:linear-gradient(120deg,var(--pop-c1,#12306b),var(--pop-c2,#3b82f6))!important;color:#fff!important;border-radius:10px!important;padding:10px 14px!important;margin-bottom:12px!important;border-bottom:0!important}',
+    /* one pop-up look everywhere = the Import window: solid section-colour border + title bar, square navy window buttons */
+    'html body .mdl-box,html body #tblExpandOverlay.te-win{background:var(--card,#fff)!important;border:3px solid var(--pop-c1,#12306b)!important;border-radius:14px!important}',
+    'html body .mdl-ctlw>.mdl-ctl{background:none!important;border-radius:0!important;overflow:visible!important;gap:6px;right:10px!important;top:8px!important}',
+    'html body .mdl-ctl button{width:50px!important;height:34px!important;border-radius:6px!important;background:var(--brand,#1e3a8a)!important;color:#fff!important}',
+    'html body .mdl-ctl button:hover{background:rgba(15,23,42,.85)!important}html body .mdl-ctl button.mdl-x:hover{background:#e81123!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:var(--pop-c1,#12306b)!important;color:#fff!important;border-radius:10px!important;padding:10px 14px!important;margin-bottom:12px!important;border-bottom:0!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(h1,h2,h3,h4,.card-title,.card-desc,b,strong,label,.text-sm,small){color:#fff!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn,a.btn):not(.mdl-ctl button){background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn):not(.mdl-ctl button):hover{background:rgba(255,255,255,.3)!important}'

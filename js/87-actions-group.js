@@ -21,7 +21,7 @@
     '.ag-strip select{width:auto;margin:0}.ag-strip input[type=search]{width:220px;margin:0}.ag-strip input,.ag-strip select{margin:0}',
     '.ag-strip>.ag-btn,.ag-bar>.ag-btn{margin-left:auto}',
     '.ag-btn{white-space:nowrap;display:inline-flex;align-items:center;gap:6px}',
-    'html body .mdl-box [data-ag-strip="1"]{padding-right:150px!important;flex-wrap:nowrap!important;align-items:center!important}',
+    'html body .mdl-box [data-ag-strip="1"]{padding-right:200px!important;flex-wrap:nowrap!important;align-items:center!important}',
     'html body .mdl-box [data-ag-strip="1"] .ag-x{display:none!important}',
     '[data-ag-strip="1"]>:is(h1,h2,h3,h4,h5,h6){margin:0 auto 0 0!important}'
   ].join('\n'); document.head.appendChild(css); }
