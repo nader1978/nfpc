@@ -372,7 +372,7 @@ body.dark #view-wmv .wm-pill{background:#374151;color:#e5e7eb}body.dark #view-wm
       msg(`⬆ ${out.length} rack line(s) are in the inbound — review them${miss ? ' (' + miss + ' still need a date / units per pallet)' : ''}, then press ✅ Post to Inventory.`, miss ? 'warn' : 'success'); }); }
   /* ---------- 📥 import receiving file (trailer / PO / JDE export) → lines in the inbound posting table ---------- */
   function rlsImport() { if (!window.RCVIMP) return msg('The import module is not loaded.', 'error'); if (!S.hist) loadHist(false);
-    RCVIMP.open({ key: 'wmv_rel', title: 'Import release file', page: 'WHs Movements (FEFO) — outbound', use: ['sku', 'dtls', 'qty', 'ref', 'trl'],
+    RCVIMP.open({ key: 'wmv_rel', kind: 'release', title: 'Import release file', page: 'WHs Movements (FEFO) — outbound', use: ['sku', 'dtls', 'qty', 'ref', 'trl'],
       note: 'Each row becomes one outbound line (SKU + quantity to release, in base units). FEFO then allocates the batches and rack positions — earliest expiry first — for you to review and confirm, then press ✅ Post to Inventory.',
       apply: (rows, H, how) => { const out = [];
         rows.forEach(r => { const Ln = blank(); Ln.sku = r.sku; fill(Ln); if (!Ln.dtls) Ln.dtls = r.dtls || ''; const u = num(Ln.upp);
