@@ -101,6 +101,10 @@ function ffScan() {
     '.mdl-min>[data-mdl] .mdl-chip{display:block}',
     '.mdl-ovfull{padding:0 !important}',
     '[data-mdl].mdl-full{width:100vw !important;max-width:100vw !important;height:100vh !important;max-height:100vh !important;border-radius:0 !important;transform:none !important}',
+    /* maximised inside a confined overlay (dock reports): fill that area, not the whole viewport, and keep the title bar + buttons in view */
+    'body .dk-in.mdl-ovfull{padding:0 !important;align-items:stretch !important;justify-content:stretch !important}',
+    '.mdl-box.mdl-full{border-width:0 !important;border-radius:0 !important}',
+    '.dk-in>[data-mdl].mdl-full,.dk-in>.mdl-box.mdl-full{width:100% !important;max-width:100% !important;height:100% !important;max-height:100% !important;min-width:0 !important;resize:none !important;margin:0 !important}',
     '[data-mdl] [data-mdl-hid]{display:none !important}',
     '.mdl-bar{position:relative;padding-right:150px !important}',
     '.mdl-bar>.mdl-ctl{position:absolute;right:6px;top:10px;margin:0;order:0;align-self:auto}',
@@ -200,7 +204,7 @@ function ffScan() {
     box.dataset.mdl = '1';
     if (ov._mdlFull) apply(ov, box);
     const full = box.classList.contains('mdl-full') || (!min && box.offsetWidth >= vw - 6 && box.offsetHeight >= vh - 6);
-    box.classList.toggle('mdl-box', !full && !min);
+    box.classList.toggle('mdl-box', !min);   /* stays when maximised so the coloured title bar + ⎯ ▢ ✕ keep their styling */
     if (!full && !min && ov._mdl && box.style.transform === '') box.style.transform = 'translate(' + ov._mdl.x + 'px,' + ov._mdl.y + 'px)';
     if (full) box.style.transform = '';
     addCtl(ov, box, full, false);
@@ -221,7 +225,7 @@ function ffScan() {
     if (e.button || innerWidth < 820) return;
     const box = e.target.closest && e.target.closest('[data-mdl]'); if (!box) return;
     const winMode = box.classList.contains('mdl-win');
-    if (!winMode && !box.classList.contains('mdl-box')) return;
+    if (!winMode && (!box.classList.contains('mdl-box') || box.classList.contains('mdl-full'))) return;
     if (e.target.closest('button,input,select,textarea,a,label,[contenteditable],summary,.combo,.mcombo')) return;
     const rb = box.getBoundingClientRect(), inHead = e.target.closest('.tm-head,.card-header,.modal-header,[data-drag],.mdl-bar') || (e.clientY - rb.top <= 60);
     if (!inHead) return;
