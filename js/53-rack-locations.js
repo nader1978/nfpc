@@ -25,7 +25,9 @@ async function srkLoad(force) {
     return SRK; })();
   return SRK.p;
 }
-const srkFind = code => SRK.map.get(String(code || '').trim().toUpperCase()) || null;
+/* a pallet-position code = Rack_Code + '-P<n>' (as exported by the Position list) → resolves to its rack; srkPos() gives the position number */
+const srkPos = code => { const m = /^(.*?)[-_ ]?P(\d{1,3})$/i.exec(String(code || '').trim()); return m && SRK.map.has(m[1].trim().toUpperCase()) && !SRK.map.has(String(code).trim().toUpperCase()) ? +m[2] : 0; };
+const srkFind = code => { const k = String(code || '').trim().toUpperCase(); let r = SRK.map.get(k); if (r) return r; const m = /^(.*?)[-_ ]?P(\d{1,3})$/i.exec(k); return m ? SRK.map.get(m[1].trim()) || null : null; };
 function srkDatalist(id) { return '<datalist id="' + id + '">' + SRK.rows.map(r => '<option value="' + escapeHtml(r.code) + '" label="' + escapeHtml([r.loc, r.area, r.cap ? 'cap ' + r.cap : ''].filter(Boolean).join(' · ')) + '">' + escapeHtml([r.loc, r.area].filter(Boolean).join(' · ')) + '</option>').join('') + '</datalist>'; }
 const srkDesc = code => { const r = srkFind(code); return r ? [r.loc, r.area, r.whs].filter(Boolean).join(' · ') : ''; };
 function srkNote() { const ids = (typeof locIds === 'function' && currentUser) ? locIds(currentUser) : []; return SRK.ok ? '📍 ' + SRK.rows.length + ' racks of ' + (ids.length ? 'Location ID ' + ids.join(', ') : 'all locations') + ' — from ' + SRK_LIST + (SRK.hidden ? ' (' + SRK.hidden + ' racks of other locations / without Location ID are hidden)' : '') : '⚠ rack list not available (' + (SRK.err || 'not loaded') + ') — location codes are not checked'; }
