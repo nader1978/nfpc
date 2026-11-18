@@ -629,6 +629,7 @@ function atListUi() {
    · marks users switched off in the list (Allow column = No) — passwords stay in SharePoint (sign-in checks the list)
    ============================================================ */
 async function usrSpRefresh(btn) {
+  const quiet = btn === 'quiet'; if (quiet) btn = null;
   if (!isAdmin()) { sectionToast('Only an admin can refresh the users from SharePoint.', 'warn'); return; }
   const c = lulCfg(), old = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = '⏳ Reading ' + c.list + '…'; }
   try {
@@ -649,12 +650,12 @@ async function usrSpRefresh(btn) {
       if (u.lineMngr && !u.managerEmail && typeof orbEmailOf === 'function') { const m = orbEmailOf(u.lineMngr); if (m) u.managerEmail = m; }
     });
     saveUsers(); try { if (currentUser && !currentUser.builtin) { const me = users.list.find(x => x.id === currentUser.id); if (me) { const { id, salt, hash, ...rest } = me; Object.assign(currentUser, rest); saveSession(); locBadge(); } } } catch (e) {}
-    renderUsersView(); addActivity('auth', `Users refreshed from SharePoint ${c.list}: ${add} added, ${upd} updated, ${off} switched off`);
+    renderUsersView(); if (!quiet || add) addActivity('auth', `Users refreshed from SharePoint ${c.list}: ${add} added, ${upd} updated, ${off} switched off`);
     const L = [`➕ <b>${add}</b> new user(s) added${added.length ? ': ' + added.slice(0, 15).map(escapeHtml).join(', ') + (added.length > 15 ? ' …' : '') : ''}`, `✔ <b>${upd}</b> existing user(s) updated — name, e-mail, Location ID, profile …`, off ? `⛔ <b>${off}</b> user(s) are switched off in SharePoint (${escapeHtml(c.allow)} = No) — marked in the list` : ''].filter(Boolean);
     const d = document.createElement('div'); d.id = 'usrSpDlg'; d.dataset.nohc = '1'; d.style.cssText = 'position:fixed;inset:0;z-index:2147483200;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:16px';
     d.innerHTML = `<div style="background:var(--card-bg,#fff);color:var(--text,#0f172a);border-radius:16px;width:min(520px,100%);box-shadow:0 30px 70px -20px rgba(15,23,42,.6);border-top:5px solid #16a34a;padding:18px 20px"><div style="font-weight:800;font-size:16px;margin-bottom:6px">🔄 Users refreshed from SharePoint</div><div style="font-size:13px;color:var(--gray-600,#64748b);margin-bottom:8px">${by.size} user(s) read from ${escapeHtml(c.list)}.</div><ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.7">${L.map(x => '<li>' + x + '</li>').join('')}</ul><div style="font-size:12.5px;color:var(--gray-600,#64748b);margin-top:8px">New users sign in with the user name and password of the SharePoint list.</div><div style="text-align:right;margin-top:12px"><button type="button" class="success">OK</button></div></div>`;
-    d.addEventListener('click', e => { if (e.target === d || e.target.closest('button')) d.remove(); }); document.body.appendChild(d);
-  } catch (e) { sectionToast('Could not refresh the users — ' + e.message, 'error'); }
+    d.addEventListener('click', e => { if (e.target === d || e.target.closest('button')) d.remove(); }); if (!quiet) document.body.appendChild(d);
+  } catch (e) { if (!quiet) sectionToast('Could not refresh the users — ' + e.message, 'error'); }
   finally { if (btn) { btn.disabled = false; btn.textContent = old; } }
 }
 function usrSpEnsure() {   /* the header may be rebuilt / cloned — make sure the button is there, and admin-only */
