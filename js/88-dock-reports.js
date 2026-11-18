@@ -1,46 +1,23 @@
-/* ORBIT 391+ — Position list / Movement report open INSIDE the main page (a card under the page content)
-   instead of a window over it. The reports keep working as they are: when one is opened on a stock page, the
-   report box is moved into a "dock" card of that page. On phones the full-screen report is kept. */
+/* ORBIT 393 — Position list / Movement report windows open INSIDE the main page area (the content to the right of the
+   side menu, under the top bar) instead of covering the whole screen. They stay normal windows (move / resize / min / max). */
 (function () {
   'use strict';
   const Q = (s, r) => (r || document).querySelector(s);
-  const KIND = { plBox: ['dk-pl', '📋 Position list — SKU & quantity'], mvBox: ['dk-mv', '📈 Movement report — detailed'], rmvBox: ['dk-mv', '📈 Movement report — detailed'] };
-  const VIEWS = ['smv', 'wmv', 'rmp', 'wh3d'];
-  const css = document.createElement('style'); css.textContent = [
-    '.dk-card{margin:14px 0 0;padding:0;overflow:hidden}',
-    '.dk-h{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--pop-c1,#12306b);color:#fff}',
-    '.dk-h h3{margin:0;font-size:15px;color:#fff;flex:1}',
-    '.dk-h button{background:var(--brand,#1e3a8a)!important;color:#fff!important;border:0!important;border-radius:6px!important;padding:6px 12px!important}',
-    '.dk-b{padding:0}',
-    '#plBox.inl,#mvBox.inl,#rmvBox.inl{position:relative!important;inset:auto!important;z-index:auto!important;background:none!important;padding:0!important;display:block!important;backdrop-filter:none!important}',
-    '#plBox.inl .pl-c,#mvBox.inl .mv-c,#rmvBox.inl .rmv-c{width:100%!important;max-width:100%!important;min-width:0!important;height:72vh!important;max-height:none!important;box-shadow:none!important;resize:none!important;border-radius:0!important;border:0!important}',
-    '.inl .mdl-ctlw,.inl .mdl-ctl{display:none!important}',
-    '.inl .pl-h,.inl .mv-h,.inl .rmv-h{padding-right:16px!important}',
-    'html body .dk-b .mdl-box>[data-ag-strip="1"]{display:none!important}'
-  ].join('\n'); document.head.appendChild(css);
-  function view() { const v = Q('.view.active'); return v && VIEWS.indexOf(v.id.replace(/^view-/, '')) >= 0 ? v : null; }
-  function host(v, kind, title) {
-    let c = Q('.dk-card[data-dk="' + kind + '"]', v);
-    if (!c) {
-      c = document.createElement('div'); c.className = 'card dk-card'; c.dataset.dk = kind;
-      c.innerHTML = '<div class="dk-h"><h3>' + title + '</h3><button type="button" data-dk-x="1">✕ Hide</button></div><div class="dk-b"></div>';
-      const cards = [...v.querySelectorAll('.card')].filter(x => !x.parentElement.closest('.card') && !x.classList.contains('dk-card'));
-      const last = cards[cards.length - 1];
-      if (last && last.parentNode) last.parentNode.insertBefore(c, last.nextSibling); else v.appendChild(c);
-      c.addEventListener('click', e => { if (e.target.closest('[data-dk-x]')) { const b = Q('.dk-b > *', c); if (b) b.remove(); c.remove(); } });
-      try { new MutationObserver(() => { if (!c.querySelector('.dk-b > *')) c.remove(); }).observe(Q('.dk-b', c), { childList: true }); } catch (e) {}
-    }
-    return c;
+  const IDS = { plBox: 1, mvBox: 1, rmvBox: 1, rpsBox: 1 };
+  const st = document.createElement('style'); st.textContent = 'body .dk-in{position:fixed!important;z-index:2147482000!important;padding:12px!important;align-items:center!important;justify-content:center!important}body .dk-in>[class$="-c"]{height:100%!important;max-height:100%!important;width:100%!important;max-width:100%!important}'; document.head.appendChild(st);
+  function area() {
+    const v = Q('.view.active'); if (!v || window.innerWidth < 700) return null;
+    const W = window.innerWidth, H = window.innerHeight, sb = Q('.sidebar'), sr = sb ? sb.getBoundingClientRect() : null, vr = v.getBoundingClientRect();
+    const left = sr && sr.width > 0 && sr.height > 100 && sr.left <= 4 ? Math.round(sr.right) : 0;
+    const top = vr.top > 0 && vr.top < 220 ? Math.round(vr.top) : 0;
+    if (W - left < 300) return null;
+    return { l: left, t: top, r: 0, b: 0 };
   }
-  function dock(box) {
-    const k = KIND[box.id]; const v = view(); if (!k || !v || window.innerWidth < 700) return;
-    const c = host(v, k[0], k[1]); const b = Q('.dk-b', c);
-    [...b.children].forEach(x => x !== box && x.remove());
-    b.appendChild(box); box.classList.add('inl');
-    setTimeout(() => { try { c.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {} }, 80);
-  }
+  function place(box) { const a = area(); if (!a) { box.classList.remove('dk-in'); return; } box.classList.add('dk-in'); box.style.setProperty('inset', a.t + 'px ' + a.r + 'px ' + a.b + 'px ' + a.l + 'px', 'important'); }
   function init() {
-    new MutationObserver(ms => { ms.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1 && KIND[n.id] && n.parentNode === document.body) dock(n); })); }).observe(document.body, { childList: true });
+    const open = new Set();
+    new MutationObserver(ms => { ms.forEach(m => { m.addedNodes.forEach(n => { if (n.nodeType === 1 && IDS[n.id] && n.parentNode === document.body) { open.add(n); place(n); } }); }); }).observe(document.body, { childList: true });
+    window.addEventListener('resize', () => open.forEach(b => b.isConnected ? place(b) : open.delete(b)));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

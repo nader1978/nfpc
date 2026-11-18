@@ -194,7 +194,7 @@ function ffScan() {
     }
     const min = ov.classList.contains('mdl-min');
     const r = ov.getBoundingClientRect();
-    if (!min && (r.width < vw * .9 || r.height < vh * .9 || alpha(cs.backgroundColor) >= .9) && !ov.querySelector(':scope > [data-mdl]')) return;
+    if (!min && !ov.classList.contains('dk-in') && (r.width < vw * .9 || r.height < vh * .9 || alpha(cs.backgroundColor) >= .9) && !ov.querySelector(':scope > [data-mdl]')) return;
     const box = Array.from(ov.children).find(c => c instanceof HTMLElement && getComputedStyle(c).display !== 'none' && (c.hasAttribute('data-mdl') || (c.offsetWidth > 120 && c.offsetHeight > 80 && getComputedStyle(c).position !== 'fixed')));
     if (!box) return;
     box.dataset.mdl = '1';
