@@ -117,6 +117,7 @@
       <div class="nav-item" data-view="insp"><span class="icon">✅</span><span>WHs Inspection</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="flr" data-perm="locsign"><span class="icon">🏗</span><span>Forklift Receiving</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="fla" data-perm="locsign"><span class="icon">📈</span><span>Forklift Activity</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="fle" data-perm="locsign"><span class="icon">⛽</span><span>Forklift Energy</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Staff Attendance</div>
       <div class="nav-item" data-view="att" data-perm="att"><span class="icon">🕒</span><span>Attendance Analytics</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="otrules" data-perm="att"><span class="icon">⏱</span><span>Overtime, Slots &amp; Breaks</span></div>
@@ -293,6 +294,9 @@
           <div id="flaStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div>
           <div id="flaBody"></div>
         </div>
+      </div>
+      <div class="view" id="view-fle">
+        <div class="card" id="fleCard"><div class="card-header"><div class="card-title">⛽ Forklift Energy <span class="text-sm" style="font-weight:400;">— fuel · LPG · battery consumption of the forklifts (FLO_LGV_Usage_tbl) · by forklift, by month, records and exceptions</span></div><div class="btn-row"><button class="secondary small" type="button" data-fe="reload" title="Re-read the energy records">🔄 Reload</button></div></div><div id="fleStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div><div id="fleBody"></div></div>
       </div>
       <div class="view" id="view-whu">
         <div class="card" id="whuCard">
@@ -3132,7 +3136,7 @@
 <script src="js/59e-wh-overview.js?v=375"></script>
 <script src="js/59f-consolidated-inventory.js?v=375"></script>
 <script src="js/59c-wh3d-picks-link.js?v=375"></script>
-<script src="js/60-update-check.js?v=403"></script>
+<script src="js/60-update-check.js?v=404"></script>
 <script src="js/56-mod-equipment-workshop.js?v=375"></script>
 <script src="js/61-col-tools.js?v=375"></script>
 <script src="js/62-mod-rack-condition.js?v=375"></script>
@@ -3173,7 +3177,7 @@
 <script src="js/88-dock-reports.js?v=393"></script>
 <script src="js/89-win-ctl.js?v=394"></script>
 <script src="js/90-secure-connection.js?v=401"></script>
-<script src="js/91-forklift-energy.js?v=403"></script>
+<script src="js/91-forklift-energy.js?v=404"></script>
 <script src="js/85-topbar-menu.js?v=375"></script>
 <script src="js/86-upload-duplicates.js?v=375"></script>
 <script src="js/87-trips-store.js?v=375"></script>
