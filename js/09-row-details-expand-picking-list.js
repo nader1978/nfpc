@@ -167,7 +167,7 @@
   css.textContent += '#tblExpandOverlay .te-bar{position:relative;z-index:41;} #tblExpandOverlay .te-body{position:relative;z-index:1;} #tblExpandOverlay .combo-list{z-index:100001;} #dtrkFB .combo-list{z-index:1200;}';
   document.head.appendChild(css);
   const ov = document.createElement('div'); ov.id = 'tblExpandOverlay';
-  ov.innerHTML = '<div class="te-bar"><strong id="teTitle" style="font-size:15px;">Table</strong><select id="teCol" style="margin:0;width:auto;max-width:220px;"></select><div class="te-combo" id="teCombo"></div><span id="teCount" class="text-sm" style="color:var(--gray-500);"></span><select id="teSumAll" title="Apply one summary to every column (numeric columns for Sum / Average / Max / Min)" style="margin:0;width:auto;max-width:170px;font-size:12px;"><option value="">Σ Summary row: all columns…</option><option value="sum">Σ Sum</option><option value="avg">x̄ Average</option><option value="max">▲ Max</option><option value="min">▼ Min</option><option value="cnt"># Count</option><option value="dst">◇ Distinct</option><option value="">✖ Clear all</option></select><div class="spacer" style="flex:1"></div><button id="teExcel" class="success small" type="button">⬇ Excel</button><button id="teEmail" class="secondary small" type="button">📧 Email</button><button id="tePrint" class="ghost small" type="button">🖨 Print</button><button id="teClose" class="ghost small" type="button">✖ Close</button></div><div id="teExtra" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:40;background:var(--card);"></div><div class="te-body" id="teBody"></div><div id="teSumBar"><div id="teSumTrack"></div></div>';
+  ov.innerHTML = '<div class="te-bar"><strong id="teTitle" style="font-size:15px;">Table</strong><select id="teCol" style="margin:0;width:auto;max-width:220px;"></select><div class="te-combo" id="teCombo"></div><span id="teCount" class="text-sm" style="color:var(--gray-500);"></span><div class="spacer" style="flex:1"></div><button id="teExcel" class="success small" type="button">⬇ Excel</button><button id="teEmail" class="secondary small" type="button">📧 Email</button><button id="tePrint" class="ghost small" type="button">🖨 Print</button><button id="teSumToggle" class="secondary small" type="button" title="Show or hide the summary bar at the bottom of this list">Σ Summary bar: turn on</button><button class="secondary small te-sa" data-op="sum" type="button" title="Sum of every numeric column">Σ Sum — all columns</button><button class="secondary small te-sa" data-op="avg" type="button" title="Average of every numeric column">x̄ Average — all columns</button><button class="secondary small te-sa" data-op="max" type="button" title="Largest value of every numeric / date column">▲ Max — all columns</button><button class="secondary small te-sa" data-op="min" type="button" title="Smallest value of every numeric / date column">▼ Min — all columns</button><button class="secondary small te-sa" data-op="cnt" type="button" title="Number of filled cells of every column"># Count — all columns</button><button class="secondary small te-sa" data-op="dst" type="button" title="Number of different values of every column">◇ Distinct — all columns</button><button class="secondary small te-sa" data-op="" type="button" title="Clear every column summary">✖ Remove all summaries</button><button id="teClose" class="ghost small" type="button">✖ Close</button></div><div id="teExtra" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:40;background:var(--card);"></div><div class="te-body" id="teBody"></div><div id="teSumBar"><div id="teSumTrack"></div></div>';
   document.body.appendChild(ov);
   const SKIP = new Set(['mappingTable', 'inlineEditTable', 'wFefoUploadMapTable', 'incUploadMapTable', 'plDataTable', 'dpDataTable', 'mdpImpTable', 'wGRBTable', 'wGRBUpMapTable']);
   const ok = t => t && !SKIP.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw, #view-wh3d, #rsBox') && !t.classList.contains('map-table') && !t.classList.contains('pd-g') && !t.closest('#tblExpandOverlay,[id$="Modal"],#gdModal,.modal');
@@ -206,6 +206,8 @@
     return 'n/a';
   }
   /* the summary bar sits under the list (pinned to the bottom of the window) and each box lines up under its column */
+  const SUMON_KEY = 'orbit_te_sumbar', sumOn = () => { try { return localStorage.getItem(SUMON_KEY) === '1'; } catch (e) { return false; } };
+  function sumSetOn(on) { try { localStorage.setItem(SUMON_KEY, on ? '1' : '0'); } catch (e) {} const b = $('teSumBar'); if (b && tbl) b.style.display = on ? 'block' : 'none'; const t = $('teSumToggle'); if (t) t.textContent = 'Σ Summary bar: ' + (on ? 'turn off' : 'turn on'); if (on) { sumUpdate(); setTimeout(sumLayout, 50); } }
   const sumCells = () => Array.from(document.querySelectorAll('#teSumTrack > .sb-c'));
   function sumLayout() {
     const bar = $('teSumBar'), tr = $('teSumTrack'); if (!tbl || !tr || bar.style.display === 'none') return; const hr = tbl.tHead && tbl.tHead.rows[0]; if (!hr) return;
@@ -219,7 +221,7 @@
   }
   function sumBuild() {
     const bar = $('teSumBar'), tr = $('teSumTrack'); tr.innerHTML = ''; if (!tbl || !tbl.tHead || !tbl.tBodies.length || !tbl.tHead.rows[0]) { bar.style.display = 'none'; return; } const hr = tbl.tHead.rows[0], n = hr.cells.length; if (!n) { bar.style.display = 'none'; return; }
-    bar.style.display = 'block';
+    bar.style.display = sumOn() ? 'block' : 'none'; { const t = $('teSumToggle'); if (t) t.textContent = 'Σ Summary bar: ' + (sumOn() ? 'turn off' : 'turn on'); }
     for (let i = 0; i < n; i++) { const td = document.createElement('div'); td.className = 'sb-c'; const nx = hr.cells[i].dataset && hr.cells[i].dataset.noexport, hash = cellText(hr.cells[i]) === '#';
       if (nx) { td.dataset.skip = '1'; tr.appendChild(td); continue; }
       if (hash) { td.dataset.skip = '1'; td.innerHTML = '<span class="sb-sig" title="Summary of the rows shown">Σ</span>'; tr.appendChild(td); continue; }
@@ -227,7 +229,6 @@
       td.querySelector('select').addEventListener('change', e => { td.dataset.op = e.target.value; sumSet(i, e.target.value); sumUpdate(); }); tr.appendChild(td); }
     try { new MutationObserver(() => sumLayout()).observe(tbl.tHead, { attributes: true, subtree: true, attributeFilter: ['style'] }); } catch (e) {}
     try { new ResizeObserver(() => sumLayout()).observe(tbl); } catch (e) {}
-    const all = $('teSumAll'); if (all) all.value = '';
   }
   function sumAll(op) { sumCells().forEach((td, i) => { const sl = td.querySelector('select'); if (!sl) return; let v = op; if (op && op !== 'cnt' && op !== 'dst') { const vis = rowsOf().filter(r => r.style.display !== 'none').map(r => r.cells[i]).filter(Boolean).map(cellText).filter(Boolean), nn = vis.filter(t => numOf(t) !== null).length; if (!vis.length || nn < vis.length * 0.6) v = ''; } sl.value = v; td.dataset.op = v; sumSet(i, v); }); sumUpdate(); }
   function buildCombo() {
@@ -266,7 +267,8 @@
   }
   $('teCol').addEventListener('change', () => { sel = []; buildCombo(); apply(); });
   $('teBody').addEventListener('scroll', () => sumLayout()); window.addEventListener('resize', () => setTimeout(sumLayout, 50));
-  $('teSumAll').addEventListener('change', e => { const v = e.target.value, clear = e.target.selectedOptions[0].text.startsWith('✖'); sumAll(clear ? '' : v); e.target.value = ''; });
+  $('teSumToggle').addEventListener('click', () => sumSetOn(!sumOn()));
+  ov.querySelectorAll('.te-sa').forEach(b => b.addEventListener('click', () => { if (b.dataset.op) sumSetOn(true); sumAll(b.dataset.op); }));
   ov.addEventListener('dblclick', e => { const td = e.target.closest && e.target.closest('td[data-loc]'); if (td && typeof dtrk_showCell === 'function') dtrk_showCell(td.dataset.loc, td.dataset.day); });
   window.tableExpandRefresh = id => { if (ov.style.display === 'flex' && ov.dataset.src === id) { const t = document.getElementById(id); if (t) open(t, true); } };
   $('teClose').addEventListener('click', () => { restoreExtra(); $('teSumBar').style.display = 'none'; ov.style.display = 'none'; $('teBody').innerHTML = ''; tbl = null; });
@@ -279,7 +281,7 @@
     { const sr = sumRowData(); if (sr) aoa.push(sr); }
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'List'); XLSX.writeFile(wb, `List_${new Date().toISOString().slice(0, 10)}.xlsx`);
   });
-  function sumRowData() { const cs = sumCells(); let any = false; const hr = tbl.tHead.rows[0], nx = nxOf(hr), out = cs.map((td, i) => { if (nx.has(i)) return null; const op = td.dataset.op || ''; if (!op) return ''; any = true; return SUM_OPS.find(x => x[0] === op)[1].replace(/^\S+\s/, '') + ': ' + sumCalc(i, op); }).filter(v => v !== null); return any ? out : null; }
+  function sumRowData() { if (!sumOn()) return null; const cs = sumCells(); let any = false; const hr = tbl.tHead.rows[0], nx = nxOf(hr), out = cs.map((td, i) => { if (nx.has(i)) return null; const op = td.dataset.op || ''; if (!op) return ''; any = true; return SUM_OPS.find(x => x[0] === op)[1].replace(/^\S+\s/, '') + ': ' + sumCalc(i, op); }).filter(v => v !== null); return any ? out : null; }
   /* what is currently displayed (visible rows only) — used by Email and Print */
   function tdata() {
     if (!tbl) return null;
