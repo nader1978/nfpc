@@ -43,7 +43,7 @@
   function gate(onDone, closable) {
     if (Q('#cfgGate')) return; if (!Q('#cfgCss')) { const s = document.createElement('style'); s.id = 'cfgCss'; s.textContent = CSS; document.head.appendChild(s); }
     const g = document.createElement('div'); g.id = 'cfgGate';
-    g.innerHTML = '<div class="cg"><h2>🔐 Connect to your workspace</h2><p>Select the encrypted connection file <b>(.orbitcfg)</b> your administrator gave you and enter its password. The sign-in screen opens after the connection details are loaded.</p><label class="cgf" id="cgDrop"><input type="file" id="cgFile" accept=".orbitcfg,.txt" hidden><span id="cgName">Click to choose the file, or drop it here</span></label><input type="password" id="cgPass" placeholder="File password" autocomplete="off"><button id="cgGo" type="button">Import &amp; continue</button>' + (closable ? '<button id="cgX" type="button" style="background:#e2e8f0;color:#0f172a">Cancel</button>' : '') + '<div class="cgs" id="cgSt"></div></div>';
+    g.innerHTML = '<div class="cg"><h2>🔐 Connect to your workspace</h2><p>Select the encrypted connection file <b>(.orbitcfg)</b> your administrator gave you and enter its password. The sign-in screen opens after the connection details are loaded.</p><label class="cgf" id="cgDrop"><input type="file" id="cgFile" accept=".orbitcfg,.txt" hidden><span id="cgName">Click to choose the file, or drop it here</span></label><input type="password" id="cgPass" placeholder="File password" autocomplete="off"><button id="cgGo" type="button">Import &amp; continue</button>' + (closable ? '<button id="cgX" type="button" style="background:#e2e8f0;color:#0f172a">Cancel</button>' : '') + '<a href="#" id="cgMan" style="text-align:center;font-size:12.5px;color:#1d4ed8">Administrator: enter the connection details manually in Settings</a><div class="cgs" id="cgSt"></div></div>';
     document.body.appendChild(g);
     const st = (m, k) => { const e = Q('#cgSt'); e.className = 'cgs ' + (k || ''); e.textContent = m; }, fi = Q('#cgFile'); let file = null;
     const pick = f => { file = f; Q('#cgName').textContent = f ? '📄 ' + f.name : 'Click to choose the file, or drop it here'; Q('#cgDrop').classList.toggle('on', !!f); };
@@ -51,14 +51,17 @@
     const dr = Q('#cgDrop'); dr.addEventListener('dragover', e => e.preventDefault()); dr.addEventListener('drop', e => { e.preventDefault(); pick(e.dataTransfer.files[0]); });
     const go = async () => { const b = Q('#cgGo'); b.disabled = true; try { await importFile(file, Q('#cgPass').value, m => st(m)); st('✅ Connection details loaded.', 'ok'); Q('#cgPass').value = ''; setTimeout(() => { g.remove(); try { const ls = Q('#loginScreen'); if (ls && !(typeof currentUser !== 'undefined' && currentUser)) { ls.style.display = 'flex'; const u = Q('#loginUsername'); if (u) u.focus(); } } catch (e) {} onDone && onDone(); }, 500); } catch (e) { st('✘ ' + e.message, 'error'); } finally { b.disabled = false; } };
     Q('#cgGo').addEventListener('click', go); Q('#cgPass').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    Q('#cgMan').addEventListener('click', e => { e.preventDefault(); try { sessionStorage.setItem('orbit_cfg_skip', '1'); } catch (x) {} g.remove(); const ls = Q('#loginScreen'); if (ls) ls.style.display = 'flex'; });
     const x = Q('#cgX'); if (x) x.addEventListener('click', () => g.remove());
   }
 
   function boot() {
-    try { if (typeof ms_configured === 'function' && !ms_configured()) gate(); } catch (e) {}
+    try { if (typeof ms_configured === 'function' && !ms_configured() && !sessionStorage.getItem('orbit_cfg_skip')) gate(); } catch (e) {}
     /* admin: re-import from Settings */
     const sv = Q('#msSaveBtn'); if (sv && !Q('#cfgImportBtn')) { const b = document.createElement('button'); b.type = 'button'; b.id = 'cfgImportBtn'; b.className = sv.className; b.textContent = '🔐 Import connection file'; b.style.marginLeft = '8px'; b.addEventListener('click', () => { if (typeof isAdmin === 'function' && !isAdmin()) return alert('Only administrators can change the connection.'); gate(() => { try { ms_status('✅ Connection imported from the encrypted file.', 'success'); } catch (e) {} }, true); }); sv.insertAdjacentElement('afterend', b); }
   }
+  const fill = () => { try { const c = ms_cfg(), site = (typeof getGlobalSiteUrl === 'function' && getGlobalSiteUrl()) || c.siteUrl || ''; [['#msTenant', c.tenantId], ['#msClient', c.clientId], ['#globalSiteUrl', site], ['#siteUrl', site]].forEach(([q, v]) => { const e = Q(q); if (e && !e.matches(':focus') && v && e.value !== v) e.value = v; }); } catch (e) {} };
+  document.addEventListener('click', () => setTimeout(fill, 150)); setInterval(fill, 4000); setTimeout(fill, 1200);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(boot, 50)); else setTimeout(boot, 50);
   window.orbitConnGate = gate;
 })();
