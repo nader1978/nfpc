@@ -163,10 +163,11 @@
   const css = document.createElement('style');
   css.textContent = `.tbl-expand-btn{position:absolute;top:4px;right:6px;z-index:20;opacity:.0;transition:opacity .15s;padding:2px 8px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--card);cursor:pointer;} .table-wrap:hover>.tbl-expand-btn,.tbl-expand-wrap:hover>.tbl-expand-btn{opacity:1;} .tbl-expand-btn:focus{opacity:1;}
     #tblExpandOverlay{display:none;position:fixed;inset:0;z-index:100000;background:var(--card);color:inherit;flex-direction:column;} #tblExpandOverlay .te-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);} #tblExpandOverlay .te-body{flex:1;overflow:auto;padding:0 14px 14px;} :where(#tblExpandOverlay) :where(table){width:100%;border-collapse:collapse;font-size:13px;} :where(#tblExpandOverlay) :where(th){position:sticky;top:0;background:var(--gray-100);color:var(--gray-700);z-index:3;text-align:left;padding:8px 10px;border-bottom:1px solid var(--gray-300);} :where(#tblExpandOverlay) :where(td){padding:6px 10px;border-bottom:1px solid var(--border);} #tblExpandOverlay .te-combo{min-width:300px;flex:1;max-width:560px;}`;
+  css.textContent += '#tblExpandOverlay tfoot td{position:sticky;bottom:0;z-index:5;background:var(--gray-50,#f1f5f9);border-top:2px solid var(--brand,#1d4ed8);padding:3px 6px;font-size:12px;white-space:nowrap;vertical-align:top}#tblExpandOverlay tfoot .te-ss{display:block;width:100%;min-width:78px;padding:1px 2px;font-size:11px;margin:0;border:1px solid var(--border);border-radius:6px;background:var(--card);color:inherit}#tblExpandOverlay tfoot .te-sv{display:block;font-size:13px;min-height:16px;color:var(--brand,#1d4ed8)}#tblExpandOverlay tfoot .te-sl{font-weight:800;margin-right:4px}';
   css.textContent += '#tblExpandOverlay .te-bar{position:relative;z-index:41;} #tblExpandOverlay .te-body{position:relative;z-index:1;} #tblExpandOverlay .combo-list{z-index:100001;} #dtrkFB .combo-list{z-index:1200;}';
   document.head.appendChild(css);
   const ov = document.createElement('div'); ov.id = 'tblExpandOverlay';
-  ov.innerHTML = '<div class="te-bar"><strong id="teTitle" style="font-size:15px;">Table</strong><select id="teCol" style="margin:0;width:auto;max-width:220px;"></select><div class="te-combo" id="teCombo"></div><span id="teCount" class="text-sm" style="color:var(--gray-500);"></span><div class="spacer" style="flex:1"></div><button id="teExcel" class="success small" type="button">⬇ Excel</button><button id="teEmail" class="secondary small" type="button">📧 Email</button><button id="tePrint" class="ghost small" type="button">🖨 Print</button><button id="teClose" class="ghost small" type="button">✖ Close</button></div><div id="teExtra" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:40;background:var(--card);"></div><div class="te-body" id="teBody"></div>';
+  ov.innerHTML = '<div class="te-bar"><strong id="teTitle" style="font-size:15px;">Table</strong><select id="teCol" style="margin:0;width:auto;max-width:220px;"></select><div class="te-combo" id="teCombo"></div><span id="teCount" class="text-sm" style="color:var(--gray-500);"></span><select id="teSumAll" title="Apply one summary to every column (numeric columns for Sum / Average / Max / Min)" style="margin:0;width:auto;max-width:170px;font-size:12px;"><option value="">Σ Summary row: all columns…</option><option value="sum">Σ Sum</option><option value="avg">x̄ Average</option><option value="max">▲ Max</option><option value="min">▼ Min</option><option value="cnt"># Count</option><option value="dst">◇ Distinct</option><option value="">✖ Clear all</option></select><div class="spacer" style="flex:1"></div><button id="teExcel" class="success small" type="button">⬇ Excel</button><button id="teEmail" class="secondary small" type="button">📧 Email</button><button id="tePrint" class="ghost small" type="button">🖨 Print</button><button id="teClose" class="ghost small" type="button">✖ Close</button></div><div id="teExtra" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);position:relative;z-index:40;background:var(--card);"></div><div class="te-body" id="teBody"></div>';
   document.body.appendChild(ov);
   const SKIP = new Set(['mappingTable', 'inlineEditTable', 'wFefoUploadMapTable', 'incUploadMapTable', 'plDataTable', 'dpDataTable', 'mdpImpTable', 'wGRBTable', 'wGRBUpMapTable']);
   const ok = t => t && !SKIP.has(t.id) && !t.closest('.pl-card, #view-fdplan, #view-fdplan-upload, #view-fddemand, #view-roster, #view-brkplan, #view-locsign, #view-att, #view-otrules, #view-foc, #view-mgt, #view-mgw, #view-wh3d, #rsBox') && !t.classList.contains('map-table') && !t.classList.contains('pd-g') && !t.closest('#tblExpandOverlay,[id$="Modal"],#gdModal,.modal');
@@ -186,7 +187,39 @@
       r.style.display = hit ? '' : 'none'; if (hit) shown++;
     });
     $('teCount').textContent = `${shown.toLocaleString()} of ${total.toLocaleString()} row(s)`;
+    try { sumUpdate(); } catch (e) {}
   }
+  /* ---------- summary row: the user picks Sum / Average / Max / Min / Count / Distinct for every column (calculated on the rows shown) ---------- */
+  const SUM_OPS = [['', '— none'], ['sum', 'Σ Sum'], ['avg', 'x̄ Average'], ['max', '▲ Max'], ['min', '▼ Min'], ['cnt', '# Count'], ['dst', '◇ Distinct']], SUM_KEY = 'orbit_te_sum|';
+  const numOf = t => { t = String(t).replace(/\s+/g, ' ').trim(); if (!/^[-+(]?\d[\d,]*(\.\d+)?\)?\s?%?$/.test(t) && !/^[-+]?\.\d+$/.test(t)) return null; const neg = /^\(.*\)$/.test(t); const n = parseFloat(t.replace(/[,%()\s]/g, '')); return isFinite(n) ? (neg ? -n : n) : null; };
+  const MON = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+  const dateOf = t => { t = String(t).trim(); let m = /^(\d{1,2}) ([A-Za-z]{3}) (\d{4})/.exec(t); if (m && m[2].toLowerCase() in MON) return Date.UTC(+m[3], MON[m[2].toLowerCase()], +m[1]); m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(t); if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]); m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t); return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null; };
+  const fmtN = n => (Math.round(n * 100) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const sumKeyOf = i => { const hr = tbl && tbl.tHead && tbl.tHead.rows[0]; return SUM_KEY + $('teTitle').textContent.slice(0, 60) + '|' + (hr && hr.cells[i] ? cellText(hr.cells[i]) : i); };
+  const sumGet = i => { try { return localStorage.getItem(sumKeyOf(i)) || ''; } catch (e) { return ''; } }, sumSet = (i, v) => { try { v ? localStorage.setItem(sumKeyOf(i), v) : localStorage.removeItem(sumKeyOf(i)); } catch (e) {} };
+  function sumCalc(i, op) {
+    const cells = rowsOf().filter(r => r.style.display !== 'none' && !(r.cells.length === 1 && r.cells[0].colSpan > 1)).map(r => r.cells[i]).filter(Boolean).map(c => ({ t: cellText(c) })).filter(x => x.t !== '' && x.t !== '—' && x.t !== '-');
+    if (op === 'cnt') return String(cells.length.toLocaleString()); if (op === 'dst') return new Set(cells.map(x => x.t.toLowerCase())).size.toLocaleString();
+    const nums = cells.map(x => numOf(x.t)).filter(x => x !== null), isNum = cells.length && nums.length >= cells.length * 0.6;
+    if (isNum) { if (!nums.length) return ''; if (op === 'sum') return fmtN(nums.reduce((a, b) => a + b, 0)); if (op === 'avg') return fmtN(nums.reduce((a, b) => a + b, 0) / nums.length); if (op === 'max') return fmtN(Math.max(...nums)); if (op === 'min') return fmtN(Math.min(...nums)); }
+    if (op === 'max' || op === 'min') { const ds = cells.map(x => [dateOf(x.t), x.t]).filter(x => x[0] !== null); if (ds.length && ds.length >= cells.length * 0.6) return ds.reduce((a, b) => (op === 'max' ? b[0] > a[0] : b[0] < a[0]) ? b : a)[1]; }
+    return 'n/a';
+  }
+  function sumUpdate() {
+    const ft = tbl && tbl.tFoot; if (!ft || !ft.rows[0]) return; const hr = tbl.tHead.rows[0], row = ft.rows[0];
+    Array.from(row.cells).forEach((td, i) => { const op = td.dataset.op || '', out = td.querySelector('.te-sv'); if (hr && hr.cells[i]) td.style.display = hr.cells[i].style.display; if (out) { out.textContent = op ? sumCalc(i, op) : ''; out.title = op ? SUM_OPS.find(x => x[0] === op)[1] : ''; } });
+  }
+  function sumBuild() {
+    if (!tbl || !tbl.tHead || !tbl.tBodies.length) return; const hr = tbl.tHead.rows[0], n = hr ? hr.cells.length : 0; if (!n) return; tbl.querySelectorAll('tfoot').forEach(x => x.remove());
+    const ft = document.createElement('tfoot'), row = document.createElement('tr'); row.className = 'te-sumrow';
+    for (let i = 0; i < n; i++) { const td = document.createElement('td'); if (hr.cells[i].dataset && hr.cells[i].dataset.noexport) { row.appendChild(td); continue; } const op = sumGet(i); td.dataset.op = op;
+      td.innerHTML = `<select class="te-ss" title="Summary of this column (rows shown)">${SUM_OPS.map(([v, t]) => `<option value="${v}"${v === op ? ' selected' : ''}>${t}</option>`).join('')}</select><b class="te-sv"></b>`;
+      td.querySelector('select').addEventListener('change', e => { td.dataset.op = e.target.value; sumSet(i, e.target.value); sumUpdate(); }); row.appendChild(td); }
+    ft.appendChild(row); tbl.appendChild(ft);
+    try { new MutationObserver(() => sumUpdate()).observe(tbl.tHead, { attributes: true, subtree: true, attributeFilter: ['style'] }); } catch (e) {}
+    const all = $('teSumAll'); if (all) all.value = '';
+  }
+  function sumAll(op) { const ft = tbl && tbl.tFoot; if (!ft || !ft.rows[0]) return; Array.from(ft.rows[0].cells).forEach((td, i) => { const sl = td.querySelector('select'); if (!sl) return; let v = op; if (op && op !== 'cnt' && op !== 'dst') { const vis = rowsOf().filter(r => r.style.display !== 'none').map(r => r.cells[i]).filter(Boolean).map(cellText).filter(Boolean), nn = vis.filter(t => numOf(t) !== null).length; if (!vis.length || nn < vis.length * 0.6) v = ''; } sl.value = v; td.dataset.op = v; sumSet(i, v); }); sumUpdate(); }
   function buildCombo() {
     const colIdx = $('teCol').value === '' ? -1 : parseInt($('teCol').value, 10), seen = new Set();
     rowsOf().forEach(r => Array.from(r.cells).forEach((c, i) => { if (colIdx >= 0 && i !== colIdx) return; if (c.dataset && c.dataset.noexport) return; const t = cellText(c); if (t && t.length <= 60 && seen.size < 3000) seen.add(t); }));
@@ -219,9 +252,10 @@
     const hr = tbl.tHead && tbl.tHead.rows.length ? tbl.tHead.rows[tbl.tHead.rows.length - 1] : tbl.rows[0];
     $('teCol').innerHTML = '<option value="">All columns</option>' + (hr ? Array.from(hr.cells).map((c, i) => `<option value="${i}">${escapeHtml(cellText(c) || 'Column ' + (i + 1))}</option>`).join('') : '');
     $('teBody').innerHTML = ''; $('teBody').appendChild(tbl);
-    buildColFilters(); buildCombo(); apply(); ov.style.display = 'flex';
+    buildColFilters(); sumBuild(); buildCombo(); apply(); ov.style.display = 'flex';
   }
   $('teCol').addEventListener('change', () => { sel = []; buildCombo(); apply(); });
+  $('teSumAll').addEventListener('change', e => { const v = e.target.value, clear = e.target.selectedOptions[0].text.startsWith('✖'); sumAll(clear ? '' : v); e.target.value = ''; });
   ov.addEventListener('dblclick', e => { const td = e.target.closest && e.target.closest('td[data-loc]'); if (td && typeof dtrk_showCell === 'function') dtrk_showCell(td.dataset.loc, td.dataset.day); });
   window.tableExpandRefresh = id => { if (ov.style.display === 'flex' && ov.dataset.src === id) { const t = document.getElementById(id); if (t) open(t, true); } };
   $('teClose').addEventListener('click', () => { restoreExtra(); ov.style.display = 'none'; $('teBody').innerHTML = ''; tbl = null; });
@@ -231,8 +265,10 @@
     const hrs = tbl.tHead ? Array.from(tbl.tHead.rows).filter(r => !r.classList.contains('te-filters')) : [];
     const hr = hrs.length ? hrs[hrs.length - 1] : tbl.rows[0];
     const nxI = nxOf(hr), aoa = [hr ? Array.from(hr.cells).filter((c, i) => !nxI.has(i)).map(cellText) : []].concat(rowsOf().filter(r => r.style.display !== 'none' && !(r.cells.length === 1 && r.cells[0].colSpan > 1)).map(r => Array.from(r.cells).filter((c, i) => !nxI.has(i)).map(c => { const t = cellText(c); return t !== '' && !isNaN(Number(t.replace(/,/g, ''))) && !/^0\d/.test(t) ? Number(t.replace(/,/g, '')) : t; })));
+    { const sr = sumRowData(); if (sr) aoa.push(sr); }
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'List'); XLSX.writeFile(wb, `List_${new Date().toISOString().slice(0, 10)}.xlsx`);
   });
+  function sumRowData() { const ft = tbl && tbl.tFoot; if (!ft || !ft.rows[0]) return null; const hr = tbl.tHead.rows[0], nx = nxOf(hr); let any = false; const out = Array.from(ft.rows[0].cells).map((td, i) => { if (nx.has(i)) return null; const op = td.dataset.op || ''; if (!op) return ''; any = true; return SUM_OPS.find(x => x[0] === op)[1].replace(/^\S+\s/, '') + ': ' + sumCalc(i, op); }).filter(v => v !== null); return any ? out : null; }
   /* what is currently displayed (visible rows only) — used by Email and Print */
   function tdata() {
     if (!tbl) return null;
@@ -244,7 +280,8 @@
     const parts = [];
     if (sel.length) parts.push('Search: ' + sel.join(', ') + ($('teCol').value !== '' ? ' in ' + headers[parseInt($('teCol').value, 10)] : ''));
     Object.entries(colSel).forEach(([i, v]) => { if (v && v.length) parts.push((headers[i] || 'Column ' + (+i + 1)) + ': ' + v.join(', ')); });
-    return { title: $('teTitle').textContent.replace(/^\s*⤢\s*/, '').trim() || 'List', headers, rows, note: `${rows.length} row(s)` + (parts.length ? ' · Filter — ' + parts.join(' · ') : '') };
+    const nRows = rows.length; { const sr = sumRowData(); if (sr) rows.push(sr); }
+    return { title: $('teTitle').textContent.replace(/^\s*⤢\s*/, '').trim() || 'List', headers, rows, note: `${nRows} row(s)` + (parts.length ? ' · Filter — ' + parts.join(' · ') : '') };
   }
   window.tableExpandData = tdata;
   $('teEmail').addEventListener('click', () => { const d = tdata(); if (!d || !d.rows.length) { $('teCount').textContent = '⚠ No rows are displayed — nothing to email.'; return; } wMail_open('te'); });
