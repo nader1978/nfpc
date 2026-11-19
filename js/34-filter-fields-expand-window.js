@@ -182,6 +182,15 @@ function ffScan() {
     const cb = closeBtn(box); if (cb && !cb.closest('.mdl-ctl')) cb.setAttribute('data-mdl-hid', '1');
     const mb = box.querySelector('[data-x=max]'); if (mb) mb.setAttribute('data-mdl-hid', '1');
   }
+  /* windows take the colour of the page they were opened from: the visible dashboard (data-dv) sets --dv1/--dv2, otherwise the app theme stays */
+  function dvAcc(ov) {
+    let host = null; const all = document.querySelectorAll('[data-dv]');
+    for (let i = all.length - 1; i >= 0; i--) { const e = all[i]; if (!e.closest('#tblExpandOverlay') && e.getClientRects().length && e.getBoundingClientRect().width > 200) { host = e; break; } }
+    if (!host) { if (ov.style.getPropertyValue('--acc-grad')) { ov.style.removeProperty('--acc-grad'); ov.style.removeProperty('--acc-1'); } return; }
+    const c = getComputedStyle(host), a1 = c.getPropertyValue('--dv1').trim(), a2 = c.getPropertyValue('--dv2').trim(); if (!a1 || !a2) return;
+    const g = 'linear-gradient(120deg,' + a1 + ',' + a2 + ')'; if (ov.style.getPropertyValue('--acc-grad') !== g) { ov.style.setProperty('--acc-grad', g); ov.style.setProperty('--acc-1', a1); ov.style.setProperty('--acc-2', a2); ov.style.setProperty('--acc-3', a2); }
+  }
+  window.dvAcc = dvAcc;
   function scanOne(ov, vw, vh, st) {
     const cs = getComputedStyle(ov);
     if (cs.position !== 'fixed') return;
@@ -190,6 +199,7 @@ function ffScan() {
       if (ov._mdl || ov._mdlFull || ov.classList.contains('mdl-min') || ov.classList.contains('mdl-min2') || ov.classList.contains('mdl-win')) { ov._mdl = null; ov._mdlFull = false; ov.classList.remove('mdl-min', 'mdl-min2', 'mdl-win', 'mdl-ovfull'); ov.style.transform = ''; ov.querySelectorAll(':scope > [data-mdl]').forEach(b => { b.style.transform = ''; b.classList.remove('mdl-full'); }); if (ov.id === 'tblExpandOverlay') { /* its own observer manages the backdrop */ } }
       return;
     }
+    try { dvAcc(ov); } catch (e) { }
     if (win) {
       ov.dataset.mdl = '1';
       const f = ov.id === 'tblExpandOverlay' ? !ov.classList.contains('te-win') : !ov.classList.contains('mdl-win');
