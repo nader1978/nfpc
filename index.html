@@ -141,6 +141,7 @@
       <div class="nav-item" data-view="whu" data-perm="mgw"><span class="icon">🏭</span><span>WHs Utilization</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="whdu" data-perm="mgw"><span class="icon">📅</span><span>WHs Daily Data Update</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="whtmp" data-perm="mgw"><span class="icon">🌡</span><span>Temperature Daily Records</span><span class="badge new">NEW</span></div>
+      <div class="nav-item" data-view="opa" data-perm="mgw"><span class="icon">🏭</span><span>Oasis Production Daily</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Automation</div>
       <div class="nav-item" data-view="scheduler" data-perm="scheduler"><span class="icon">⏰</span><span>Scheduled Exports</span><span class="badge" id="navSchedulerBadge">0</span></div>
       <div class="nav-item" data-view="scheduler-upload" data-perm="scheduler-upload"><span class="icon">⏫</span><span>Scheduled Uploads</span><span class="badge" id="navSchedulerUploadBadge">0</span></div>
@@ -310,6 +311,7 @@
         <div class="card" id="whuTblCard" style="margin-top:12px;"><div class="card-header"><div class="card-title">📋 By storage area <span class="text-sm" style="font-weight:400;">— average over the date filter and on the To date</span></div></div><div id="whuTbl"></div></div>
       </div>
       <div class="view" id="view-whdu"></div>
+      <div class="view" id="view-opa"><div class="card" id="opaCard"><div class="card-header"><div class="card-title">🏭 Oasis AUH Production <span class="text-sm" style="font-weight:400;">— daily analysis of the Oasis AUH Daily Report · efficiency, production, rejection, stoppages, trends</span></div><div class="btn-row"><button class="secondary small" type="button" data-o="clear" title="Remove the stored report from this device">🗑 Clear</button></div></div><div id="opaStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div><div id="opaBody"></div></div></div>
       <div class="view" id="view-whtmp"></div>
       <div class="view" id="view-md-inv"></div>
       <div class="view" id="view-md-uom"></div>
@@ -3065,7 +3067,7 @@
 <script src="js/00-users-data.js?v=375"></script>
 <script src="js/01-core-constants-helpers.js?v=378"></script>
 <script src="js/02-users-and-roles-ui.js?v=375"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=402"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=412"></script>
 <script src="js/04-confirm-combo-csv.js?v=375"></script>
 <script src="js/05-dropdown-sources-uploader.js?v=375"></script>
 <script src="js/06-warehouse-fefo-batch-allocation.js?v=375"></script>
@@ -3136,7 +3138,7 @@
 <script src="js/59e-wh-overview.js?v=375"></script>
 <script src="js/59f-consolidated-inventory.js?v=375"></script>
 <script src="js/59c-wh3d-picks-link.js?v=375"></script>
-<script src="js/60-update-check.js?v=411"></script>
+<script src="js/60-update-check.js?v=412"></script>
 <script src="js/56-mod-equipment-workshop.js?v=375"></script>
 <script src="js/61-col-tools.js?v=375"></script>
 <script src="js/62-mod-rack-condition.js?v=411"></script>
@@ -3168,7 +3170,7 @@
 <script src="js/79f-mobile-projects.js?v=375"></script>
 <script src="js/99-boot.js?v=375"></script>
 <script src="js/80-dashboard-style.js?v=375"></script>
-<script src="js/81-page-help.js?v=402"></script>
+<script src="js/81-page-help.js?v=412"></script>
 <script src="js/82-movement-guard.js?v=375"></script>
 <script src="js/83-division-dash.js?v=375"></script>
 <script src="js/84-section-dashboards.js?v=394"></script>
@@ -3179,6 +3181,7 @@
 <script src="js/90-secure-connection.js?v=401"></script>
 <script src="js/91-forklift-energy.js?v=404"></script>
 <script src="js/92-attendance-location-scope.js?v=409"></script>
+<script src="js/93-production-daily.js?v=412"></script>
 <script src="js/85-topbar-menu.js?v=375"></script>
 <script src="js/86-upload-duplicates.js?v=375"></script>
 <script src="js/87-trips-store.js?v=375"></script>
