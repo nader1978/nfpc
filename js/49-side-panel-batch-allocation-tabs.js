@@ -14,6 +14,8 @@ function navCapture() {
 function navReconcile(l) {
   const orig = navCapture(), known = new Set(Object.keys(navMeta)), seen = new Set(), out = { v: 1, groups: [] };
   (l && l.groups ? l.groups : orig.groups).forEach((g, i) => { const items = (g.items || []).filter(v => known.has(v) && !seen.has(v)); items.forEach(v => seen.add(v)); const subs = (g.subs || []).map((x, k) => { const it = (x.items || []).filter(v => known.has(v) && !seen.has(v)); it.forEach(v => seen.add(v)); return { id: x.id || 's' + i + '_' + k, name: String(x.name || 'Subgroup').slice(0, 40), items: it, collapsed: !!x.collapsed }; }); out.groups.push({ id: g.id || 'g' + i, name: String(g.name || 'Group').slice(0, 40), items, subs, collapsed: !!g.collapsed }); });
+  /* a page that is new to a saved layout goes right after the page that precedes it in the base menu (same group / sub-group), e.g. Forklift Energy after Forklift Activity */
+  orig.groups.forEach(og => og.items.forEach((v, i) => { if (seen.has(v) || !known.has(v)) return; for (let j = i - 1; j >= 0; j--) { const pv = og.items[j]; if (!seen.has(pv)) continue; for (const g of out.groups) { const hosts = [g.items].concat((g.subs || []).map(x => x.items)); for (const arr of hosts) { const k = arr.indexOf(pv); if (k >= 0) { arr.splice(k + 1, 0, v); seen.add(v); return; } } } } }));
   known.forEach(v => { if (seen.has(v)) return; const og = orig.groups.find(g => g.items.includes(v)), tg = og && out.groups.find(g => g.name === og.name); if (tg) tg.items.push(v); else { let o = out.groups.find(g => g.name === 'Other'); if (!o) { o = { id: 'gother', name: 'Other', items: [], subs: [], collapsed: false }; out.groups.push(o); } o.items.push(v); } });
   return out;
 }
