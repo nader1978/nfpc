@@ -71,12 +71,13 @@
   function attK(R, K) { if (!attIdx()) return K('Attendance check', '—', 'upload the Attendance sheet'); const c = { ok: 0, over: 0, under: 0, other: 0 }; R.forEach(r => { const s = r.chk.st; if (s === 'na') return; if (s in c) c[s]++; else c.other++; }); const n = c.ok + c.over + c.under;
     return K('Attendance check', n ? pct(c.ok, n) + '% match' : '—', n ? c.ok + ' match · ' + (c.over + c.under) + ' differ' + (c.other ? ' · ' + c.other + ' no data' : '') : (c.other ? c.other + ' with no attendance data' : 'nothing to check')); }
   const TH = '<th class="n">Staff</th><th class="n">OT days</th><th class="n">Approved OT h</th><th class="n">Day off given h</th><th class="n">Verified h</th><th class="n">Waiting verify h</th><th class="n">Open balance h</th><th style="min-width:150px">Recovered</th>';
-  const TD = a => `<td class="n">${a.staff.size}</td><td class="n">${a.days}</td><td class="n"><b>${h1(a.ot)}</b></td><td class="n">${h1(a.taken)}</td><td class="n">${h1(a.ver)}</td><td class="n">${h1(a.pend)}</td><td class="n"><b>${h1(a.bal)}</b></td><td>${bar(pct(a.ver, a.ot))}</td>`;
+  const crOf = (a, C) => S.f.rc && C ? [...new Set(a.rows.map(r => r.file).filter(Boolean))].reduce((t, f) => t + (C.m.get(f) || 0), 0) : 0;
+  const TD = (a, C) => { const cr = crOf(a, C); return `<td class="n">${a.staff.size}</td><td class="n">${a.days}</td><td class="n"><b>${h1(a.ot)}</b></td><td class="n">${h1(a.taken)}</td><td class="n">${h1(a.ver)}</td><td class="n">${h1(a.pend)}</td><td class="n"><b>${h1(Math.max(0, a.bal - cr))}</b></td><td>${bar(pct(a.ver + cr, a.ot))}</td>`; };
   function byLoc(R) {
-    const L = agg(R, r => r.loc || '(no location)').sort((a, b) => b.ot - a.ot);
+    const C = recCr(R), L = agg(R, r => r.loc || '(no location)').sort((a, b) => b.ot - a.ot);
     return `<div class="otr-wrap"><table class="otr-t"><thead><tr><th>Location</th><th>In-charge (line manager)</th>${TH}</tr></thead><tbody>${L.map(l => { const M = agg(l.rows, r => r.mgr || '(not set)').sort((a, b) => b.ot - a.ot);
-      return `<tr class="otr-g"><td colspan="2"><b>📍 ${esc(l.k)}</b></td>${TD(l)}</tr>` + M.map(m => `<tr><td></td><td><a href="#" data-mgr="${esc(m.k)}" title="Show this in-charge's staff">${esc(m.k)}</a></td>${TD(m)}</tr>`).join(''); }).join('') || '<tr><td colspan="10" class="otr-hint">Nothing for this selection.</td></tr>'}</tbody>
-      ${L.length ? `<tfoot><tr><td colspan="2"><b>Total</b></td>${TD(agg(R, () => 'all')[0])}</tr></tfoot>` : ''}</table></div>`; }
+      return `<tr class="otr-g"><td colspan="2"><b>📍 ${esc(l.k)}</b></td>${TD(l, C)}</tr>` + M.map(m => `<tr><td></td><td><a href="#" data-mgr="${esc(m.k)}" title="Show this in-charge's staff">${esc(m.k)}</a></td>${TD(m, C)}</tr>`).join(''); }).join('') || '<tr><td colspan="10" class="otr-hint">Nothing for this selection.</td></tr>'}</tbody>
+      ${L.length ? `<tfoot><tr><td colspan="2"><b>Total</b></td>${TD(agg(R, () => 'all')[0], C)}</tr></tfoot>` : ''}</table></div>`; }
   /* ---------- less working hours: required hours − hours worked, from the daily attendance uploaded in Attendance Analytics ---------- */
   const SH = { sig: '', m: null };
   function shortIdx() {
