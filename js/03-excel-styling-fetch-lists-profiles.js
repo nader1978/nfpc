@@ -348,6 +348,7 @@ const VIEW_META = {
   otapp: { title: 'OT Approvals', sub: 'Review the overtime requests of the locations — approve or reject with remarks' },
   otr: { title: 'OT Approved vs Recovered', sub: 'Approved OT hours vs the hours given back as days off — by location, in-charge and staff' },
   fla: { title: 'Forklift Activity', sub: 'Start / end activities of the forklift operators — by unit, by operator, units × dates and idle units' },
+  fle: { title: 'Forklift Energy', sub: 'Fuel, LPG and battery consumption of the forklifts — by forklift, by month, records and exceptions (FLO_LGV_Usage_tbl)' },
   flr: { title: 'Forklift Receiving', sub: 'Units received / parked in the mobile app — condition reported by the users and what changed since the previous inspection' },
   rkst: { title: 'Rack Setup', sub: 'Create lanes, add / edit / delete racks of the warehouse locations (administrator)' },
   whdu: { title: 'WHs Daily Data Update', sub: 'Which warehouses posted their daily data, on which day and for which sector' },
