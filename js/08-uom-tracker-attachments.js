@@ -1,5 +1,6 @@
 /* ---------- UOM table from a SharePoint list ---------- */
 const wUomLoadProgress = new ProgressBar('wUomLoadProgress');
+document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#wUomLoadBtn')) window.__uomManual = true; }, true);
 async function wUom_loadFromList() {
   const listName = wUomState.listName;
   if (!listName) { wUom_setStatus('Pick the UOM list first.', 'warn'); return false; }
@@ -34,7 +35,7 @@ async function wUom_loadFromList() {
     wFefoState.batchIndex = null;
     $('wUomListInfo').textContent = `Loaded ${rows.length.toLocaleString()} row(s) from "${listName}" at ${new Date().toLocaleTimeString()}`;
     wUomLoadProgress.finish(`✅ UOM list loaded (${rows.length.toLocaleString()} rows)`);
-    w_logToActivity(`UOM list "${listName}" loaded: ${wUomState.table.size} SKUs`);
+    if (window.__uomManual) { window.__uomManual = false; w_logToActivity(`UOM list "${listName}" loaded: ${wUomState.table.size} SKUs`); } /* automatic background loads are not logged as a user action */
     return true;
   } catch (err) {
     if (err && err.cancelled) { wUomLoadProgress.error('Stopped by user'); wUom_setStatus('⏹ UOM load stopped — the previous UOM table (if any) is unchanged.', 'warn'); return false; }
