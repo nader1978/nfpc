@@ -71,7 +71,7 @@
       .catch(e => { box.innerHTML = quiet ? '' : `<span class="lim-n" title="${esc(e.message)}">📷 photos not available — ${esc(e.message)}</span>`; }); }
   const aio = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { aio.unobserve(e.target); attLoad(e.target); } }), { rootMargin: '150px' }) : null;
   const attSeen = new WeakSet();
-  function attScan(root) { (root || document).querySelectorAll('.lim-att').forEach(b => { if (attSeen.has(b) || b.dataset.limSkip) return; attSeen.add(b); if (!b.dataset.list || !b.dataset.item) return; if (!b.dataset.quiet) b.innerHTML = '<span class="lim-n">📷 …</span>'; if (aio) aio.observe(b); else attLoad(b); }); }
+  function attScan(root) { (root || document).querySelectorAll('.lim-att').forEach(b => { if (attSeen.has(b) || b.dataset.limSkip) return; attSeen.add(b); if (!b.dataset.list || !b.dataset.item) return; if (!b.dataset.quiet) b.innerHTML = '<span class="lim-n">📷 …</span>'; if (aio && !b.getClientRects().length) aio.observe(b); else attLoad(b); }); }
   const ph = (list, id, o) => list && id ? `<div class="lim-att${o && o.sm ? ' sm' : ''}" data-list="${esc(list)}" data-item="${esc(id)}"${o && o.max ? ' data-max="' + o.max + '"' : ''}${o && o.quiet ? ' data-quiet="1"' : ''}></div>` : '';
   /* ---------- scan tables ---------- */
   const seen = new WeakSet();
@@ -81,7 +81,7 @@
       const a = td.querySelector('a[href]'); if (a && td.children.length === 1 && IMG_EXT.test(a.getAttribute('href'))) { const l = parse(a.href); if (l) return thumbs(td, l); }
       if (td.children.length) return; const t = td.textContent; if (!t || (t.length > 2000 && !/^\s*data:image\//.test(t))) return; const c = t.trimStart()[0]; if (c !== '{' && c !== 'h' && c !== 'H' && c !== 'd') return;
       const l = parse(t); if (l) thumbs(td, l); }); }
-  let tm = 0; const mo = new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(() => { scan(document.querySelector('.view.active') || document.body); attScan(document.body); }, 120); });
+  let tm = 0; const mo = new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(() => { try { scan(document.querySelector('.view.active') || document.body); } catch (e) { } try { attScan(document.body); } catch (e) { } }, 120); });
   const start = () => { mo.observe(document.body, { childList: true, subtree: true }); scan(document.body); attScan(document.body); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 
