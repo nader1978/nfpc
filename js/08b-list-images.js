@@ -103,5 +103,23 @@
       for (const a of L.filter(x => all || IMG_EXT.test(x.name))) { if (out.length >= max) break; try { const u = await srcOf(a), raw = await (await fetch(u)).blob(), img = IMG_EXT.test(a.name), sm = img ? await shrink(raw) : raw, d = await b64(sm); if (tot + d.length > 3000000) break; tot += d.length; out.push(img ? { fileName: a.name.replace(/\.(png|gif|webp|bmp|heic|heif)$/i, '.jpg'), dataB64: d, contentType: sm.type || 'image/jpeg' } : { fileName: a.name, dataB64: d, contentType: raw.type || 'application/octet-stream' }); } catch (e) {} } }
     return out; }
   async function fileAtts(files, max) { const out = []; let tot = 0; for (const f of [...(files || [])].slice(0, max || 8)) { try { const sm = await shrink(f), d = await b64(sm); if (tot + d.length > 3000000) break; tot += d.length; out.push({ fileName: String(f.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg', dataB64: d, contentType: sm.type || 'image/jpeg' }); } catch (e) {} } return out; }
-  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts };
+  /* every attachment of a list item as {name, blob, type} (photos shrunk to 1600 px JPEG) — for e-mails / ZIP packs */
+  async function filesOf(list, id, all) { let L = []; try { L = await attOf(list, id); } catch (e) { return [{ name: 'attachments of item ' + id, err: e.message }]; } const out = [];
+    for (const a of L.filter(x => all || IMG_EXT.test(x.name))) { try { const u = await srcOf(a), raw = await (await fetch(u)).blob(), img = IMG_EXT.test(a.name), blob = img ? await shrink(raw) : raw; out.push({ name: img ? a.name.replace(/\.(png|gif|webp|bmp|heic|heif)$/i, '.jpg') : a.name, blob, type: blob.type || (img ? 'image/jpeg' : 'application/octet-stream'), img }); } catch (e) { out.push({ name: a.name, err: e.message }); } }
+    return out; }
+  /* minimal ZIP writer (store / deflate-raw) — entries: [{path, blob}] → Blob; folders come from the "/" in the path */
+  const CRCT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRCT[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  async function deflate(u8) { try { if (typeof CompressionStream === 'undefined') return null; const r = await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate-raw'))).arrayBuffer(); return new Uint8Array(r); } catch (e) { return null; } }
+  async function zip(entries) {
+    const enc = new TextEncoder(), parts = [], cen = []; let off = 0; const d = new Date(), dt = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dd = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    for (const e of entries) { const raw = new Uint8Array(await e.blob.arrayBuffer()), name = enc.encode(e.path), crc = crc32(raw); let data = raw, meth = 0;
+      if (!/^image\/(jpeg|png|gif|webp)/.test(e.blob.type || '') && raw.length > 512) { const z = await deflate(raw); if (z && z.length < raw.length * 0.95) { data = z; meth = 8; } }
+      const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, meth, true); lh.setUint16(10, dt, true); lh.setUint16(12, dd, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, raw.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      parts.push(lh.buffer, name, data);
+      const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, meth, true); ch.setUint16(12, dt, true); ch.setUint16(14, dd, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, raw.length, true); ch.setUint16(28, name.length, true); ch.setUint32(42, off, true);
+      cen.push(ch.buffer, name); off += 30 + name.length + data.length; }
+    const csz = cen.reduce((a, b) => a + b.byteLength, 0), end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, entries.length, true); end.setUint16(10, entries.length, true); end.setUint32(12, csz, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...cen, end.buffer], { type: 'application/zip' }); }
+  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64 };
 })();
