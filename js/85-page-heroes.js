@@ -47,11 +47,14 @@
     'html body .sdb-mini{height:auto!important;min-height:0!important;resize:none!important}html body .sdb-mini>:not(.sdb-dh):not(.sdb-rz){display:none!important}',
     
     'html body .mdl-ctl button:hover,html body .wc-trio button:hover,html body .ri-hd button:hover{background:rgba(255,255,255,.22)!important}html body .mdl-ctl button.mdl-x:hover,html body .wc-trio button.wc-x:hover,html body .ri-hd button[data-ri=x]:hover{background:#e81123!important}',
-    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:var(--pop-c1,#12306b)!important;color:#fff!important;border-radius:11px 11px 0 0!important;padding:10px 200px 10px 16px!important;margin:0 0 12px!important;min-height:64px!important;box-sizing:border-box!important;border-bottom:0!important}',
+    'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar){background:var(--pop-c1,#12306b)!important;color:#fff!important;border-radius:11px 11px 0 0!important;padding:10px 200px 10px 16px!important;margin:calc(var(--mbt,0px)*-1) calc(var(--mbr,0px)*-1) 12px calc(var(--mbl,0px)*-1)!important;min-height:64px!important;box-sizing:border-box!important;border-bottom:0!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(h1,h2,h3,h4,.card-title,.card-desc,b,strong,label,.text-sm,small){color:#fff!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn,a.btn):not(.mdl-ctl button){background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important}',
     'html body .mdl-box>:is(.tm-head,.card-header,.modal-header,.mdl-bar) :is(button,.btn):not(.mdl-ctl button):hover{background:rgba(255,255,255,.3)!important}'
   ].join('\n'); document.head.appendChild(st); })();
+  /* the coloured title bar of every pop-up window runs edge to edge: pull it out over the window's own padding */
+  function bleed() { document.querySelectorAll('.mdl-box').forEach(b => { if (b.offsetParent === null && getComputedStyle(b).position !== 'fixed') return; const cs = getComputedStyle(b), v = { '--mbt': cs.paddingTop, '--mbr': cs.paddingRight, '--mbl': cs.paddingLeft }; for (const k in v) if (b.style.getPropertyValue(k) !== v[k]) b.style.setProperty(k, v[k]); }); }
+  setInterval(bleed, 400);
   function autoAll() { try { popCol(); } catch (e) {} Object.keys(auto()).forEach(id => { const v = document.getElementById('view-' + id); if (v && v.classList.contains('active')) putAuto(id); }); }
   function initAuto() { let t = 0; const run = () => { clearTimeout(t); t = setTimeout(autoAll, 60); setTimeout(autoAll, 900); };
     document.querySelectorAll('.view').forEach(v => { try { new MutationObserver(run).observe(v, { attributes: true, attributeFilter: ['class'] }); } catch (e) {} });
