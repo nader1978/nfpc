@@ -218,5 +218,5 @@
   function aiHomeStrip(host) { try { const o = host && host.querySelector('.hm-ai'); if (o) o.remove(); aiChipUpd(); } catch (e) {} }
   window.aiHomeStrip = aiHomeStrip; window.aiChipUpd = aiChipUpd;
   setInterval(() => { try { if (typeof currentUser !== 'undefined' && currentUser && Date.now() - aiPulled > 10 * 60 * 1000) { aiPulled = Date.now(); aiPull(true); } aiChipUpd(); } catch (e) {} }, 4000);
-  window.LIM = { aiSetup, aiAsk, aiCfg, parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin, ndMark, ndRun };
+  window.LIM = { aiCall, isAdm, aiSetup, aiAsk, aiCfg, parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin, ndMark, ndRun };
 })();
