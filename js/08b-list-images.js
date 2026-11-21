@@ -211,10 +211,7 @@
     const t = await aiCall(cfg, parts, true); let j = null; try { j = JSON.parse(t.replace(/^```json|```$/g, '').trim()); } catch (e) { j = { verdict: 'unclear', confidence: 0, reason: t.slice(0, 200), differences: [] }; } j.nPrev = P.length; j.nRec = R.length; return j; }
 
   /* ---------- status of the AI image analysis: a chip in the top bar (everyone sees it when ON; administrators also when OFF, to set it up) ---------- */
-  function aiChipUpd() { try { const a = document.querySelector('.topbar-actions'); if (!a) return; let c = document.querySelector('#aiChip'); const cf = aiCfg(), on = !!cf.key, usr = !!(typeof currentUser !== 'undefined' && currentUser), adm = isAdm();
-    if (!usr || (!on && !adm)) { if (c) c.remove(); return; }
-    if (!c) { c = document.createElement('button'); c.id = 'aiChip'; c.type = 'button'; const ph = document.querySelector('#phBtn'); c.className = ph ? ph.className : ''; c.style.cssText = 'width:auto;padding:0 10px;font-size:13px;white-space:nowrap'; c.addEventListener('click', () => { if (isAdm()) aiSetup(); else { try { sectionToast('AI image analysis is ON — use “🤖 Ask AI” in the Rack / Forklift photo comparison.', 'success'); } catch (e) {} } }); if (ph) ph.insertAdjacentElement('beforebegin', c); else a.insertBefore(c, a.firstChild); }
-    c.textContent = on ? '🤖 AI images: ON' : '🤖 AI images: OFF'; c.title = on ? 'AI image analysis is ON (Google Gemini · ' + cf.model + '). Photos of a record are sent to Google only when a user presses “Ask AI”.' + (adm ? ' Click for settings.' : '') : 'AI image analysis is OFF — click to set it up (administrators only).'; } catch (e) {} }
+  function aiChipUpd() { try { const o = document.querySelector('#aiChip'); if (o) o.remove(); if (window.aiOrbitUpd) window.aiOrbitUpd(); } catch (e) {} }
   function aiHomeStrip(host) { try { const o = host && host.querySelector('.hm-ai'); if (o) o.remove(); aiChipUpd(); } catch (e) {} }
   window.aiHomeStrip = aiHomeStrip; window.aiChipUpd = aiChipUpd;
   setInterval(() => { try { if (typeof currentUser !== 'undefined' && currentUser && Date.now() - aiPulled > 10 * 60 * 1000) { aiPulled = Date.now(); aiPull(true); } aiChipUpd(); } catch (e) {} }, 4000);
