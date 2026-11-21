@@ -19,8 +19,9 @@ body:not(.sb-mini) .sidebar-brand:has(.logo img) .logo img{width:auto!important;
 .login-card .login-brand .logo img{height:100%!important;width:auto!important;max-width:300px!important;object-fit:contain}
 .login-card .login-brand .tagline{font-size:16px!important;font-weight:700!important;letter-spacing:.09em!important;color:var(--gray-800,#1f2937)!important;margin-top:0!important;text-transform:uppercase}
 .login-card .orbit-mark{order:99;border:0!important;font-size:12px!important;letter-spacing:.2em!important;margin:14px 0 0!important;padding:0!important;color:var(--gray-500,#64748b)!important;gap:6px!important}
+.orbit-ai{display:inline-flex;align-items:center;gap:3px;font-style:normal;font-weight:800;font-size:10px;letter-spacing:.08em;color:#fff;padding:3px 8px;border-radius:999px;background:linear-gradient(135deg,#4c1d95,#1e3a8a);box-shadow:0 1px 4px rgba(76,29,149,.35)}
 .login-card .orbit-mark i{width:16px!important;height:16px!important;font-size:9px!important}.login-card .orbit-mark small{display:none!important}`; document.head.appendChild(css);
-  const mk = (sub) => { const d = document.createElement('div'); d.className = 'orbit-mark'; d.title = NAME + ' — ' + FULL; d.innerHTML = '<i>◎</i><span>' + NAME + '</span>' + (sub ? '<small>' + FULL + '</small>' : ''); return d; };
+  const mk = (sub) => { const d = document.createElement('div'); d.className = 'orbit-mark'; d.title = NAME + ' — ' + FULL; d.innerHTML = '<i>◎</i><span>' + NAME + '</span>' + (sub ? '<em class="orbit-ai" title="AI-powered: photo analysis and AI reports"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.9 5.1L19 9l-5.1 1.9L12 16l-1.9-5.1L5 9l5.1-1.9L12 2zM19 14l.9 2.4 2.4.9-2.4.9L19 20.6l-.9-2.4-2.4-.9 2.4-.9L19 14z"/></svg>AI · Google Gemini</em><small>' + FULL + '</small>' : ''); return d; };
   function put() {
     const isOrbit = n => !!n && n.offsetParent !== null && getComputedStyle(n).visibility !== 'hidden' && String(n.textContent || '').trim().toUpperCase() === NAME;
     /* one ORBIT only: the badge is shown when the brand name is not already “ORBIT” on screen (a logo picture hides the name) */

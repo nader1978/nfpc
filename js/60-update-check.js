@@ -1,5 +1,9 @@
 /* ---------- new-version check: the page compares its own build with version.json (never cached) and offers a one-click refresh ---------- */
-const APP_BUILD = '467', APP_START = '01.10.26', APP_SERIAL = APP_START + '.' + APP_BUILD; // version = fixed start date + build number (only the build changes)
+const APP_BUILD = '468', APP_START = '02.78.26', APP_SERIAL = '02.78.26.01'; // APP_SERIAL = the version shown to people; APP_BUILD = the file build the update check compares
+(function () { const D = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], p2 = n => String(n).padStart(2, '0');
+  const tick = () => { const c = document.getElementById('sbClock'); if (c) { const d = new Date(); c.textContent = '🕒 ' + D[d.getDay()] + ' ' + d.getDate() + ' ' + M[d.getMonth()] + ' ' + d.getFullYear() + ' · ' + p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds()); }
+    const a = document.getElementById('sbAi'); if (a) { let k = null; try { k = window.LIM && LIM.aiCfg ? LIM.aiCfg() : null; } catch (e) {} const t = k && k.key ? '✦ AI · Google Gemini (' + (k.model || '') + ')' : '✦ AI · not switched on'; if (a.textContent !== t) a.textContent = t; a.style.opacity = k && k.key ? '1' : '.7'; } };
+  setInterval(tick, 1000); document.addEventListener('DOMContentLoaded', tick); tick(); })();
 (function () { const put = () => { const e = document.getElementById('sbBuild'); if (e) e.textContent = 'ORBIT · version ' + APP_SERIAL; const l = document.getElementById('loginVersion'); if (l) l.textContent = 'Version ' + APP_SERIAL; }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', put); else put(); })();
 (function () {
   if (location.protocol === 'file:') return; let shown = false; const SK = 'orbUpd';
