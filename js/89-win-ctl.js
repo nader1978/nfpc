@@ -89,3 +89,27 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
   window.WINHELP = { open };
 })();
+
+/* ORBIT 471 — every other pop-up window (record details, expand windows, dialogs …) can be resized as well: drag any edge or corner.
+   The handles live on the dark overlay (not inside the window) so they do not scroll away with the window's own scrollbar. */
+(function () {
+  'use strict';
+  const css = document.createElement('style'); css.textContent = '.rzx{position:fixed;z-index:2147483000;touch-action:none}.rzx-n,.rzx-s{height:10px;cursor:ns-resize}.rzx-e,.rzx-w{width:10px;cursor:ew-resize}.rzx-ne,.rzx-sw{width:16px;height:16px;cursor:nesw-resize}.rzx-nw,.rzx-se{width:16px;height:16px;cursor:nwse-resize}.mdl-box.rzx-sized{max-width:none!important;max-height:none!important}';
+  document.head.appendChild(css);
+  const DIRS = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'], T = new Map();   /* box → {ov, hs} */
+  const ok = b => { const ov = b.parentElement; if (!ov || ov === document.body || ov.id === 'flrAct' || ov.id === 'flrPop') return false; if (getComputedStyle(ov).position !== 'fixed') return false; if (b.classList.contains('mdl-full') || ov.classList.contains('mdl-min') || ov.classList.contains('mdl-min2') || ov.classList.contains('mdl-ovfull')) return false; if (b.querySelector('.flr-rz,.sdb-rz') || b.closest('.sdb-dw,.dst-win')) return false; const cs = getComputedStyle(b); if (cs.display === 'none' || cs.visibility === 'hidden' || (cs.resize && cs.resize !== 'none')) return false; const r = b.getBoundingClientRect(); return r.width > 200 && r.height > 120; };
+  function make(b) { const ov = b.parentElement, hs = {}; DIRS.forEach(d => { const g = document.createElement('i'); g.className = 'rzx rzx-' + d; g.title = 'Drag to resize'; ov.appendChild(g); hs[d] = g;
+      g.addEventListener('pointerdown', e => { if (e.button) return; e.preventDefault(); e.stopPropagation(); const r = b.getBoundingClientRect(), o = ov._mdl || (ov._mdl = { x: 0, y: 0 }), x0 = e.clientX, y0 = e.clientY, ox = o.x, oy = o.y; g.setPointerCapture(e.pointerId);
+        const mv = ev => { let w = r.width, h = r.height; const dx = ev.clientX - x0, dy = ev.clientY - y0; if (d.includes('e')) w = r.width + dx; if (d.includes('w')) w = r.width - dx; if (d.includes('s')) h = r.height + dy; if (d.includes('n')) h = r.height - dy;
+          w = Math.max(360, Math.min(innerWidth - 8, w)); h = Math.max(220, Math.min(innerHeight - 8, h)); b.classList.add('rzx-sized'); b.style.width = w + 'px'; b.style.height = h + 'px';
+          o.x = ox + (d.includes('e') ? (w - r.width) / 2 : d.includes('w') ? -(w - r.width) / 2 : 0); o.y = oy + (d.includes('s') ? (h - r.height) / 2 : d.includes('n') ? -(h - r.height) / 2 : 0); b.style.transform = 'translate(' + o.x + 'px,' + o.y + 'px)'; place(b); };
+        const up = () => { g.removeEventListener('pointermove', mv); g.removeEventListener('pointerup', up); }; g.addEventListener('pointermove', mv); g.addEventListener('pointerup', up); }); });
+    T.set(b, { ov, hs }); place(b); }
+  function place(b) { const t = T.get(b); if (!t) return; const r = b.getBoundingClientRect(), s = (k, v) => { Object.keys(v).forEach(p => t.hs[k].style[p] = v[p] + 'px'); }, E = 5;
+    s('n', { left: r.left + 14, top: r.top - E, width: r.width - 28 }); s('s', { left: r.left + 14, top: r.bottom - E, width: r.width - 28 }); s('w', { left: r.left - E, top: r.top + 14, height: r.height - 28 }); s('e', { left: r.right - E, top: r.top + 14, height: r.height - 28 });
+    s('nw', { left: r.left - E, top: r.top - E }); s('ne', { left: r.right - 11, top: r.top - E }); s('sw', { left: r.left - E, top: r.bottom - 11 }); s('se', { left: r.right - 11, top: r.bottom - 11 }); }
+  function drop(b) { const t = T.get(b); if (!t) return; Object.values(t.hs).forEach(h => h.remove()); T.delete(b); }
+  function tick() { try { document.querySelectorAll('.mdl-box[data-mdl]').forEach(b => { const has = T.has(b), good = ok(b); if (good && !has) make(b); else if (!good && has) drop(b); else if (good) { if (T.get(b).ov !== b.parentElement) { drop(b); make(b); } else place(b); } });
+      T.forEach((t, b) => { if (!document.body.contains(b)) drop(b); }); } catch (e) {} }
+  setInterval(tick, 400); let raf = 0; const loop = () => { if (T.size) T.forEach((t, b) => place(b)); raf = requestAnimationFrame(loop); }; loop();
+})();
