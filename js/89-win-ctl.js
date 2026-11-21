@@ -46,3 +46,12 @@
   const scan = () => document.querySelectorAll('#flrAct .flr-pc,#flrPop .flr-pc').forEach(fx);
   new MutationObserver(scan).observe(document.body, { childList: true }); scan();
 })();
+
+/* ORBIT 451 — one minimise behaviour for every window: the window shrinks to its title bar and docks at the bottom-left corner
+   (same place as the js/34 pop-ups); the restore / maximise button brings it back where it was. */
+(function () {
+  'use strict';
+  const st = document.createElement('style');
+  st.textContent = 'html body .sdb-dw.sdb-mini,html body .sdb-rw.sdb-mini,html body .sdb-mw.sdb-mini,html body .dst-ov.dst-mini .dst-win,html body #ttModal .tt-rw.tt-mini{position:fixed!important;left:10px!important;right:auto!important;top:auto!important;bottom:10px!important;width:440px!important;max-width:calc(100vw - 20px)!important;height:auto!important;min-height:0!important;max-height:none!important;transform:none!important;margin:0!important;overflow:hidden!important;z-index:100000!important;box-shadow:0 8px 24px rgba(0,0,0,.35)!important}html body .dst-ov.dst-mini .dst-wh{flex-wrap:nowrap;overflow:hidden}html body .dst-ov.dst-mini [data-dsth],html body .dst-ov.dst-mini .dst-wh .d,html body .dst-ov.dst-mini .dst-wh .ag-btn{display:none!important}html body .sdb-mini .sdb-dh small{display:none!important}';
+  document.head.appendChild(st);
+})();

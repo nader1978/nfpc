@@ -14,7 +14,7 @@
   const KEEPTXT = /^\W*(hide|show|add|new|save|post|reload|refresh|clear|back|apply|ok|grid|list|undo)\b/i;
   const RELOAD = /^\W*(reload|refresh)\b/i;
   const isClose = b => b.dataset.x !== undefined || b.dataset.close !== undefined || /^\s*(✕|✖|×)\s*(close|cancel)?\s*$/i.test(b.textContent) || /^\s*(✕|✖)?\s*close\s*$/i.test(b.textContent) || /^close$/i.test(b.title || '');
-  const plain = b => b.tagName === 'BUTTON' && !KEEPTXT.test((b.textContent || '').trim()) && !KEEPK.some(k => b.classList.contains(k)) && !b.hasAttribute('data-acm') && !isClose(b) && b.style.display !== 'none' && !b.closest('.mdl-ctl,.mdl-ctlw,.tm-hid');
+  const plain = b => b.tagName === 'BUTTON' && !KEEPTXT.test((b.textContent || '').trim()) && !KEEPK.some(k => b.classList.contains(k)) && !b.hasAttribute('data-acm') && !isClose(b) && !b.matches('[data-mx],[data-rmx],[data-wmin],[data-dstmx],[data-dstmn]') && b.style.display !== 'none' && !b.closest('.mdl-ctl,.mdl-ctlw,.tm-hid');
   let css = null;
   function styles() { if (css) return; css = document.createElement('style'); css.textContent = [
     '.ag-strip{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border,#e5e7eb);background:var(--card,#fff);color:var(--text,#111827)}',
