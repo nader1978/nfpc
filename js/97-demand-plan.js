@@ -1,5 +1,5 @@
 /* ============================================================
-   DEMAND PLAN vs EXECUTION — a tab of the Logistics dashboard / Trip Planning ("📥 Demand plan")
+   DEMAND PLAN vs EXECUTION — its own page in the Planning Dept. menu ("Demand Plan vs Execution")
    1. Upload the daily demand files (3 layouts are recognised automatically):
         · GSD / Milco daily demand  (SKU rows × location columns × 2 days, with the pallet blocks)
         · Water trailer plan        (one sheet per origin: SKU rows × trailer columns, pallets, destination + day headers)
@@ -114,12 +114,12 @@
   const stCl = { Exact: '#d1fae5;color:#065f46', Short: '#fee2e2;color:#991b1b', Over: '#fef3c7;color:#92400e', 'Not picked': '#fecaca;color:#7f1d1d', Unplanned: '#e0e7ff;color:#3730a3' };
   const chip = s => `<span class="chip" style="background:${stCl[s] || '#e2e8f0'}">${esc(s)}</span>`;
 
-  function frame() { const ref = Q('#lpPaneCK') || Q('#lpPaneDC'); if (!ref) return null; let host = Q('#lpPaneDP'); if (!host) { host = document.createElement('div'); host.id = 'lpPaneDP'; host.style.display = 'none'; ref.insertAdjacentElement('afterend', host); }
+  function frame() { const host = Q('#dpHost'); if (!host) return null;
     let el = Q('#dpBox'); if (el) return el; el = document.createElement('div'); el.id = 'dpBox'; host.appendChild(el);
     el.addEventListener('click', onClick); el.addEventListener('change', onChange); el.addEventListener('input', onInput);
     el.addEventListener('dragover', e => { const z = e.target.closest('.dp-up'); if (z) { e.preventDefault(); z.classList.add('on'); } }); el.addEventListener('dragleave', e => { const z = e.target.closest('.dp-up'); if (z) z.classList.remove('on'); });
     el.addEventListener('drop', e => { const z = e.target.closest('.dp-up'); if (!z) return; e.preventDefault(); z.classList.remove('on'); addFiles([...e.dataTransfer.files]); }); return el; }
-  function show() { const el = frame(); if (!el) return; const p = Q('#lpPaneDP'); if (p) p.style.display = ''; if (!S.from) { const ds = S.files.flatMap(f => f.rows.map(r => dOf(f, r.lab))).sort(); S.from = ds[0] || ymd(new Date(Date.now() - 6 * 864e5)); S.to = ds[ds.length - 1] || ymd(new Date()); }
+  function show() { const el = frame(); if (!el) return; if (!S.from) { const ds = S.files.flatMap(f => f.rows.map(r => dOf(f, r.lab))).sort(); S.from = ds[0] || ymd(new Date(Date.now() - 6 * 864e5)); S.to = ds[ds.length - 1] || ymd(new Date()); }
     if (!S.loaded && !S.busy) { refresh(false); } else render(); }
   async function refresh(force) { S.busy = true; S.msg = '⏳ Reading the trips and the picking lists…'; render();
     try { const jobs = []; if (window.TRX) jobs.push(TRX.load(!!force)); if (window.PTR) jobs.push(PTR.load(true)); await Promise.all(jobs.map(p => p.catch(e => console.warn(e)))); S.msg = ''; S.loaded = true; } catch (e) { S.msg = '⚠ ' + e.message; } S.busy = false; render(); }
@@ -185,5 +185,8 @@
     if (t.id === 'dpSt') { S.st = t.value; return render(); } }
   function onInput(e) { if (e.target.id === 'dpQ') { S.q = e.target.value; const pos = e.target.selectionStart; render(); const i = Q('#dpQ'); if (i) { i.focus(); try { i.setSelectionRange(pos, pos); } catch (x) {} } } }
 
+  document.querySelectorAll('.nav-item[data-view="demandplan"]').forEach(n => n.addEventListener('click', () => setTimeout(show, 0)));
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('.nav-item[data-view="demandplan"]')) setTimeout(show, 0); });
+  { const v = Q('#view-demandplan'); if (v) new MutationObserver(() => { if (v.classList.contains('active') && !Q('#dpBox')) show(); }).observe(v, { attributes: true, attributeFilter: ['class'] }); if (v && v.classList.contains('active')) setTimeout(show, 0); }
   window.demandPlan = { show, S, compute, parse: { milco: parseMilco, water: parseWater, uht: parseUht }, readFile };
 })();

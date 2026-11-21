@@ -377,6 +377,7 @@ const VIEW_META = {
   dailyplan: { title: 'Daily Plan Dashboard', sub: 'Production & delivery requirement by SKU and location' },
   'dailyplan-upload': { title: 'Daily Plan Upload', sub: 'Upload the daily plan file · save to SharePoint' },
   planning: { title: 'Planning Dashboard', sub: 'Inventory, cover and sales analysis — UHT tracking sheet' },
+  demandplan: { title: 'Demand Plan vs Execution', sub: 'Import the daily demand files and compare them with the delivered trips and the picking — compliance and picking accuracy' },
   'planning-upload': { title: 'Planning Data Upload', sub: 'Upload the daily Planning Data file' },
   brkplan: { title: 'Smart Break Planner', sub: 'Plan staggered breaks for one attendance shift — by role, region, warehouse and store' },
   leaveplan: { title: 'Annual Leave Planner', sub: 'Suggest annual leave through the year without leaving a role short of staff — then write it to the roster or queue it for SharePoint' },

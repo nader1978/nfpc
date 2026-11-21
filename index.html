@@ -88,6 +88,7 @@
       <div class="nav-section-label">Planning Dept.</div>
       <div class="nav-item" data-view="planning" data-perm="planning"><span class="icon">📊</span><span>Planning Dashboard</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="planning-upload" data-perm="planning-upload"><span class="icon">📥</span><span>Planning Data Upload</span></div>
+      <div class="nav-item" data-view="demandplan" data-perm="planning"><span class="icon">📥</span><span>Demand Plan vs Execution</span><span class="badge new">NEW</span></div>
       <div class="nav-section-label">Daily Plan</div>
       <div class="nav-item" data-view="dailyplan" data-perm="dailyplan"><span class="icon">🚚</span><span>Daily Plan Dashboard</span><span class="badge new">NEW</span></div>
       <div class="nav-item" data-view="dailyplan-upload" data-perm="dailyplan-upload"><span class="icon">📤</span><span>Daily Plan Upload</span></div>
@@ -1406,6 +1407,9 @@
             <div class="table-wrap" style="max-height:640px"><table class="fd-tbl" id="fdmRTable"><thead></thead><tbody></tbody></table></div><div class="btn-row" style="margin-top:6px"><button id="fdmRMore" class="ghost small" type="button" style="display:none">Show 200 more rows</button></div></div>
         </div>
       </div>
+      <!-- ============ DEMAND PLAN vs EXECUTION (Planning Dept.) ============ -->
+      <div class="view" id="view-demandplan"><div id="dpHost"></div></div>
+
       <!-- ============ MILCO DAILY PLANNING ============ -->
       <div class="view fd-root" id="view-mdp">
         <div class="card" style="padding-bottom:8px;">
@@ -3069,7 +3073,7 @@
 <script src="js/00-users-data.js?v=375"></script>
 <script src="js/01-core-constants-helpers.js?v=378"></script>
 <script src="js/02-users-and-roles-ui.js?v=375"></script>
-<script src="js/03-excel-styling-fetch-lists-profiles.js?v=450"></script>
+<script src="js/03-excel-styling-fetch-lists-profiles.js?v=475"></script>
 <script src="js/04-confirm-combo-csv.js?v=375"></script>
 <script src="js/05-dropdown-sources-uploader.js?v=375"></script>
 <script src="js/06-warehouse-fefo-batch-allocation.js?v=375"></script>
@@ -3101,7 +3105,7 @@
 <script src="js/30-roster-edits-templates.js?v=375"></script>
 <script src="js/31-attendance-leave-planner.js?v=375"></script>
 <script src="js/32-management-daily-report.js?v=398"></script>
-<script src="js/33-logistics-trip-planning.js?v=473"></script>
+<script src="js/33-logistics-trip-planning.js?v=475"></script>
 <script src="js/34-filter-fields-expand-window.js?v=450"></script>
 <script src="js/35-mngt-report-kpi-charts.js?v=375"></script>
 <script src="js/36-attendance-ot-calc.js?v=409"></script>
@@ -3140,7 +3144,7 @@
 <script src="js/59e-wh-overview.js?v=375"></script>
 <script src="js/59f-consolidated-inventory.js?v=375"></script>
 <script src="js/59c-wh3d-picks-link.js?v=375"></script>
-<script src="js/60-update-check.js?v=474"></script>
+<script src="js/60-update-check.js?v=475"></script>
 <script src="js/56-mod-equipment-workshop.js?v=375"></script>
 <script src="js/61-col-tools.js?v=375"></script>
 <script src="js/62-mod-rack-condition.js?v=465"></script>
@@ -3187,7 +3191,7 @@
 <script src="js/94-team-tasks.js?v=450"></script>
 <script src="js/95-ai-report.js?v=461"></script>
 <script src="js/96-driver-checklist.js?v=466"></script>
-<script src="js/97-demand-plan.js?v=473"></script>
+<script src="js/97-demand-plan.js?v=475"></script>
 <script src="js/85-topbar-menu.js?v=462"></script>
 <script src="js/86-upload-duplicates.js?v=375"></script>
 <script src="js/87-trips-store.js?v=375"></script>
