@@ -213,6 +213,12 @@
   const NDT = { new: 'Photos of the two inspections differ clearly — possible NEW damage. Click the row → 🔍 Compare photos.', check: 'Some differences between the photos — please check.', same: 'The photos look the same as the previous inspection — likely OLD damage.', nomatch: 'The photos show different views — compare by eye.', 'none-prev': 'No earlier inspection / photo to compare with — treat as NEW until checked.', 'none-recent': 'The recent inspection has no photo.' };
   function ndPut(tr, v) { let c = tr.querySelector('.nd-chip'); if (!v) { if (c) c.remove(); return; } if (!c) { c = document.createElement('span'); c.className = 'nd-chip'; const td = tr.querySelector('td'); if (!td) return; td.appendChild(c); } c.dataset.v = v; c.title = v === 'busy' ? 'Comparing the photos…' : NDT[v] || ''; }
   function ndMark(root, list, resolve) { if (!root) return; root.querySelectorAll('tbody tr').forEach(tr => { let q = null; try { q = resolve(tr); } catch (e) {} if (!q) return; if (!q[0]) { ndPut(tr, 'none-prev'); return; } const v = NDC[ndKey(list, q[0], q[1])]; if (v) ndPut(tr, v); }); }
+  /* filter / send helpers: the verdict stored for a record pair (null = not applicable, '' = not checked yet) */
+  const ndVerdict = (list, q) => !q ? null : !q[0] ? 'none-prev' : (NDC[ndKey(list, q[0], q[1])] || '');
+  const ndMatch = (list, f, q) => { const v = ndVerdict(list, q); if (v === null) return false; if (f === 'flag') return v === 'new' || v === 'check'; if (f === 'todo') return v === ''; return v === f; };
+  const ND_OPTS = [['', 'All records'], ['flag', '🔴⚠ Needs checking (new / differences)'], ['new', '🔴 Possible NEW damage'], ['check', '⚠ Some differences — check'], ['same', '✅ Looks the same (old)'], ['nomatch', '❔ Different views — compare by eye'], ['none-prev', '🆕 First record (no earlier photo)'], ['none-recent', '📷 No photo'], ['todo', '⏳ Not checked yet']];
+  const ndSel = cur => '<select data-f="ai" title="Filter by the result of the photo comparison (press 🔍 Check new damage first)">' + ND_OPTS.map(o => '<option value="' + o[0] + '"' + (String(cur || '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+  const ND_TXT = { new: '🔴 possible NEW damage', check: '⚠ differences found — please check', same: '✅ looks the same as before', nomatch: '❔ different views — compare by eye', 'none-prev': '🆕 first record — no earlier photo', 'none-recent': '📷 no photo', '': '⏳ not checked yet' };
   let ndBusy = false;
   async function ndRun(root, list, resolve, say, force) { if (ndBusy) return say && say('Already checking the photos…', 1); if (!root) return; const todo = [];
     root.querySelectorAll('tbody tr').forEach(tr => { let q = null; try { q = resolve(tr); } catch (e) {} if (!q || !q[0]) return; const k = ndKey(list, q[0], q[1]); if (force || !NDC[k]) todo.push([tr, q, k]); });
@@ -256,5 +262,5 @@
   function aiHomeStrip(host) { try { const o = host && host.querySelector('.hm-ai'); if (o) o.remove(); aiChipUpd(); } catch (e) {} }
   window.aiHomeStrip = aiHomeStrip; window.aiChipUpd = aiChipUpd;
   setInterval(() => { try { if (typeof currentUser !== 'undefined' && currentUser && Date.now() - aiPulled > 10 * 60 * 1000) { aiPulled = Date.now(); aiPull(true); } aiChipUpd(); } catch (e) {} }, 4000);
-  window.LIM = { aiCall, isAdm, aiSetup, aiAsk, aiCfg, parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin, ndMark, ndRun };
+  window.LIM = { aiCall, isAdm, aiSetup, aiAsk, aiCfg, parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin, ndMark, ndRun, ndVerdict, ndMatch, ndSel, ndTxt: v => ND_TXT[v == null ? '' : v] || '' };
 })();
