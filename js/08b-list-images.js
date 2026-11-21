@@ -159,5 +159,24 @@
       '<div style="font-size:11.5px;color:#64748b">Indicative only — the analysis runs on your device and works best when both photos are taken from a similar angle and distance. The inspector decides.</div>';
     res.pairs.forEach((pr, i) => { B.querySelector('[data-p="' + i + '"]').src = pr.p.u; B.querySelector('[data-r="' + i + '"]').src = pr.r.u; const cv = B.querySelector('[data-c="' + i + '"]'); if (cv) cmpDraw(cv, pr); }); (res.recent || []).forEach((r, i) => { const e = B.querySelector('[data-r2="' + i + '"]'); if (e) e.src = r.u; });
     return res; }
-  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin };
+
+  /* ---------- 🔴 "new damage?" marker on table rows (result of the photo comparison, remembered on this device) ---------- */
+  const NDK = 'orbit_nd_v1'; let NDC = {}; try { NDC = JSON.parse(localStorage.getItem(NDK) || '{}') || {}; } catch (e) { NDC = {}; }
+  const ndSave = () => { try { const k = Object.keys(NDC); if (k.length > 4000) k.slice(0, k.length - 3000).forEach(x => delete NDC[x]); localStorage.setItem(NDK, JSON.stringify(NDC)); } catch (e) {} };
+  const ndKey = (list, a, b) => list + '|' + (a || '') + '|' + b;
+  const ndCss = document.createElement('style'); ndCss.textContent = '.nd-chip{display:inline-block;margin-left:6px;padding:0 7px;border-radius:999px;font-size:10.5px;font-weight:700;white-space:nowrap;vertical-align:middle;line-height:17px;cursor:help}.nd-chip[data-v=new]{background:#fee2e2;color:#991b1b}.nd-chip[data-v=new]::after{content:"🔴 NEW damage?"}.nd-chip[data-v=check]{background:#fef3c7;color:#92400e}.nd-chip[data-v=check]::after{content:"⚠ check"}.nd-chip[data-v=same]{background:#dcfce7;color:#166534}.nd-chip[data-v=same]::after{content:"✅ old"}.nd-chip[data-v=nomatch]{background:#e2e8f0;color:#334155}.nd-chip[data-v=nomatch]::after{content:"❔ compare by eye"}.nd-chip[data-v=none-prev]{background:#fee2e2;color:#991b1b}.nd-chip[data-v=none-prev]::after{content:"🆕 first record"}.nd-chip[data-v=none-recent]{background:#e2e8f0;color:#334155}.nd-chip[data-v=none-recent]::after{content:"📷 no photo"}.nd-chip[data-v=busy]{background:#e0e7ff;color:#3730a3}.nd-chip[data-v=busy]::after{content:"⏳ checking…"}';
+  document.head.appendChild(ndCss);
+  const NDT = { new: 'Photos of the two inspections differ clearly — possible NEW damage. Click the row → 🔍 Compare photos.', check: 'Some differences between the photos — please check.', same: 'The photos look the same as the previous inspection — likely OLD damage.', nomatch: 'The photos show different views — compare by eye.', 'none-prev': 'No earlier inspection / photo to compare with — treat as NEW until checked.', 'none-recent': 'The recent inspection has no photo.' };
+  function ndPut(tr, v) { let c = tr.querySelector('.nd-chip'); if (!v) { if (c) c.remove(); return; } if (!c) { c = document.createElement('span'); c.className = 'nd-chip'; const td = tr.querySelector('td'); if (!td) return; td.appendChild(c); } c.dataset.v = v; c.title = v === 'busy' ? 'Comparing the photos…' : NDT[v] || ''; }
+  function ndMark(root, list, resolve) { if (!root) return; root.querySelectorAll('tbody tr').forEach(tr => { let q = null; try { q = resolve(tr); } catch (e) {} if (!q) return; if (!q[0]) { ndPut(tr, 'none-prev'); return; } const v = NDC[ndKey(list, q[0], q[1])]; if (v) ndPut(tr, v); }); }
+  let ndBusy = false;
+  async function ndRun(root, list, resolve, say, force) { if (ndBusy) return say && say('Already checking the photos…', 1); if (!root) return; const todo = [];
+    root.querySelectorAll('tbody tr').forEach(tr => { let q = null; try { q = resolve(tr); } catch (e) {} if (!q || !q[0]) return; const k = ndKey(list, q[0], q[1]); if (force || !NDC[k]) todo.push([tr, q, k]); });
+    if (!todo.length) { ndMark(root, list, resolve); return say && say('✔ All the shown records are already checked.'); }
+    const cap = Math.min(todo.length, 60); ndBusy = true; let done = 0;
+    try { for (let i = 0; i < cap; i++) { const [tr, q, k] = todo[i]; if (!document.body.contains(tr)) continue; ndPut(tr, 'busy'); say && say('🔍 Comparing the photos… ' + (i + 1) + ' of ' + cap);
+        let v = 'nomatch'; try { const r = await cmpPhotos(list, q[0], q[1]); v = r.verdict; } catch (e) { v = null; } if (v) { NDC[k] = v; ndPut(tr, v); done++; } else ndPut(tr, null); if (i % 5 === 4) ndSave(); } }
+    finally { ndBusy = false; ndSave(); }
+    say && say('✔ ' + done + ' record(s) checked' + (todo.length > cap ? ' — ' + (todo.length - cap) + ' more: filter the table or press the button again' : '') + ' · 🔴 = possible NEW damage, ✅ = looks old, ❔ = compare by eye'); }
+  window.LIM = { parse, scan, srcOf, ph, attScan, attOf, mailAtts, fileAtts, filesOf, zip, b64, cmpPhotos, compareWin, ndMark, ndRun };
 })();
