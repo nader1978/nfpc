@@ -191,24 +191,24 @@ window.orbClarSubj = s => '❓ Clarification needed | ' + String(s || '').replac
     if (b.dataset.ac === 'done') { a.status = a.status === 'Closed' ? 'Open' : 'Closed'; X.jset(RACT_K, L); render(); return; }
     try { await utPush('rcklm', [a], x => x.rack); a.pushed = true; X.jset(RACT_K, L); say('✔ saved to SharePoint'); } catch (e) { say('⚠ ' + e.message, 1); } render();
   }
-  function openDigest() {
-    if (!LMX() || !S.loaded) return say('Press 🔄 Reload first.', 1); const X = LMX(), cur = () => sel(), where = S.f.loc ? locName(S.f.loc) : S.f.whs || 'all locations', U = x => String(x || '').toUpperCase();
+  function openDigest(pre) {
+    if (!LMX() || !S.loaded) return say('Press 🔄 Reload first.', 1); pre = Array.isArray(pre) && pre.length ? pre : null; const X = LMX(), cur = () => sel(), where = S.f.loc ? locName(S.f.loc) : S.f.whs || 'all locations', U = x => String(x || '').toUpperCase();
     /* every rack with damage on record (rack setup "Nr of damages") or with a hit seen in the loaded inspections — one entry per rack */
     const damaged = () => { const m = new Map(), Q2 = U(S.f.q);
       (typeof SRK !== 'undefined' ? SRK.rows : []).forEach(r => { if (!(+r.dmg > 0) || !r.code) return; if (S.f.locs.length ? !S.f.locs.includes(r.loc) : (S.f.whs && r.whs !== S.f.whs)) return; if (Q2 && !U(r.code).includes(Q2)) return; m.set(U(r.code), { rack: r.code, loc: r.loc, whs: r.whs, area: r.area, dmg: Math.round(+r.dmg) || 0 }); });
       S.rows.forEach(r => { if (!r.hit || m.has(r.rk)) return; if (!inLoc(r.loc)) return; if (Q2 && !r.rk.includes(Q2)) return; m.set(r.rk, { rack: r.rack, loc: r.loc, whs: r.whs, area: r.area }); });
       return [...m.values()]; };
     const dd = (iss, r) => (iss.length ? X.ul(iss, '#dc2626') : '<div style="font-size:14px;color:#334155">No new damage reported.</div>') + (r.act ? X.sub('Action taken at the inspection', ['#1d4ed8', '#2563eb'], [r.act]) : '') + (r.note ? `<div style="border-left:3px solid #94a3b8;padding:6px 12px;font-size:14px;color:#334155;font-style:italic;background:#f8fafc;margin:8px 0">${esc(r.note)}</div>` : '');
-    X.digest({ photoList: LIST, team: 'Civil & HSE', cfg: LS_BASE + '_rkc_mailcfg', kicker: 'RACK DAMAGE · ACTION REQUIRED', head: 'Rack damage', kind: 'Rack', source: 'Rack Hits & Damages', where, act: 'Please inspect the racks listed, confirm the damage level and the corrective action for each (unload / repair / replace).', store: RACT_K, dest: 'rcklm', done: () => { if (S.tab === 'act') render(); },
-      scopes: [{ k: 'new', label: '🆕 New observed damages (hits reported at inspections)' }, { k: 'all', label: '🛡 All damaged racks (damage on record)', title: 'All racks with damage on record', nodate: true }],
-      range: () => dmy(S.f.from) + ' – ' + dmy(S.f.to),
-      days: sc => [...new Set(cur().filter(r => r.hit).map(r => r.date))].sort().reverse(),
+    X.digest({ day0: pre ? '__all__' : '', photoList: LIST, team: 'Civil & HSE', cfg: LS_BASE + '_rkc_mailcfg', kicker: 'RACK DAMAGE · ACTION REQUIRED', head: 'Rack damage', kind: 'Rack', source: 'Rack Hits & Damages', where, act: 'Please inspect the racks listed, confirm the damage level and the corrective action for each (unload / repair / replace).', store: RACT_K, dest: 'rcklm', done: () => { if (S.tab === 'act') render(); },
+      scopes: pre ? [{ k: 'new', label: '🆕 The ' + pre.length + ' record(s) of the window you opened' }] : [{ k: 'new', label: '🆕 New observed damages (hits reported at inspections)' }, { k: 'all', label: '🛡 All damaged racks (damage on record)', title: 'All racks with damage on record', nodate: true }],
+      range: () => pre ? pre.length + ' selected record(s)' : dmy(S.f.from) + ' – ' + dmy(S.f.to),
+      days: sc => [...new Set((pre || cur()).filter(r => r.hit).map(r => r.date))].sort().reverse(),
       items: (day, ok, sc) => {
         if (sc === 'all') return damaged().map(d => { const K = U(d.rack), hs = S.rows.filter(x => x.rk === K && x.hit).sort((a, b) => a.date.localeCompare(b.date) || (+a.id) - (+b.id)), h = hs[hs.length - 1], n = Math.max(d.dmg || 0, dmgOf(d.rack), hs.length), types = [...new Set(hs.flatMap(x => x.types))];
           return { id: d.rack, phId: h ? h.id : null, n, key: d.rack, sub: [d.whs, d.loc, d.area].filter(Boolean).join(' · '), sev: n >= 3 ? 'Critical' : 'Watch', issue: true, line: n + ' hit(s) on record' + (h ? ' · last observed ' + dmy(h.date) : '') + (types.length ? ' — ' + types.join(', ') : ''),
             card: (types.length ? X.ul(types, '#dc2626') : '') + (h && h.act ? X.sub('Action taken at the last hit', ['#1d4ed8', '#2563eb'], [h.act]) : '') + X.kv([['Hits on record', String(n)], ['Last observed hit', h ? dmy(h.date) + ' · ' + h.shift + ' · ' + h.by : 'none in the loaded period'], ['Location', [d.whs, d.loc, d.area].filter(Boolean).join(' · ')]]),
             row: f => ({ rack: d.rack, loc: d.loc, whs: d.whs, area: d.area, recdate: h ? h.date : '', shift: h ? h.shift : '', dmg: types.join(', '), by: h ? h.by : '', recid: d.rack }) }; }).sort((a, b) => b.n - a.n || a.key.localeCompare(b.key, undefined, { numeric: true }));
-        return cur().filter(r => (day === '__all__' || r.date === day) && (ok || r.hit)).sort((a, b) => (b.hit - a.hit) || b.date.localeCompare(a.date) || a.rack.localeCompare(b.rack, undefined, { numeric: true })).map(r => {
+        return (pre || cur()).filter(r => (day === '__all__' || r.date === day) && (ok || r.hit)).sort((a, b) => (b.hit - a.hit) || b.date.localeCompare(a.date) || a.rack.localeCompare(b.rack, undefined, { numeric: true })).map(r => {
           const p = prevOf(r), cond = r.hit ? condOf(r) : 'Good', iss = r.hit ? (r.types.length ? r.types : ['Damage reported']) : [], wh = [r.whs, r.loc, r.area].filter(Boolean).join(' · ');
           return { id: r.id, key: r.rack, sub: [dmy(r.date), r.shift, r.by].filter(Boolean).join(' · '), sev: cond, issue: r.hit, line: r.hit ? iss.join(', ') + (r.act ? ' — action taken: ' + r.act : '') : 'No new damage (' + nOf(r) + ' hit(s) on record)',
             card: dd(iss, r) + X.kv([['Location', wh], ['Hits on record', String(nOf(r))], ['Previous inspection', p ? dmy(p.date) + ' · ' + p.shift + ' — ' + (p.hit ? 'HIT ' + p.types.join(', ') : 'OK') : 'none in the loaded period']]),
@@ -686,7 +686,7 @@ body.dark :is(#view-flr,#view-fla) .flr-mx .st{background:var(--card)}body.dark 
   /* spec: { kicker, head, kind, act, store, dest, range: () => 'dd mmm – dd mmm', days: () => [dates desc], items: (day|'__all__', withOk) => [{id,key,sub,sev,issue,line,card,txt,row:f=>obj}], done } */
   function digest(spec) {
     if (window.flrCss) window.flrCss(); const TEAM = spec.team || 'Fleet & HSE', CK = spec.cfg || CFG_K, cfg = jget(CK, {}), me = (currentUser && currentUser.email) || '', lm = (currentUser && currentUser.managerEmail) || '', days0 = () => spec.days(st.scope);
-    const SCP = spec.scopes || null, st = { scope: SCP ? SCP[0].k : '', day: '', ok: false, sel: new Set(), edited: false }, SV = { Critical: ['#b91c1c', '#fee2e2', 'r'], Watch: ['#92400e', '#fef3c7', 'o'], Good: ['#166534', '#dcfce7', 'g'] };
+    const SCP = spec.scopes || null, st = { scope: SCP ? SCP[0].k : '', day: spec.day0 || '', ok: false, sel: new Set(), edited: false }, SV = { Critical: ['#b91c1c', '#fee2e2', 'r'], Watch: ['#92400e', '#fef3c7', 'o'], Good: ['#166534', '#dcfce7', 'g'] };
     const sc = () => SCP ? SCP.find(x => x.k === st.scope) : {}, IT = () => spec.items(st.day, st.ok, st.scope), reset = () => { st.sel = new Set(IT().filter(i => i.issue).map(i => String(i.id))); };
     let m = Q('#flrAct'); if (m) m.remove(); m = document.createElement('div'); m.id = 'flrAct';
     m.innerHTML = `<div class="flr-pc" style="max-width:720px"><div class="flr-ph"><b>📧 Email observations — ${e(spec.kind)}</b><span style="flex:1"></span><button type="button" class="ghost small" data-x="1">✕</button></div><div class="flr-pb">
