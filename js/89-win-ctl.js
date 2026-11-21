@@ -111,5 +111,9 @@
   function drop(b) { const t = T.get(b); if (!t) return; Object.values(t.hs).forEach(h => h.remove()); T.delete(b); }
   function tick() { try { document.querySelectorAll('.mdl-box[data-mdl]').forEach(b => { const has = T.has(b), good = ok(b); if (good && !has) make(b); else if (!good && has) drop(b); else if (good) { if (T.get(b).ov !== b.parentElement) { drop(b); make(b); } else place(b); } });
       T.forEach((t, b) => { if (!document.body.contains(b)) drop(b); }); } catch (e) {} }
-  setInterval(tick, 400); let raf = 0; const loop = () => { if (T.size) T.forEach((t, b) => place(b)); raf = requestAnimationFrame(loop); }; loop();
+  /* the title bar stays fixed: only the content under it scrolls (the scrollbar no longer runs along the title bar) */
+  const sc = document.createElement('style'); sc.textContent = '.mdl-box.mdl-fx{display:flex!important;flex-direction:column;overflow:hidden!important}.mdl-box.mdl-fx>.mdl-bar,.mdl-box.mdl-fx>.mdl-chip{flex:none}.mdl-box.mdl-fx>.mdl-scroll{flex:1 1 auto;min-height:0;overflow:auto}'; document.head.appendChild(sc);
+  function fixBars() { document.querySelectorAll('.mdl-box[data-mdl]').forEach(b => { if (b.classList.contains('mdl-fx') || b.id === 'flrAct' || b.matches('.flr-pc')) return; const bar = b.querySelector(':scope > .mdl-bar'); if (!bar) return; const cs = getComputedStyle(b); if (cs.display !== 'block' || !/auto|scroll/.test(cs.overflowY)) return;
+      const kids = [...b.children].filter(c => c !== bar && !c.classList.contains('mdl-chip') && !c.classList.contains('rzx')); if (!kids.length) return; const w = document.createElement('div'); w.className = 'mdl-scroll'; kids.forEach(k => w.appendChild(k)); bar.insertAdjacentElement('afterend', w); b.classList.add('mdl-fx'); }); }
+  setInterval(() => { try { fixBars(); } catch (e) {} }, 400); setInterval(tick, 400); let raf = 0; const loop = () => { if (T.size) T.forEach((t, b) => place(b)); raf = requestAnimationFrame(loop); }; loop();
 })();

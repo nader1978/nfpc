@@ -7,8 +7,8 @@
   css.textContent = `table.gd-click tbody tr:not(.gd-skip) td{cursor:pointer;} table.gd-click tbody tr:hover td{background:rgba(37,99,235,.07);}
     .activity-item,.history-item{cursor:pointer;} .activity-item:hover,.history-item:hover{outline:1px solid var(--brand);}
     #gdModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100001;align-items:center;justify-content:center;padding:20px;}
-    #gdModal.gd-max .gd-card{max-width:96vw;height:94vh;max-height:94vh;} #gdModal .gd-card{background:var(--card);color:inherit;border-radius:10px;max-width:720px;width:100%;max-height:88vh;overflow:auto;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
-    #gdModal table{width:100%;border-collapse:collapse;} #gdModal td,#gdModal th{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px;word-break:break-word;}
+    #gdModal.gd-max .gd-card{max-width:96vw;height:94vh;max-height:94vh;} #gdModal .gd-card{background:var(--card);color:inherit;border-radius:10px;max-width:720px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);}
+    #gdModal .gd-card>:first-child{flex:none}#gdModal #gdBody{flex:1 1 auto;min-height:0;overflow:auto}#gdModal table{width:100%;border-collapse:collapse;} #gdModal td,#gdModal th{border-bottom:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top;font-size:13px;word-break:break-word;}
     #gdModal td.gd-k{width:34%;color:var(--gray-500);font-weight:600;} #gdModal tr.gd-hit td{background:rgba(250,204,21,.18);} #gdModal pre{white-space:pre-wrap;word-break:break-word;font-size:13px;margin:0;font-family:inherit;}`;
   document.head.appendChild(css);
   const modal = document.createElement('div'); modal.id = 'gdModal';
