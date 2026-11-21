@@ -20,7 +20,7 @@ nav#tbmPanel .tbm-h{flex:1 0 100%;font-size:11px;font-weight:700;letter-spacing:
 
   let bar, btn, panel, lastBg = '';
   const KEEP = ['sectionRefreshBtn', 'phBtn', 'dsBtn', 'themeToggle', 'activityToggle'];   /* Help · 🎨 · 🌙 · 🕘 stay on the top bar, next to Tools */
-  const PRE = ['ttBell'];   /* shown on the bar just BEFORE Tools (Team Tasks alert) */
+  const PRE = ['ttBell', 'aiOrbit'];   /* shown on the bar just BEFORE Tools (Team Tasks alert) */
   const skip = n => n === btn || n === panel || n.nodeType !== 1 || KEEP.includes(n.id) || PRE.includes(n.id);
   const ORDER = ['mobBtn', 'locChip', 'arrBtn', 'sectionRefreshBtn', 'phBtn', 'msReloginBtn', 'tokenPill', 'importTokenBtn', 'importTokenInput', 'dsBtn', 'themeToggle', 'activityToggle'];
   function keepOut() { if (!bar || !btn) return; PRE.forEach(id => { const n = document.querySelector('#' + id); if (n && n instanceof Element && n.nextElementSibling !== btn) bar.insertBefore(n, btn); }); let ref = btn; KEEP.forEach(id => { const n = document.querySelector('#' + id); if (!n || !(n instanceof Element)) return; if (n.parentElement !== bar || n.previousElementSibling !== ref) bar.insertBefore(n, ref.nextSibling); ref = n; }); if (panel.parentElement === bar && bar.lastElementChild !== panel) bar.appendChild(panel); }
