@@ -1,0 +1,387 @@
+/* ---------- Attendance by Employees: biometric attendance linked (by file number) to the staff master Employees_tbl.
+   The filters are built from the columns of Employees_tbl (choose which ones with "Filter fields"). ---------- */
+(function () {
+  const Q = s => document.querySelector(s), esc = escapeHtml, msg = (t, k) => sectionToast(t, k);
+  const LSF = LS_BASE + '_aemf', LSG = LS_BASE + '_aemg';
+  const SKIPC = new Set(['ContentType', 'Attachments', 'Edit', 'DocIcon', 'LinkTitle', 'LinkTitleNoMenu', 'ItemChildCount', 'FolderChildCount', 'AppAuthor', 'AppEditor', '_UIVersionString', 'Created', 'Modified', 'Author', 'Editor', 'ID', 'Id', 'GUID', 'FileLeafRef']);
+  const ST = ['Present', 'One punch', 'Absent', 'Leave', 'Off'], COL = { 'Present': '#16a34a', 'One punch': '#f59e0b', 'Absent': '#dc2626', 'Leave': '#2563eb', 'Off': '#6b7280' };
+  const E = { emp: [], cols: [], fileCol: '', nameCol: '', map: new Map(), sel: null, grp: '', loading: false, loaded: false, err: '', tab: 'dash', grace: 15, shown: 300, sort: { k: 'rate', d: 1 },
+    f: { from: '', to: '', q: '', st: '', v: {} }, pick: false, agg: null };
+  const key = v => (typeof atKey === 'function' ? atKey(v) : String(v == null ? '' : v).trim().replace(/^0+/, '').toUpperCase());
+  const n0 = v => (v == null || !isFinite(v)) ? 0 : v, f1 = v => (Math.round(v * 10) / 10).toLocaleString('en-GB'), f0 = v => Math.round(v).toLocaleString('en-GB');
+  const pc = (a, b) => b ? Math.round(a / b * 1000) / 10 : null, pf = v => v == null ? '–' : v + '%';
+  const dmy = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : '–';
+
+  /* ---------------- Employees_tbl ---------------- */
+  function sv(v) { if (v == null) return ''; if (Array.isArray(v)) return v.map(sv).filter(Boolean).join(', '); if (typeof v === 'object') return String(v.LookupValue || v.Title || v.DisplayName || v.Email || v.Value || ''); return String(v).trim(); }
+  async function loadEmp() {
+    const token = getGlobalAccessToken(), site = getGlobalSiteUrl(); if (!token || !site) throw new Error('connect the SharePoint site first');
+    const ids = await resolveIds(site, 'Employees_tbl', token); E.ids = ids; let meta = {}; try { (await fetchColumns(ids.siteId, ids.listId, token)).forEach(c => { meta[c.name] = c; }); } catch (e) { }
+    const items = await fetchAllItems(ids.siteId, ids.listId, token), names = new Set();
+    items.forEach(it => Object.keys(it.fields || {}).forEach(k => { if (!SKIPC.has(k) && !/^(@|odata|_|OData)/i.test(k) && !/^(.+)(LookupId|Id)$/.test(k)) names.add(k); }));
+    const cols = [...names].map(k => ({ name: k, label: (meta[k] && meta[k].displayName) || k.replace(/_x0020_/g, ' ').replace(/_/g, ' '), type: (meta[k] && meta[k].type) || 'text' }));
+    const pickCol = res => { for (const re of res) { const c = cols.find(c => re.test(c.name) || re.test(c.label)); if (c) return c.name; } return ''; };
+    E.fileCol = pickCol([/^file[ _]?n(r|o|um)/i, /file/i, /^emp(loyee)?[ _]?(no|nr|num|id|code)/i]) || (cols.find(c => c.name === 'Title') ? 'Title' : '');
+    E.nameCol = pickCol([/^employee[ _]?name$/i, /emp.*name/i, /^name$/i, /full.?name/i]) || (E.fileCol !== 'Title' && cols.find(c => c.name === 'Title') ? 'Title' : '');
+    if (!E.fileCol) throw new Error('Employees_tbl has no file-number column');
+    E.emp = items.map(it => { const f = it.fields || {}, o = { id: it.id, v: {} }; cols.forEach(c => { o.v[c.name] = sv(f[c.name]); }); o.file = o.v[E.fileCol]; o.k = key(o.file); o.name = E.nameCol ? o.v[E.nameCol] : ''; return o; }).filter(o => o.k);
+    E.map = new Map(); E.emp.forEach(o => { if (!E.map.has(o.k)) E.map.set(o.k, o); });
+    /* which columns can be a filter: text/choice/lookup/person/number/yes-no with 2…150 different values */
+    const skipT = new Set(['datetime', 'date', 'multiline', 'link', 'calculated', 'term']);
+    cols.forEach(c => { const s = new Set(); E.emp.forEach(o => { if (o.v[c.name] !== '') s.add(o.v[c.name]); }); c.d = s.size; c.ok = !skipT.has(c.type) && c.name !== E.fileCol && c.name !== E.nameCol && c.name !== 'Title' && s.size >= 2 && s.size <= 150; });
+    E.cols = cols; let saved = null; try { saved = JSON.parse(localStorage.getItem(LSF) || 'null'); } catch (e) { }
+    const okNames = cols.filter(c => c.ok).map(c => c.name);
+    E.sel = saved && saved.filter(n => okNames.includes(n)).length ? saved.filter(n => okNames.includes(n)) : cols.filter(c => c.ok && c.d <= 60).slice(0, 10).map(c => c.name);
+    let g = ''; try { g = localStorage.getItem(LSG) || ''; } catch (e) { } E.grp = E.sel.includes(g) ? g : (E.sel.find(c => /sect/i.test(c)) || E.sel[0] || '');
+  }
+  /* attendance is read here by itself (SharePoint list Attendance_Data_tbl, or the saved copy of this browser) — Attendance Analytics does not have to be opened */
+  async function loadAtt(force) {
+    const have = () => typeof at !== 'undefined' && at.rows && at.rows.length; if (typeof at === 'undefined') { E.atErr = 'The attendance module is not available.'; return; }
+    if (have() && !force) return; if (!getGlobalAccessToken() || !getGlobalSiteUrl()) { if (!have()) E.atErr = 'Connect the SharePoint site first (Settings) so the attendance list can be read.'; return; }
+    status('⏳ Reading the attendance from SharePoint…');
+    try {
+      const cfg = typeof atSpCfg === 'function' ? atSpCfg() : { mode: 'list' };
+      if (cfg.mode === 'file') { if (typeof atSpSync === 'function') await atSpSync(true); }
+      else { const C = await atListCtx(); if (force && have()) { const mod = await atListRemoteMod(C); if (mod && mod !== cfg.mod) { status('⏳ Loading the latest attendance…'); await atListLoad(C); } } else if (!have()) await atListLoad(C); }
+    } catch (e) { if (!have()) E.atErr = 'Could not read the attendance from SharePoint: ' + (e.message || e); }
+    /* another loader (the app's own start-up sync) may still be reading the list — wait for it instead of reporting "no data" */
+    for (let i = 0; i < 240 && !have() && typeof atSpSync === 'function' && atSpSync.busy; i++) { status('⏳ Waiting for the attendance list to finish loading…'); await new Promise(r => setTimeout(r, 500)); }
+    if (!have() && !E.atErr && typeof atSpSync === 'function') { try { await atSpSync(true); } catch (e) { E.atErr = String(e.message || e); } }
+    if (!have() && !E.atErr) { let sc = false, noId = false; try { sc = typeof locScoped === 'function' && locScoped(); noId = sc && !locIds(currentUser).length; } catch (e) { }
+      if (noId) E.atErr = '📍 Your user has no Location ID, so the system hides every location’s data from you (role: ' + ((currentUser && currentUser.role) || 'user') + '). Ask the administrator to set your Location ID in Users / LoginUserList.';
+      else if (sc && window.__locHid && Object.values(window.__locHid).some(n => n > 0)) E.atErr = '📍 The attendance rows belong to other locations than your Location ID (' + locIds(currentUser).join(', ') + ') and are hidden. Ask the administrator if you need them.'; }
+    if (!have() && !E.atErr) E.atErr = 'The list ' + ((typeof atListName === 'function' && atListName()) || 'Attendance_Data_tbl') + ' was read but has no valid rows (Att_Date and Emp_No are required).';
+  }
+  /* if the attendance arrives later (slow list / other loader), refresh the page by itself */
+  function watchAtt() { if (E._w) return; let n = 0; E._w = setInterval(() => { n++; const v = Q('#view-aem'); if (!v || n > 150) { clearInterval(E._w); E._w = 0; return; }
+    if (typeof at !== 'undefined' && at.rows && at.rows.length && E.loaded && !E.loading && !E._hadRows) { clearInterval(E._w); E._w = 0; E._hadRows = 1; if (!E.f.from || !E.f.to || true) { const ds = at.rows.map(r => r.date).sort(); if (!E.f.from) E.f.from = ds[0]; if (!E.f.to) E.f.to = ds[ds.length - 1]; } drawFilters(); render(); } }, 2000); }
+  async function load(force) {
+    if (E.loading) return; E.loading = true; E.err = ''; status('⏳ Reading Employees_tbl and the attendance…');
+    try {
+      if (force || !E.emp.length) await loadEmp();
+      if (!(typeof at !== 'undefined' && at.rows.length)) { try { if (typeof atLoad === 'function') atLoad(); } catch (e) { } }
+      E.atErr = ''; await loadAtt(force);
+      E.loaded = true; E.grace = (typeof at !== 'undefined' && at.grace) || 15; if (!E.f.from && at.rows.length) { const ds = at.rows.map(r => r.date).sort(); E.f.from = ds[0]; E.f.to = ds[ds.length - 1]; }
+      status(''); E._hadRows = (typeof at !== 'undefined' && at.rows.length) ? 1 : 0; if (!E._hadRows) watchAtt(); drawFilters(); render();
+    } catch (e) { E.err = e.message || String(e); status('✘ ' + E.err, 1); } finally { E.loading = false; }
+  }
+  function status(t, bad) { const s = Q('#aemStatus'); if (s) { s.textContent = t || ''; s.className = 'status-msg' + (bad ? ' error' : ''); } }
+
+  /* ---------------- filtering + aggregation ---------------- */
+  const empOk = o => E.sel.every(c => !E.f.v[c] || o.v[c] === E.f.v[c]);
+  function scope() {
+    const q = E.f.q.toLowerCase().split(',').map(s => s.trim()).filter(Boolean), emps = E.emp.filter(o => empOk(o) && (!q.length || q.some(t => (o.file + ' ' + o.name).toLowerCase().includes(t))));
+    const ks = new Set(emps.map(o => o.k)), rows = [], unm = new Map();
+    (typeof at !== 'undefined' ? at.rows : []).forEach(r => {
+      if ((E.f.from && r.date < E.f.from) || (E.f.to && r.date > E.f.to)) return; const k = key(r.id);
+      if (!E.map.has(k)) { let u = unm.get(k); if (!u) unm.set(k, u = { file: r.id, name: r.name, n: 0, rs: [] }); u.n++; u.rs.push(r); return; }
+      if (!ks.has(k)) return; const s = r.st === 'No punch' ? 'Absent' : r.st; if (E.f.st && s !== E.f.st) return; rows.push({ r, s, o: E.map.get(k) });
+    });
+    return { emps, rows, unm: [...unm.values()] };
+  }
+  const hrs = r => (typeof atHours === 'function' ? atHours(r) : (r.work || 0));
+  const late = r => r.inT != null && r.sFrom != null && ((typeof atWrap === 'function' ? atWrap(r.inT - r.sFrom) : r.inT - r.sFrom) > E.grace);
+  const blank = () => ({ n: 0, Present: 0, 'One punch': 0, Absent: 0, Leave: 0, Off: 0, late: 0, lb: 0, h: 0, hd: 0, ot: 0 });
+  function add(a, x) { a.n++; a[x.s]++; if (x.r.inT != null && x.r.sFrom != null) { a.lb++; if (late(x.r)) a.late++; } if (x.s === 'Present') { const h = hrs(x.r); if (h > 0) { a.h += h; a.hd++; } } a.ot += n0(x.r.ot); }
+  const sched = a => a.n - a.Leave - a.Off, rate = a => pc(a.Present + a['One punch'], sched(a));
+  function aggregate(S) {
+    const tot = blank(), byEmp = new Map(), byDay = new Map(), byG = new Map();
+    S.rows.forEach(x => { add(tot, x); let e = byEmp.get(x.o.k); if (!e) byEmp.set(x.o.k, e = Object.assign(blank(), { o: x.o })); add(e, x); let d = byDay.get(x.r.date); if (!d) byDay.set(x.r.date, d = blank()); add(d, x);
+      if (E.grp) { const g = x.o.v[E.grp] || '(blank)'; let a = byG.get(g); if (!a) byG.set(g, a = Object.assign(blank(), { g, staff: new Set() })); add(a, x); a.staff.add(x.o.k); } });
+    return { tot, byEmp, byDay, byG, noAtt: S.emps.filter(o => !byEmp.has(o.k)) };
+  }
+
+  /* ---------------- drawing ---------------- */
+  function drawFilters() {
+    const h = Q('#aemFilters'); if (!h) return; const optv = c => [...new Set(E.emp.map(o => o.v[c]).filter(v => v !== ''))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    h.innerHTML = `<div class="aem-f"><input type="search" data-q placeholder="Search file no. / name… (comma = several)" value="${esc(E.f.q)}" style="flex:1;min-width:230px">
+      <label>From <input type="date" data-d="from" placeholder="dd/mm/yyyy" value="${esc(E.f.from)}"></label><label>To <input type="date" data-d="to" placeholder="dd/mm/yyyy" value="${esc(E.f.to)}"></label>
+      <label>Status <select data-st><option value="">All</option>${ST.map(s => `<option${E.f.st === s ? ' selected' : ''}>${s}</option>`).join('')}</select></label>
+      <label>Grace <input type="number" data-g min="0" max="120" value="${E.grace}" style="width:64px"> min</label>
+      <button class="secondary small" type="button" data-o="clear">✕ Clear filters</button><button class="secondary small" type="button" data-o="pick">⚙ Filter fields</button></div>
+      ${E.pick ? `<div class="aem-pick"><b>Choose the Employees_tbl columns to filter by</b> <span class="text-sm">(${E.cols.filter(c => c.ok).length} usable columns)</span><div>${E.cols.filter(c => c.ok).map(c => `<label><input type="checkbox" data-pf="${esc(c.name)}"${E.sel.includes(c.name) ? ' checked' : ''}> ${esc(c.label)} <i>${c.d}</i></label>`).join('')}</div></div>` : ''}
+      <div class="aem-sel">${E.sel.map(c => { const col = E.cols.find(x => x.name === c); return `<label>${esc(col ? col.label : c)}<select data-v="${esc(c)}"><option value="">All</option>${optv(c).map(v => `<option${E.f.v[c] === v ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></label>`; }).join('')}</div>`;
+  }
+  const kp = (t, v, s, c) => `<div class="aem-k ${c || ''}"><div class="t">${t}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+  function donut(tot) {
+    const T = ST.reduce((s, k) => s + tot[k], 0) || 1; let a0 = -Math.PI / 2, p = ''; const R = 70, r = 44, cx = 85, cy = 85;
+    ST.forEach(k => { const v = tot[k]; if (!v) return; const a1 = a0 + v / T * 2 * Math.PI - (v === T ? 0.0001 : 0), lg = a1 - a0 > Math.PI ? 1 : 0, P = (R2, a) => [cx + R2 * Math.cos(a), cy + R2 * Math.sin(a)]; const [x1, y1] = P(R, a0), [x2, y2] = P(R, a1), [x3, y3] = P(r, a1), [x4, y4] = P(r, a0);
+      p += `<path d="M${x1} ${y1}A${R} ${R} 0 ${lg} 1 ${x2} ${y2}L${x3} ${y3}A${r} ${r} 0 ${lg} 0 ${x4} ${y4}Z" fill="${COL[k]}"/>`; a0 = a1; });
+    return `<div class="aem-don"><svg viewBox="0 0 170 170" width="170" height="170">${p}<text x="85" y="86" text-anchor="middle" font-size="20" font-weight="700" fill="currentColor">${f0(T)}</text><text x="85" y="102" text-anchor="middle" font-size="9" fill="currentColor" opacity=".6">employee-days</text></svg>
+      <div>${ST.map(k => `<div class="aem-lg" data-stf="${k}"><i style="background:${COL[k]}"></i>${k}<b>${f0(tot[k])}</b><span>${pf(pc(tot[k], T))}</span></div>`).join('')}</div></div>`;
+  }
+  function byDayChart(byDay) {
+    const ds = [...byDay.keys()].sort(); if (!ds.length) return '<div class="aem-none">No attendance in this selection.</div>'; const W = 1000, H = 190, pl = 30, bw = (W - pl) / ds.length, mx = Math.max(...ds.map(d => byDay.get(d).n)) || 1; let s = '';
+    ds.forEach((d, i) => { const a = byDay.get(d); let y = H - 20; ST.forEach(k => { const h = a[k] / mx * (H - 36); if (!h) return; y -= h; s += `<rect x="${pl + i * bw + 1}" y="${y}" width="${Math.max(1, bw - 2)}" height="${h}" fill="${COL[k]}"><title>${dmy(d)} · ${k}: ${a[k]}</title></rect>`; });
+      if (ds.length <= 31 || i % Math.ceil(ds.length / 26) === 0) s += `<text x="${pl + i * bw + bw / 2}" y="${H - 6}" text-anchor="middle" font-size="9" fill="currentColor" opacity=".65">${d.slice(8)}/${d.slice(5, 7)}</text>`; });
+    for (let i = 0; i <= 4; i++) { const v = Math.round(mx / 4 * i), y = H - 20 - v / mx * (H - 36); s += `<line x1="${pl}" x2="${W}" y1="${y}" y2="${y}" stroke="currentColor" opacity=".1"/><text x="${pl - 4}" y="${y + 3}" text-anchor="end" font-size="9" fill="currentColor" opacity=".6">${v}</text>`; }
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-height:230px">${s}</svg><div class="aem-leg">${ST.map(k => `<span><i style="background:${COL[k]}"></i>${k}</span>`).join('')}</div>`;
+  }
+  function grpTable(A) {
+    if (!E.grp) return '<div class="aem-none">Choose at least one filter field (⚙ Filter fields) to break the attendance down.</div>';
+    const rows = [...A.byG.values()].sort((a, b) => b.n - a.n), lab = (E.cols.find(c => c.name === E.grp) || {}).label || E.grp;
+    return `<div class="aem-wrap"><table class="aem-t"><thead><tr><th>${esc(lab)}</th><th>Staff</th><th>Days</th><th>Present</th><th>One punch</th><th>Absent</th><th>Leave/Off</th><th>Late %</th><th>Avg h</th><th>OT h</th><th>Attendance rate</th></tr></thead><tbody>${rows.map(a => { const rt = rate(a); return `<tr class="aem-go" data-bd="grp:${esc(a.g)}"><td><b>${esc(a.g)}</b></td><td>${a.staff.size}</td><td>${a.n}</td><td>${a.Present}</td><td>${a['One punch']}</td><td>${a.Absent}</td><td>${a.Leave + a.Off}</td><td>${pf(pc(a.late, a.lb))}</td><td>${a.hd ? f1(a.h / a.hd) : '–'}</td><td>${f1(a.ot)}</td><td><span class="aem-bar"><u style="width:${rt || 0}%;background:${rt == null ? '#9ca3af' : rt >= 90 ? '#16a34a' : rt >= 75 ? '#f59e0b' : '#dc2626'}"></u></span> ${pf(rt)}</td></tr>`; }).join('')}</tbody></table></div>`;
+  }
+  const staffRows = A => [...A.byEmp.values()].map(e => Object.assign(e, { rate: rate(e), latePct: pc(e.late, e.lb), avgH: e.hd ? e.h / e.hd : null }));
+  function staffTable(A, S) {
+    const R = staffRows(A), k = E.sort.k, d = E.sort.d; R.sort((a, b) => { const x = a[k] == null ? (d > 0 ? 1e9 : -1e9) : a[k], y = b[k] == null ? (d > 0 ? 1e9 : -1e9) : b[k]; return (x > y ? 1 : x < y ? -1 : 0) * d; });
+    const fc = E.sel.slice(0, 4).map(c => E.cols.find(x => x.name === c)).filter(Boolean), H = (t, kk) => `<th data-so="${kk}" style="cursor:pointer">${t}${E.sort.k === kk ? (E.sort.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+    return { R, fc, html: `<div class="aem-wrap"><table class="aem-t"><thead><tr><th>File no.</th><th>Name</th>${fc.map(c => `<th>${esc(c.label)}</th>`).join('')}${H('Days', 'n')}${H('Present', 'Present')}${H('One punch', 'One punch')}${H('Absent', 'Absent')}${H('Leave', 'Leave')}${H('Off', 'Off')}${H('Late', 'late')}${H('Avg h', 'avgH')}${H('OT h', 'ot')}${H('Rate', 'rate')}</tr></thead><tbody>${R.slice(0, E.shown).map(e => `<tr class="aem-go" data-dbd="emp:${esc(e.o.k)}"><td>${esc(e.o.file)}</td><td><b>${esc(e.o.name)}</b></td>${fc.map(c => `<td>${esc(e.o.v[c.name])}</td>`).join('')}<td>${e.n}</td><td>${e.Present}</td><td>${e['One punch']}</td><td class="${e.Absent ? 'aem-r' : ''}">${e.Absent}</td><td>${e.Leave}</td><td>${e.Off}</td><td>${e.late}</td><td>${e.avgH == null ? '–' : f1(e.avgH)}</td><td>${f1(e.ot)}</td><td><b>${pf(e.rate)}</b></td></tr>`).join('')}</tbody></table></div>${R.length > E.shown ? `<button class="secondary small" type="button" data-o="more">Show more (${R.length - E.shown})</button>` : ''}` };
+  }
+  function recTable(S) {
+    const R = S.rows.slice().sort((a, b) => b.r.date.localeCompare(a.r.date) || String(a.o.name).localeCompare(b.o.name)), hm = m => (typeof atHM === 'function' ? atHM(m) : m);
+    return `<div class="aem-wrap"><table class="aem-t"><thead><tr><th>Date</th><th>File no.</th><th>Name</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Shift</th><th>OT h</th><th>Remarks</th></tr></thead><tbody>${R.slice(0, E.shown).map(x => `<tr class="aem-go" data-dbd="rec:${x.r.date}|${esc(x.o.k)}"><td>${dmy(x.r.date)}</td><td>${esc(x.o.file)}</td><td>${esc(x.o.name)}</td><td><span class="aem-pill" style="background:${COL[x.s]}">${x.s}</span></td><td>${x.r.inT == null ? '' : hm(x.r.inT)}</td><td>${x.r.outT == null ? '' : hm(x.r.outT)}</td><td>${f1(hrs(x.r))}</td><td>${esc(x.r.shift || '')}</td><td>${n0(x.r.ot) ? f1(x.r.ot) : ''}</td><td>${esc(x.r.rem || '')}</td></tr>`).join('')}</tbody></table></div>${R.length > E.shown ? `<button class="secondary small" type="button" data-o="more">Show more (${R.length - E.shown})</button>` : ''} <span class="text-sm">${f0(R.length)} record(s)</span>`;
+  }
+
+  /* ---------------- overtime analysis (from the attendance) ---------------- */
+  const gLab = () => ((E.cols.find(c => c.name === E.grp) || {}).label) || E.grp || 'Group';
+  const grpSel = () => `<label>Analyse by <select data-grp>${E.sel.map(c => `<option value="${esc(c)}"${c === E.grp ? ' selected' : ''}>${esc((E.cols.find(x => x.name === c) || {}).label || c)}</option>`).join('')}</select></label>`;
+  const otx = x => ({ nor: n0(x.r.not), oth: n0(x.r.fot) + n0(x.r.rot) + n0(x.r.hot), tot: n0(x.r.ot) || (n0(x.r.not) + n0(x.r.fot) + n0(x.r.rot) + n0(x.r.hot)) });
+  function otData(S) {
+    const g = new Map(), st = new Map(), all = { nor: 0, oth: 0, tot: 0, h: 0, staff: new Set(), n: 0, days: 0 };
+    S.rows.forEach(x => { const o = otx(x), h = hrs(x.r), gv = (E.grp && x.o.v[E.grp]) || '(blank)'; let a = g.get(gv); if (!a) g.set(gv, a = { g: gv, nor: 0, oth: 0, tot: 0, h: 0, staff: new Set(), ots: new Set(), days: 0, n: 0 });
+      let e = st.get(x.o.k); if (!e) st.set(x.o.k, e = { o: x.o, nor: 0, oth: 0, tot: 0, days: 0 });
+      [a, all].forEach(z => { z.h += h; z.n++; z.staff.add(x.o.k); }); if (o.tot > 0) { [a, all].forEach(z => { z.nor += o.nor; z.oth += o.oth; z.tot += o.tot; z.days++; }); a.ots.add(x.o.k); e.nor += o.nor; e.oth += o.oth; e.tot += o.tot; e.days++; } });
+    return { g: [...g.values()].sort((a, b) => b.tot - a.tot), st: [...st.values()].filter(e => e.tot > 0).sort((a, b) => b.tot - a.tot), all };
+  }
+  function otTab(S) {
+    const D = otData(S), A = D.all, mx = Math.max(...D.g.map(a => a.tot), 1);
+    return `<div class="aem-f">${grpSel()}<span class="text-sm">All ${D.g.length} value(s) of the field are listed — the Employees_tbl filters above apply.</span></div>
+      <div class="aem-kpis">${kp('Overtime hours', f1(A.tot) + ' h', f0(A.days) + ' OT day(s)', 'b')}${kp('Normal OT', f1(A.nor) + ' h', pf(pc(A.nor, A.tot)), 'g')}${kp('Fri / rest / holiday OT', f1(A.oth) + ' h', pf(pc(A.oth, A.tot)), 'o')}${kp('Staff with OT', f0(D.st.length), 'of ' + f0(A.staff.size) + ' staff with attendance', 'p')}${kp('OT % of working hours', pf(pc(A.tot, A.h)), f1(A.h) + ' h worked', 'r')}${kp('Avg OT per OT staff', D.st.length ? f1(A.tot / D.st.length) + ' h' : '–', 'in the period', 'b')}</div>
+      <div class="aem-grid2"><div class="aem-c"><h4>Overtime by ${esc(gLab())}</h4>${D.g.map(a => `<div class="aem-hb aem-go" data-gv="${esc(a.g)}"><span title="${esc(a.g)}">${esc(a.g)}</span><span class="aem-bar"><u style="width:${a.tot / mx * 100}%;background:#6366f1"></u></span><b>${f1(a.tot)}</b><span>${a.ots.size} staff</span></div>`).join('') || '<div class="aem-none">No overtime.</div>'}</div>
+      <div class="aem-c"><h4>Top 15 staff by overtime</h4>${D.st.slice(0, 15).map(e => `<div class="aem-li aem-go" data-bd="emp:${esc(e.o.k)}"><span>${esc(e.o.name)} <i>${esc(e.o.file)} · ${esc(E.grp ? e.o.v[E.grp] : '')}</i></span><b class="aem-o">${f1(e.tot)} h</b></div>`).join('') || '<div class="aem-none">–</div>'}</div></div>
+      <div class="aem-wrap"><table class="aem-t"><thead><tr><th>${esc(gLab())}</th><th>Staff</th><th>Staff with OT</th><th>OT days</th><th>Normal OT h</th><th>Fri/rest/holiday OT h</th><th>Total OT h</th><th>Worked h</th><th>OT % of hours</th><th>Avg OT / OT staff</th></tr></thead><tbody>${D.g.map(a => `<tr class="aem-go" data-bd="grp:${esc(a.g)}"><td><b>${esc(a.g)}</b></td><td>${a.staff.size}</td><td>${a.ots.size}</td><td>${a.days}</td><td>${f1(a.nor)}</td><td>${f1(a.oth)}</td><td><b>${f1(a.tot)}</b></td><td>${f1(a.h)}</td><td>${pf(pc(a.tot, a.h))}</td><td>${a.ots.size ? f1(a.tot / a.ots.size) : '–'}</td></tr>`).join('')}<tr><th>Total</th><th>${A.staff.size}</th><th>${D.st.length}</th><th>${A.days}</th><th>${f1(A.nor)}</th><th>${f1(A.oth)}</th><th>${f1(A.tot)}</th><th>${f1(A.h)}</th><th>${pf(pc(A.tot, A.h))}</th><th></th></tr></tbody></table></div>`;
+  }
+  /* ---------------- OT requests (OT_Approval_Hdr_tbl / OT_Staff_List_Data_tbl) and the recovery obtained by the area in-charge ---------------- */
+  const apprOk = st => !st || /approv|actual/i.test(st);
+  async function loadOtr(force) { if (!window.OTR) { E.otErr = 'The OT module is not available.'; return; } if (E.otLoading) return; E.otLoading = true; E.otErr = ''; render();
+    try { await OTR.load(force); E.otLoaded = !!OTR.S.loaded; if (OTR.S.err) E.otErr = OTR.S.err; } catch (e) { E.otErr = e.message || String(e); } finally { E.otLoading = false; render(); } }
+  function otrData(S) {
+    const O = OTR.S, H = new Map(); O.D.hdr.forEach(h => H.set(h.id, h)); const atOt = new Map(); S.rows.forEach(x => atOt.set(x.o.k, (atOt.get(x.o.k) || 0) + otx(x).tot));
+    const rows = [], miss = { n: 0, ot: 0 };
+    O.D.st.forEach(r => { const d = String(r.otworkdate || '').slice(0, 10), h = H.get(+r.headerlink) || {}; if (d && ((E.f.from && d < E.f.from) || (E.f.to && d > E.f.to))) return; if (!apprOk(h.approvalstatus)) return;
+      const k = key(r.stafffilenr), o = E.map.get(k), ot = n0(+r.othours), tk = n0(+r.takenrplcmnthours), vr = n0(+r.approvedtknhrs); if (!o) { miss.n++; miss.ot += ot; return; } if (!empOk(o)) return;
+      const mgr = String(r.stafflinemngr || '').trim() || String(h.username || '').trim() || '(no in-charge)'; rows.push({ k, o, mgr, hdr: +r.headerlink, date: d, ot, tk, vr, loc: String(r.whsdesc || h.whsdesc || '') }); });
+    const mk = () => ({ staff: new Set(), req: new Set(), ot: 0, tk: 0, vr: 0 }), by = f => { const m = new Map(); rows.forEach(r => { const g = f(r); let a = m.get(g); if (!a) m.set(g, a = Object.assign(mk(), { g })); a.staff.add(r.k); a.req.add(r.hdr); a.ot += r.ot; a.tk += r.tk; a.vr += r.vr; }); m.forEach(a => { a.bal = Math.max(0, a.ot - a.vr); a.rate = pc(a.vr, a.ot); a.att = 0; a.staff.forEach(k => { a.att += atOt.get(k) || 0; }); }); return [...m.values()]; };
+    const tot = mk(); rows.forEach(r => { tot.staff.add(r.k); tot.req.add(r.hdr); tot.ot += r.ot; tot.tk += r.tk; tot.vr += r.vr; }); tot.bal = Math.max(0, tot.ot - tot.vr); tot.rate = pc(tot.vr, tot.ot); tot.att = 0; tot.staff.forEach(k => { tot.att += atOt.get(k) || 0; });
+    return { rows, miss, mgr: by(r => r.mgr).sort((a, b) => b.ot - a.ot), grp: by(r => (E.grp && r.o.v[E.grp]) || '(blank)').sort((a, b) => b.ot - a.ot), tot, atOt };
+  }
+  const rcCol = r => r == null ? '#9ca3af' : r >= 90 ? '#16a34a' : r >= 60 ? '#f59e0b' : '#dc2626';
+  function otrTab(S) {
+    if (!window.OTR) return '<div class="aem-warn">The OT module is not available in this build.</div>';
+    if (!E.otLoaded) { if (!E.otLoading && !E.otErr) loadOtr(); return E.otErr ? `<div class="aem-warn">✘ ${esc(E.otErr)} <button class="secondary small" type="button" data-o="otload">Retry</button></div>` : '<div class="aem-none">⏳ Reading the OT requests (OT_Approval_Hdr_tbl, OT_Staff_List_Data_tbl)…</div>'; }
+    const D = otrData(S), T = D.tot, M = E.mgr, rows = D.rows.filter(r => !M || r.mgr === M);
+    const stf = new Map(); rows.forEach(r => { let a = stf.get(r.k); if (!a) stf.set(r.k, a = { o: r.o, mgr: r.mgr, ot: 0, tk: 0, vr: 0 }); a.ot += r.ot; a.tk += r.tk; a.vr += r.vr; });
+    const SR = [...stf.values()].map(a => Object.assign(a, { bal: Math.max(0, a.ot - a.vr), rate: pc(a.vr, a.ot), att: D.atOt.get(a.o.k) || 0 })).sort((a, b) => b.bal - a.bal);
+    const th = '<th>Staff</th><th>Requests</th><th>Approved OT h</th><th>Day-off taken h</th><th>Recovered (verified) h</th><th>Balance h</th><th>Recovery %</th><th>Actual OT h (attendance)</th>';
+    const tr = a => `<td>${a.staff.size}</td><td>${a.req.size}</td><td>${f1(a.ot)}</td><td>${f1(a.tk)}</td><td><b>${f1(a.vr)}</b></td><td class="${a.bal ? 'aem-o' : ''}">${f1(a.bal)}</td><td><span class="aem-bar"><u style="width:${a.rate || 0}%;background:${rcCol(a.rate)}"></u></span> ${pf(a.rate)}</td><td>${f1(a.att)}</td>`;
+    return `<div class="aem-info">OT requests approved with a work date in the period · linked to Employees_tbl by staff file no. · <b>Recovered</b> = day-off hours verified (OT_Staff_List_Data_tbl) · the in-charge is the line manager of the OT line. ${D.miss.n ? `<span class="aem-r">${D.miss.n} OT line(s) (${f1(D.miss.ot)} h) have a file no. that is not in Employees_tbl.</span>` : ''} <button class="secondary small" type="button" data-o="otload">🔄 Reload OT</button></div>
+      <div class="aem-kpis">${kp('Approved OT', f1(T.ot) + ' h', f0(T.req.size) + ' request(s) · ' + f0(T.staff.size) + ' staff', 'b')}${kp('Day-off taken', f1(T.tk) + ' h', 'entered by the in-charge', 'o')}${kp('Recovered (verified)', f1(T.vr) + ' h', 'checked against attendance', 'g')}${kp('Balance to recover', f1(T.bal) + ' h', 'approved − recovered', 'r')}${kp('Recovery rate', pf(T.rate), 'recovered ÷ approved', 'g')}${kp('In-charges', f0(D.mgr.length), 'with approved OT', 'p')}</div>
+      <h4 style="margin:12px 0 2px">Recovery by area in-charge</h4><div class="text-sm">Click a row to open the source lines of that in-charge.</div>
+      <div class="aem-wrap"><table class="aem-t"><thead><tr><th>Area in-charge</th>${th}</tr></thead><tbody>${D.mgr.map(a => `<tr class="aem-go" data-bd="mgr:${esc(a.g)}"${E.mgr === a.g ? ' style="background:var(--gray-100,#eef2ff)"' : ''}><td><b>${esc(a.g)}</b></td>${tr(a)}</tr>`).join('') || '<tr><td colspan="9" class="aem-none">No approved OT in this period.</td></tr>'}<tr><th>Total</th>${tr(T).replace(/<td/g, '<th').replace(/<\/td>/g, '</th>').replace(/<span class="aem-bar">.*?<\/span> /, '')}</tr></tbody></table></div>
+      <h4 style="margin:14px 0 2px">Recovery by ${esc(gLab())}</h4><div class="aem-f">${grpSel()}</div>
+      <div class="aem-wrap"><table class="aem-t"><thead><tr><th>${esc(gLab())}</th>${th}</tr></thead><tbody>${D.grp.map(a => `<tr class="aem-go" data-bd="otg:${esc(a.g)}"><td><b>${esc(a.g)}</b></td>${tr(a)}</tr>`).join('')}</tbody></table></div>
+      <h4 style="margin:14px 0 2px">Staff${M ? ' of ' + esc(M) + ' <button class="secondary small" type="button" data-mg="">✕ all in-charges</button>' : ''} — ${SR.length}</h4>
+      <div class="aem-wrap"><table class="aem-t"><thead><tr><th>File no.</th><th>Name</th><th>${esc(gLab())}</th><th>In-charge</th><th>Approved OT h</th><th>Taken h</th><th>Recovered h</th><th>Balance h</th><th>Recovery %</th><th>Actual OT h</th></tr></thead><tbody>${SR.slice(0, 600).map(a => `<tr class="aem-go" data-bd="emp:${esc(a.o.k)}"><td>${esc(a.o.file)}</td><td>${esc(a.o.name)}</td><td>${esc(E.grp ? a.o.v[E.grp] : '')}</td><td>${esc(a.mgr)}</td><td>${f1(a.ot)}</td><td>${f1(a.tk)}</td><td>${f1(a.vr)}</td><td class="${a.bal ? 'aem-o' : ''}">${f1(a.bal)}</td><td>${pf(a.rate)}</td><td>${f1(a.att)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+
+  /* attendance data of staff that are not in Employees_tbl — shown as extra columns (hidden by default, unhide with ▦ Columns) */
+  const top1 = (rs, f) => { const m = new Map(); rs.forEach(r => { const v = String(f(r) == null ? '' : f(r)).trim(); if (v) m.set(v, (m.get(v) || 0) + 1); }); return [...m].sort((a, b) => b[1] - a[1]).map(x => x[0]); };
+  const UC = [['Work location', rs => top1(rs, r => r.loc).join(' / ')], ['Payroll location', rs => top1(rs, r => r.payLoc).join(' / ')], ['Position', rs => top1(rs, r => r.pos)[0] || ''], ['Function', rs => top1(rs, r => r.func)[0] || ''],
+    ['Department', rs => top1(rs, r => r.dept)[0] || ''], ['Section', rs => top1(rs, r => r.sec)[0] || ''], ['Supervisor', rs => top1(rs, r => r.sup).join(' / ')], ['Group', rs => top1(rs, r => r.grp)[0] || ''], ['Category', rs => top1(rs, r => r.cat)[0] || ''],
+    ['Emp. status', rs => top1(rs, r => r.empSt)[0] || ''], ['Shift', rs => top1(rs, r => r.shift).join(' / ')], ['First day', rs => dmy(rs.reduce((a, r) => r.date < a ? r.date : a, rs[0].date))], ['Last day', rs => dmy(rs.reduce((a, r) => r.date > a ? r.date : a, rs[0].date))],
+    ['Present', rs => rs.filter(r => r.st === 'Present').length], ['Absent', rs => rs.filter(r => r.st === 'Absent' || r.st === 'No punch').length], ['Avg h / day', rs => { const w = rs.filter(r => hrs(r) > 0); return w.length ? f1(w.reduce((a, r) => a + hrs(r), 0) / w.length) : '–'; }], ['OT h', rs => f1(rs.reduce((a, r) => a + n0(r.ot), 0))]];
+  const unmCells = u => UC.map(c => `<td>${esc(c[1](u.rs))}</td>`).join('');
+  try { if (!localStorage.getItem('aem_unm_hc') && typeof hc !== 'undefined' && !hc.map['aem-unm']) { hc.map['aem-unm'] = UC.map(c => c[0]); hcSave(); localStorage.setItem('aem_unm_hc', '1'); } } catch (e) { }
+  /* ---------------- source-data breakdown windows + add a staff to Employees_tbl ---------------- */
+  const canAdd = () => { try { return typeof acLevel === 'function' ? acLevel('md-emp') === 'full' : true; } catch (e) { return true; } };
+  function modal(title, html, foot) { const old = Q('#aemM'); if (old) old.remove(); const d = document.createElement('div'); d.id = 'aemM'; d.className = 'aem-m';
+    d.innerHTML = `<div class="aem-mc"><div class="aem-mh"><b>${title}</b><button type="button" data-mx>✕</button></div><div class="aem-mb">${html}</div>${foot ? `<div class="aem-mf">${foot}</div>` : ''}</div>`;
+    d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-mx]')) d.remove(); }); document.body.appendChild(d); return d; }
+  const hm = m => (typeof atHM === 'function' ? atHM(m) : m);
+  const nice = v => { const t = String(v == null ? '' : v); const m = t.match(/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)(?::\d\d(?:\.\d+)?)?Z?$/); if (!m) return t; let d = m[4] === '00' && m[5] === '00' ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(t); if (isNaN(d)) return t; return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear(); };
+  function empCard(o) { return `<div class="aem-sec"><h4>🪪 Employees_tbl — main card</h4><div class="aem-kvs">${E.cols.filter(c => o.v[c.name] !== '').map(c => `<div><span>${esc(c.label)}</span><b>${esc(nice(o.v[c.name]))}</b></div>`).join('')}</div></div>`; }
+  function attList(rows, lim) { rows = rows.slice().sort((a, b) => b.r.date.localeCompare(a.r.date) || String(a.o.name).localeCompare(b.o.name)); if (!rows.length) return '<div class="aem-none">No attendance records in this period.</div>';
+    const t = blank(); rows.forEach(x => add(t, x)); lim = lim || 400;
+    return `<div class="aem-info">${rows.length} record(s) · ${ST.map(k => k + ' ' + t[k]).join(' · ')} · rate ${pf(rate(t))} · OT ${f1(t.ot)} h</div><div class="aem-wrap" style="max-height:38vh"><table class="aem-t"><thead><tr><th>Date</th>${rows.some(x => x.o !== rows[0].o) ? '<th>File no.</th><th>Name</th>' : ''}<th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Shift</th><th>OT h</th><th>Remarks</th></tr></thead><tbody>${rows.slice(0, lim).map(x => `<tr><td>${dmy(x.r.date)}</td>${rows.some(y => y.o !== rows[0].o) ? `<td>${esc(x.o.file)}</td><td>${esc(x.o.name)}</td>` : ''}<td><span class="aem-pill" style="background:${COL[x.s]}">${x.s}</span></td><td>${x.r.inT == null ? '' : hm(x.r.inT)}</td><td>${x.r.outT == null ? '' : hm(x.r.outT)}</td><td>${f1(hrs(x.r))}</td><td>${esc(x.r.shift || '')}</td><td>${n0(x.r.ot) ? f1(x.r.ot) : ''}</td><td>${esc(x.r.rem || '')}</td></tr>`).join('')}</tbody></table></div>${rows.length > lim ? `<div class="text-sm">Showing the latest ${lim} of ${rows.length}.</div>` : ''}`; }
+  function otList(lines) { if (!E.otLoaded) return '<div class="aem-none">The OT requests are not loaded yet — open the “OT requests &amp; recovery” tab once, then open this window again.</div>'; if (!lines.length) return '<div class="aem-none">No approved OT request lines in this period.</div>';
+    const t = lines.reduce((a, r) => ({ ot: a.ot + r.ot, tk: a.tk + r.tk, vr: a.vr + r.vr }), { ot: 0, tk: 0, vr: 0 });
+    return `<div class="aem-info">${lines.length} line(s) · approved ${f1(t.ot)} h · day-off taken ${f1(t.tk)} h · recovered ${f1(t.vr)} h · balance ${f1(Math.max(0, t.ot - t.vr))} h · recovery ${pf(pc(t.vr, t.ot))}</div><div class="aem-wrap" style="max-height:34vh"><table class="aem-t"><thead><tr><th>Work date</th><th>Request #</th><th>File no.</th><th>Name</th><th>Area in-charge</th><th>Approved OT h</th><th>Taken h</th><th>Recovered h</th><th>Balance h</th></tr></thead><tbody>${lines.slice(0, 400).map(r => `<tr><td>${dmy(r.date)}</td><td>${r.hdr || ''}</td><td>${esc(r.o.file)}</td><td>${esc(r.o.name)}</td><td>${esc(r.mgr)}</td><td>${f1(r.ot)}</td><td>${f1(r.tk)}</td><td>${f1(r.vr)}</td><td>${f1(Math.max(0, r.ot - r.vr))}</td></tr>`).join('')}</tbody></table></div>`; }
+  function openBd0(type, val) {
+    const S = scope(), sec = (h, b) => `<div class="aem-sec"><h4>${h}</h4>${b}</div>`, fl = (g, lab) => `<button class="secondary small" type="button" data-bf="${esc(g)}">🔎 Filter the page by this ${esc(lab)}</button>`;
+    if (type === 'emp') { const o = E.map.get(val); if (!o) return; const rows = S.rows.filter(x => x.o === o), oi = E.otLoaded ? otrData(S).rows.filter(r => r.k === val) : [];
+      return modal('👤 ' + esc(o.name) + ' <small>' + esc(o.file) + '</small>', empCard(o) + sec('🕒 Attendance — ' + dmy(E.f.from) + ' → ' + dmy(E.f.to), attList(rows)) + sec('⏱ OT requests & recovery', otList(oi))); }
+    if (type === 'rec') { const [d, k] = val.split('|'), x = S.rows.find(y => y.r.date === d && y.o.k === k); if (!x) return; const r = x.r;
+      const kv = [['Date', dmy(r.date)], ['Status', x.s], ['In', r.inT == null ? '' : hm(r.inT)], ['Out', r.outT == null ? '' : hm(r.outT)], ['Required h', r.req], ['Worked h', f1(hrs(r))], ['Shift code', r.shift], ['Normal OT h', r.not], ['FOT h', r.fot], ['ROT h', r.rot], ['HOT h', r.hot], ['Total OT h', r.ot], ['Position', r.pos], ['Department', r.dept], ['Section', r.sec], ['Work location', r.loc], ['Payroll location', r.payLoc], ['Supervisor', r.sup], ['Function', r.func], ['Emp. status', r.empSt], ['Group', r.grp], ['Category', r.cat], ['Remarks', r.rem]].filter(a => a[1] !== '' && a[1] != null && a[1] !== 0);
+      return modal('🧾 ' + esc(x.o.name) + ' — ' + dmy(d), sec('Attendance record (source)', `<div class="aem-kvs">${kv.map(a => `<div><span>${a[0]}</span><b>${esc(a[1])}</b></div>`).join('')}</div>`) + empCard(x.o)); }
+    if (type === 'grp') { const rows = S.rows.filter(x => ((E.grp && x.o.v[E.grp]) || '(blank)') === val), emps = S.emps.filter(o => ((E.grp && o.v[E.grp]) || '(blank)') === val);
+      return modal('🗂 ' + esc(gLab()) + ': ' + esc(val), sec('Employees (' + emps.length + ')', `<div class="aem-wrap" style="max-height:24vh"><table class="aem-t"><thead><tr><th>File no.</th><th>Name</th></tr></thead><tbody>${emps.map(o => `<tr class="aem-go" data-bd="emp:${esc(o.k)}"><td>${esc(o.file)}</td><td>${esc(o.name)}</td></tr>`).join('')}</tbody></table></div>`) + sec('Attendance records (source)', attList(rows)), fl(val, gLab())); }
+    if (type === 'mgr' || type === 'otg') { if (!E.otLoaded) return; const all = otrData(S).rows, lines = all.filter(r => type === 'mgr' ? r.mgr === val : ((E.grp && r.o.v[E.grp]) || '(blank)') === val);
+      return modal('🔁 ' + esc(type === 'mgr' ? 'Area in-charge: ' : gLab() + ': ') + esc(val), sec('OT request lines (source)', otList(lines)), type === 'mgr' ? `<button class="secondary small" type="button" data-bmg="${esc(val)}">👥 Show this in-charge’s staff below</button>` : fl(val, gLab())); }
+    if (type === 'unm') { const rows = (typeof at !== 'undefined' ? at.rows : []).filter(r => key(r.id) === val && (!E.f.from || r.date >= E.f.from) && (!E.f.to || r.date <= E.f.to)).sort((a, b) => b.date.localeCompare(a.date)); if (!rows.length) return;
+      return modal('⚠ ' + esc(rows[0].name) + ' <small>' + esc(rows[0].id) + '</small> — not in Employees_tbl', sec('Attendance records (source)', `<div class="aem-info">${rows.length} record(s) · none of them is counted in the dashboard</div><div class="aem-wrap" style="max-height:44vh"><table class="aem-t"><thead><tr><th>Date</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>Position</th><th>Department</th><th>Section</th><th>Supervisor</th><th>Shift</th><th>OT h</th><th>Remarks</th></tr></thead><tbody>${rows.slice(0, 400).map(r => `<tr><td>${dmy(r.date)}</td><td>${r.st}</td><td>${r.inT == null ? '' : hm(r.inT)}</td><td>${r.outT == null ? '' : hm(r.outT)}</td><td>${f1(hrs(r))}</td><td>${esc(r.pos)}</td><td>${esc(r.dept)}</td><td>${esc(r.sec)}</td><td>${esc(r.sup)}</td><td>${esc(r.shift || '')}</td><td>${n0(r.ot) ? f1(r.ot) : ''}</td><td>${esc(r.rem || '')}</td></tr>`).join('')}</tbody></table></div>`), canAdd() ? `<button type="button" data-add="${esc(val)}">➕ Add to Employees_tbl</button>` : ''); }
+  }
+  const EDIT_T = new Set(['text', 'choice', 'number', 'bool', 'date', 'datetime', 'multiline']);
+  function addForm(k) {
+    if (!canAdd()) return msg('You do not have permission to add employees (Master data → Employees).', 'warn'); if (E.map.has(k)) return msg('This file no. is already in Employees_tbl.', 'warn');
+    const rows = (typeof at !== 'undefined' ? at.rows : []).filter(r => key(r.id) === k).sort((a, b) => a.date.localeCompare(b.date)), L = rows[rows.length - 1]; if (!L) return;
+    const T = (window.SP_COLT || {})[E.ids && E.ids.listId] || {}, guess = c => { const t = c.name + ' ' + c.label;
+      if (c.name === E.fileCol) return String(L.id).trim(); if (c.name === E.nameCol || c.name === 'Title') return L.name; if (/job|role|position|designation/i.test(t) && !/grade/i.test(t)) return L.pos; if (/dept|department/i.test(t)) return L.dept; if (/section/i.test(t)) return L.sec;
+      if (/line.?m|manager|supervis/i.test(t)) return L.sup; if (/payroll/i.test(t)) return L.payLoc; if (/work.*loc|^loc|wh.*loc/i.test(t)) return L.loc; if (/group/i.test(t)) return L.grp; if (/categor/i.test(t)) return L.cat; if (/status/i.test(t)) return 'Active'; return ''; };
+    const cols = E.cols.filter(c => EDIT_T.has(c.type) && !SKIPC.has(c.name)).sort((a, b) => (a.name === E.fileCol ? -2 : a.name === E.nameCol ? -1 : 0) - (b.name === E.fileCol ? -2 : b.name === E.nameCol ? -1 : 0));
+    const hist = c => { if (c.name === E.fileCol || c.name === E.nameCol || c.name === 'Title' || /^id$/i.test(c.name)) return []; const m = new Map(); E.emp.forEach(o => { const v = o.v[c.name]; if (v !== '' && v != null) m.set(v, (m.get(v) || 0) + 1); }); return [...m].sort((x, y) => y[1] - x[1] || String(x[0]).localeCompare(String(y[0]))).slice(0, 300).map(x => x[0]); };
+    const dls = []; let dn = 0;
+    const inp = c => { const v = guess(c), ch = T[c.name] && T[c.name].choices; if (c.type === 'choice' && ch) return `<select data-af="${esc(c.name)}"><option value=""></option>${[...new Set([...ch, ...hist(c)])].map(x => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>`;
+      if (c.type === 'bool') return `<input type="checkbox" data-af="${esc(c.name)}">`; if (c.type === 'date' || c.type === 'datetime') return `<input type="date" data-af="${esc(c.name)}">`; if (c.type === 'multiline') return `<textarea data-af="${esc(c.name)}" rows="2">${esc(v)}</textarea>`; const h = hist(c), id = h.length ? 'aemdl' + (dn++) : ''; if (id) dls.push(`<datalist id="${id}">${h.map(x => `<option value="${esc(x)}">`).join('')}</datalist>`); return `<input ${c.type === 'number' ? 'type="number" step="any"' : 'type="text"'} data-af="${esc(c.name)}" value="${esc(v)}"${id ? ` list="${id}" autocomplete="off" placeholder="Type or pick from existing…"` : ''}>`; };
+    const m = modal('➕ Add to Employees_tbl — ' + esc(L.name), `<div class="aem-info">Prefilled from the latest attendance record (${dmy(L.date)}). Check the values, then Save — the employee is created in the SharePoint list Employees_tbl.</div><div class="aem-form">${cols.map(c => `<label class="${c.name === E.fileCol || c.name === E.nameCol ? 'req' : ''}">${esc(c.label)}${c.name === E.fileCol || c.name === E.nameCol ? ' *' : ''}${inp(c)}</label>`).join('')}${dls.join('')}</div><div id="aemAf" class="status-msg" style="font-size:12px;margin-top:6px"></div>`, '<button type="button" data-asave>💾 Save to Employees_tbl</button> <button class="secondary" type="button" data-mx>Cancel</button>');
+    m.querySelector('[data-asave]').addEventListener('click', async ev => { const b = ev.currentTarget, say = (t, bad) => { const e = m.querySelector('#aemAf'); e.textContent = t; e.className = 'status-msg' + (bad ? ' error' : ''); }, F = {};
+      m.querySelectorAll('[data-af]').forEach(el => { const c = cols.find(x => x.name === el.dataset.af); let v = el.type === 'checkbox' ? el.checked : el.value.trim(); if (v === '' || v === false) return; if (c.type === 'number') v = +v; F[c.name] = v; });
+      if (!F[E.fileCol]) return say('The file no. is required.', 1); if (E.nameCol && !F[E.nameCol]) return say('The name is required.', 1); if (E.map.has(key(F[E.fileCol]))) return say('This file no. is already in Employees_tbl.', 1);
+      if (!F.Title && cols.some(c => c.name === 'Title')) F.Title = F[E.nameCol] || String(F[E.fileCol]);
+      b.disabled = true; say('⏳ Saving…'); try { await createItem(E.ids.siteId, E.ids.listId, F, getGlobalAccessToken()); say('✔ Saved. Refreshing…'); msg('✔ ' + (F[E.nameCol] || F[E.fileCol]) + ' added to Employees_tbl.', 'success'); try { addActivity('create', 'Employees_tbl: added ' + F[E.fileCol]); } catch (e) { }
+        await loadEmp(); const mm = Q('#aemM'); if (mm) mm.remove(); drawFilters(); render(); } catch (e) { b.disabled = false; say('✘ ' + (e.message || e), 1); } });
+  }
+  /* export of a breakdown window: email / print / Excel */
+  function bdData(type, val) {
+    const S = scope(), per = dmy(E.f.from) + ' → ' + dmy(E.f.to), A = ['Date', 'File no.', 'Name', 'Status', 'In', 'Out', 'Hours', 'Shift', 'OT h', 'Remarks'];
+    const arow = x => [dmy(x.r.date), x.o.file, x.o.name, x.s, x.r.inT == null ? '' : hm(x.r.inT), x.r.outT == null ? '' : hm(x.r.outT), +f1(hrs(x.r)), x.r.shift || '', n0(x.r.ot) || '', x.r.rem || ''];
+    const srt = rs => rs.slice().sort((a, b) => b.r.date.localeCompare(a.r.date));
+    const O = ['Work date', 'Request #', 'File no.', 'Name', 'Area in-charge', 'Approved OT h', 'Taken h', 'Recovered h', 'Balance h'], orow = r => [dmy(r.date), r.hdr || '', r.o.file, r.o.name, r.mgr, r.ot, r.tk, r.vr, Math.max(0, r.ot - r.vr)];
+    const mk = (title, headers, rows, note) => ({ title, sheet: title.replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31), note: note || per, headers, rows });
+    if (type === 'emp') { const o = E.map.get(val); if (!o) return null; const card = E.cols.filter(c => o.v[c.name] !== '').map(c => c.label + ': ' + o.v[c.name]).join(' · ');
+      const rows = srt(S.rows.filter(x => x.o === o)).map(arow), ot = E.otLoaded ? otrData(S).rows.filter(r => r.k === val).map(orow) : [];
+      const d = mk(o.name + ' (' + o.file + ') — attendance', A, rows, per + ' · ' + card); d.extra = ot.length ? { title: o.name + ' — OT requests', sheet: 'OT lines', headers: O, rows: ot } : null; return d; }
+    if (type === 'rec') { const [dt, k] = val.split('|'), x = S.rows.find(y => y.r.date === dt && y.o.k === k); if (!x) return null; const r = x.r;
+      return mk(x.o.name + ' — ' + dmy(dt), ['Field', 'Value'], [['Date', dmy(r.date)], ['File no.', x.o.file], ['Name', x.o.name], ['Status', x.s], ['In', r.inT == null ? '' : hm(r.inT)], ['Out', r.outT == null ? '' : hm(r.outT)], ['Worked h', f1(hrs(r))], ['Shift', r.shift || ''], ['Total OT h', r.ot || 0], ['Position', r.pos || ''], ['Department', r.dept || ''], ['Section', r.sec || ''], ['Supervisor', r.sup || ''], ['Remarks', r.rem || '']], 'Source attendance record'); }
+    if (type === 'grp') return mk(gLab() + ' ' + val + ' — attendance', A, srt(S.rows.filter(x => ((E.grp && x.o.v[E.grp]) || '(blank)') === val)).map(arow));
+    if (type === 'mgr' || type === 'otg') { if (!E.otLoaded) return null; return mk((type === 'mgr' ? 'In-charge ' : gLab() + ' ') + val + ' — OT lines', O, otrData(S).rows.filter(r => type === 'mgr' ? r.mgr === val : ((E.grp && r.o.v[E.grp]) || '(blank)') === val).map(orow)); }
+    if (type === 'unm') { const rs = (typeof at !== 'undefined' ? at.rows : []).filter(r => key(r.id) === val && (!E.f.from || r.date >= E.f.from) && (!E.f.to || r.date <= E.f.to)).sort((a, b) => b.date.localeCompare(a.date)); if (!rs.length) return null;
+      return mk(rs[0].name + ' (' + rs[0].id + ') — not in Employees_tbl', ['Date', 'Status', 'In', 'Out', 'Hours', 'Position', 'Department', 'Section', 'Supervisor', 'Shift', 'OT h', 'Remarks'], rs.map(r => [dmy(r.date), r.st, r.inT == null ? '' : hm(r.inT), r.outT == null ? '' : hm(r.outT), +f1(hrs(r)), r.pos || '', r.dept || '', r.sec || '', r.sup || '', r.shift || '', n0(r.ot) || '', r.rem || '']), per); }
+    return null;
+  }
+  function openBd(type, val) {
+    openBd0(type, val); const m = Q('#aemM'); if (!m || m.querySelector('.aem-tb')) return; const mb = m.querySelector('.aem-mb'); if (!mb || !bdData(type, val)) return; m._bd = [type, val];
+    const tb = document.createElement('div'); tb.className = 'aem-tb'; tb.innerHTML = '<button class="secondary small" type="button" data-bx="mail">📧 Email</button><button class="secondary small" type="button" data-bx="print">🖨 Print</button><button class="secondary small" type="button" data-bx="xl">📊 Excel</button>'; mb.parentNode.insertBefore(tb, mb);
+  }
+  function bdAct(m, act) { const d = bdData(m._bd[0], m._bd[1]); if (!d) return msg('Nothing to export.', 'warn');
+    if (act === 'print') return a2Print(d);
+    if (act === 'xl') { if (!d.extra) return a2Export(d); const wb = XLSX.utils.book_new(); [d, d.extra].forEach(t => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([t.headers, ...t.rows]), t.sheet.slice(0, 31))); return XLSX.writeFile(wb, d.sheet.replace(/\s+/g, '_') + '.xlsx'); }
+    window.extMailData = () => d; wMail_open('ext'); const mg = bdMgr(m._bd[0], m._bd[1]);
+    const fill = () => { const w = Q('#wMailModal'); if (!w) return; w.style.zIndex = 100100; const to = w.querySelector('#wMailTo'); if (to && mg.email) { to.value = mg.email; to.dispatchEvent(new Event('input', { bubbles: true })); to.dispatchEvent(new Event('change', { bubbles: true })); } };
+    fill(); setTimeout(fill, 250); if (!mg.email) msg(mg.name ? 'No e-mail address found for the line manager “' + mg.name + '” (add it in Users) — enter it in “To”.' : 'No line manager found for this record — enter the recipient in “To”.', 'warn'); }
+  /* default recipient = e-mail of the line manager (Employees_tbl Line_Manager / attendance supervisor / selected in-charge) */
+  function bdMgr(type, val) {
+    let name = '', em = '', S = scope(); const mc = E.cols.find(c => /line.?m|manager|supervis/i.test(c.name + ' ' + c.label) && !/mail/i.test(c.name + c.label)), ec = E.cols.find(c => /mail/i.test(c.name + ' ' + c.label) && /line.?m|manager|supervis/i.test(c.name + ' ' + c.label));
+    const ofEmp = o => { if (!o) return; if (mc && o.v[mc.name]) name = o.v[mc.name]; if (ec && o.v[ec.name]) em = o.v[ec.name]; };
+    if (type === 'emp') ofEmp(E.map.get(val)); else if (type === 'rec') ofEmp(E.map.get(val.split('|')[1])); else if (type === 'mgr') name = val;
+    else if (type === 'unm') { const r = (typeof at !== 'undefined' ? at.rows : []).filter(r => key(r.id) === val && r.sup).pop(); if (r) name = r.sup; }
+    else if (type === 'grp') { const ms = new Set(); S.emps.filter(o => ((E.grp && o.v[E.grp]) || '(blank)') === val).forEach(o => { if (mc && o.v[mc.name]) ms.add(o.v[mc.name]); }); if (ms.size === 1) name = [...ms][0]; }
+    if (!em && name) { try { em = orbEmailOf(name); } catch (e) { } }
+    return { name, email: em };
+  }
+  /* own ▦ Columns + ⤢ Expand buttons above every table of the page (the automatic ones are not reliable inside this page) */
+  function toolbars(b) { b.querySelectorAll('.aem-wrap').forEach((w, i) => { const t = w.querySelector('table'); if (!t || w.dataset.tb) return; w.dataset.tb = '1'; w.id = 'aemW' + i; t.id = t.id || 'aemT' + i; if (!t.dataset.title) t.dataset.title = (w.parentElement.querySelector('h4') || {}).textContent || 'Attendance by Employees';
+      const bar = document.createElement('div'); bar.className = 'aem-tbar'; bar.innerHTML = '<button class="secondary small" type="button" data-aex="' + i + '">⤢ Expand</button>';
+      w.parentNode.insertBefore(bar, w); w._teBtn = bar.lastChild; bar.lastChild.addEventListener('click', ev => { ev.stopPropagation(); if (window.tableExpandOpen) window.tableExpandOpen(t); }); }); }
+  function render() {
+    const b = Q('#aemBody'); if (!b) return; if (E.err) { b.innerHTML = `<div class="aem-warn">✘ ${esc(E.err)}</div>`; return; } if (!E.loaded) { b.innerHTML = '<div class="aem-none">Loading…</div>'; return; }
+    const S = scope(), A = aggregate(S), t = A.tot; E.agg = { S, A };
+    if (!(typeof at !== 'undefined' && at.rows.length)) { b.innerHTML = '<div class="aem-warn">No attendance data was found. ' + (E.atErr ? esc(E.atErr) + ' ' : 'The page reads the SharePoint list <b>Attendance_Data_tbl</b> by itself — check the SharePoint connection and that the list has data, ') + 'then press <b>Refresh</b>. (You can also upload the file once in Attendance Analytics.)</div>'; return; }
+    const tabs = [['dash', '📊 Dashboard'], ['grp', '🗂 By ' + (((E.cols.find(c => c.name === E.grp) || {}).label) || 'group')], ['staff', '👤 By staff'], ['ot', '⏱ Overtime'], ['otr', '🔁 OT requests & recovery'], ['rec', '🧾 Records'], ['gap', '⚠ Not matched']];
+    let h = `<div class="aem-info">${f0(E.emp.length)} employee(s) in Employees_tbl · ${f0(S.emps.length)} match the filters · ${f0(A.byEmp.size)} with attendance · linked by file no. (<b>${esc((E.cols.find(c => c.name === E.fileCol) || {}).label || E.fileCol)}</b>) · period ${dmy(E.f.from)} → ${dmy(E.f.to)}</div>
+      <div class="aem-kpis">${kp('Employees', f0(S.emps.length), f0(A.byEmp.size) + ' with attendance · ' + f0(A.noAtt.length) + ' without', 'b')}${kp('Employee-days', f0(t.n), 'in the selected period', 'b')}${kp('Present', f0(t.Present), pf(pc(t.Present, t.n)) + ' of records', 'g')}${kp('One punch only', f0(t['One punch']), pf(pc(t['One punch'], t.n)), 'o')}${kp('Absent / no punch', f0(t.Absent), pf(pc(t.Absent, t.n)), 'r')}${kp('Leave / off', f0(t.Leave + t.Off), t.Leave + ' leave · ' + t.Off + ' off', 'p')}${kp('Attendance rate', pf(rate(t)), 'attended ÷ scheduled (excl. leave/off)', 'g')}${kp('Avg working h / day', t.hd ? f1(t.h / t.hd) + ' h' : '–', 'present days with hours', 'b')}${kp('Late arrivals', pf(pc(t.late, t.lb)), t.late + ' of ' + t.lb + ' vs shift code · grace ' + E.grace + ' min', 'o')}${kp('Overtime', f1(t.ot) + ' h', 'total OT hours', 'b')}</div>
+      <div class="aem-tabs">${tabs.map(([k, l]) => `<button type="button" data-t="${k}" class="${E.tab === k ? 'on' : ''}">${l}</button>`).join('')}<span style="flex:1"></span><button class="secondary small" type="button" data-o="print">🖨 Print</button><button class="secondary small" type="button" data-o="excel">📊 Excel</button></div>`;
+    if (E.tab === 'dash') {
+      const top = staffRows(A).filter(e => e.Absent).sort((a, b) => b.Absent - a.Absent).slice(0, 10), lt = staffRows(A).filter(e => e.late).sort((a, b) => b.late - a.late).slice(0, 10), gr = [...A.byG.values()].filter(a => sched(a) > 0).sort((a, b) => b.n - a.n).slice(0, 12);
+      h += `<div class="aem-grid"><div class="aem-c"><h4>Attendance status</h4><div class="text-sm">Share of employee-days · click a status to filter</div>${donut(t)}</div><div class="aem-c" style="grid-column:span 2"><h4>By day</h4><div class="text-sm">Employee-days per date and status</div>${byDayChart(A.byDay)}</div>
+        <div class="aem-c" style="grid-column:span 2"><h4>${esc(((E.cols.find(c => c.name === E.grp) || {}).label) || 'Group')} — attendance rate</h4><div class="text-sm">Click a bar to filter · change the field with “By …” tab / ⚙ Filter fields</div>${gr.length ? gr.map(a => { const rt = rate(a); return `<div class="aem-hb aem-go" data-gv="${esc(a.g)}"><span title="${esc(a.g)}">${esc(a.g)}</span><span class="aem-bar"><u style="width:${rt || 0}%;background:${rt == null ? '#9ca3af' : rt >= 90 ? '#16a34a' : rt >= 75 ? '#f59e0b' : '#dc2626'}"></u></span><b>${pf(rt)}</b><span>${a.staff.size} staff</span></div>`; }).join('') : '<div class="aem-none">–</div>'}</div>
+        <div class="aem-c"><h4>Most absences</h4>${top.length ? top.map(e => `<div class="aem-li aem-go" data-bd="emp:${esc(e.o.k)}"><span>${esc(e.o.name)} <i>${esc(e.o.file)}</i></span><b class="aem-r">${e.Absent}</b></div>`).join('') : '<div class="aem-none">None 🎉</div>'}<h4 style="margin-top:12px">Most late arrivals</h4>${lt.length ? lt.map(e => `<div class="aem-li aem-go" data-bd="emp:${esc(e.o.k)}"><span>${esc(e.o.name)} <i>${esc(e.o.file)}</i></span><b class="aem-o">${e.late}</b></div>`).join('') : '<div class="aem-none">None</div>'}</div></div>`;
+    } else if (E.tab === 'grp') {
+      h += `<div class="aem-f"><label>Break down by <select data-grp>${E.sel.map(c => `<option value="${esc(c)}"${c === E.grp ? ' selected' : ''}>${esc((E.cols.find(x => x.name === c) || {}).label || c)}</option>`).join('')}</select></label></div>` + grpTable(A);
+    } else if (E.tab === 'staff') h += staffTable(A, S).html;
+    else if (E.tab === 'ot') h += otTab(S);
+    else if (E.tab === 'otr') h += otrTab(S);
+    else if (E.tab === 'rec') h += recTable(S);
+    else h += `<div class="aem-grid2"><div class="aem-c"><h4>Employees (Employees_tbl) with no attendance in this period — ${A.noAtt.length}</h4><div class="aem-wrap" style="max-height:48vh"><table class="aem-t"><thead><tr><th>File no.</th><th>Name</th>${E.sel.slice(0, 3).map(c => `<th>${esc((E.cols.find(x => x.name === c) || {}).label || c)}</th>`).join('')}</tr></thead><tbody>${A.noAtt.slice(0, 500).map(o => `<tr class="aem-go" data-bd="emp:${esc(o.k)}"><td>${esc(o.file)}</td><td>${esc(o.name)}</td>${E.sel.slice(0, 3).map(c => `<td>${esc(o.v[c])}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>
+      <div class="aem-c"><h4>In the attendance but not in Employees_tbl — ${S.unm.length}</h4><div class="text-sm">These file numbers are not in the staff master, so they are left out of the dashboard.</div><div class="aem-wrap" style="max-height:48vh"><table class="aem-t" data-hc="aem-unm"><thead><tr><th>File no.</th><th>Name (attendance)</th><th>Days</th>${UC.map(c => `<th>${c[0]}</th>`).join('')}<th></th></tr></thead><tbody>${S.unm.sort((a, b) => b.n - a.n).slice(0, 500).map(u => `<tr class="aem-go" data-bd="unm:${esc(key(u.file))}"><td>${esc(u.file)}</td><td>${esc(u.name)}</td><td>${u.n}</td>${unmCells(u)}<td>${canAdd() ? `<button class="secondary small" type="button" data-add="${esc(key(u.file))}">➕ Add to Employees_tbl</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+    b.innerHTML = h;
+    toolbars(b);
+  }
+  function report() {
+    const { S, A } = E.agg || { S: scope(), A: null }; const AA = A || aggregate(S), note = 'Attendance by employees · ' + dmy(E.f.from) + ' → ' + dmy(E.f.to) + ' · printed ' + new Date().toLocaleString('en-GB');
+    const fc = E.sel.slice(0, 4).map(c => E.cols.find(x => x.name === c)).filter(Boolean);
+    if (E.tab === 'ot') { const D = otData(S); return { title: 'Overtime by ' + gLab(), note, sheet: 'Overtime', headers: [gLab(), 'Staff', 'Staff with OT', 'OT days', 'Normal OT h', 'Fri/rest/holiday OT h', 'Total OT h', 'Worked h', 'OT % of hours'], rows: D.g.map(a => [a.g, a.staff.size, a.ots.size, a.days, Math.round(a.nor * 10) / 10, Math.round(a.oth * 10) / 10, Math.round(a.tot * 10) / 10, Math.round(a.h * 10) / 10, pc(a.tot, a.h) == null ? '' : pc(a.tot, a.h)]) }; }
+    if (E.tab === 'otr' && E.otLoaded) { const D = otrData(S); return { title: 'OT approved vs recovered — by area in-charge', note, sheet: 'OT recovery', headers: ['Area in-charge', 'Staff', 'Requests', 'Approved OT h', 'Day-off taken h', 'Recovered h', 'Balance h', 'Recovery %', 'Actual OT h (attendance)'], rows: D.mgr.map(a => [a.g, a.staff.size, a.req.size, Math.round(a.ot * 10) / 10, Math.round(a.tk * 10) / 10, Math.round(a.vr * 10) / 10, Math.round(a.bal * 10) / 10, a.rate == null ? '' : a.rate, Math.round(a.att * 10) / 10]) }; }
+    if (E.tab === 'rec') return { title: 'Attendance by employees — records', note, sheet: 'Records', headers: ['Date', 'File no.', 'Name', 'Status', 'In', 'Out', 'Hours', 'Shift', 'OT h', 'Remarks'], rows: S.rows.map(x => [x.r.date, x.o.file, x.o.name, x.s, x.r.inT == null ? '' : atHM(x.r.inT), x.r.outT == null ? '' : atHM(x.r.outT), Math.round(hrs(x.r) * 10) / 10, x.r.shift || '', n0(x.r.ot), x.r.rem || '']) };
+    if (E.tab === 'grp') return { title: 'Attendance by ' + E.grp, note, sheet: 'By group', headers: [E.grp, 'Staff', 'Days', 'Present', 'One punch', 'Absent', 'Leave', 'Off', 'Late', 'Late %', 'OT h', 'Rate %'], rows: [...AA.byG.values()].map(a => [a.g, a.staff.size, a.n, a.Present, a['One punch'], a.Absent, a.Leave, a.Off, a.late, pc(a.late, a.lb) == null ? '' : pc(a.late, a.lb), Math.round(a.ot * 10) / 10, rate(a) == null ? '' : rate(a)]) };
+    return { title: 'Attendance by employees — by staff', note, sheet: 'By staff', headers: ['File no.', 'Name', ...fc.map(c => c.label), 'Days', 'Present', 'One punch', 'Absent', 'Leave', 'Off', 'Late', 'Avg h', 'OT h', 'Rate %'], rows: staffRows(AA).map(e => [e.o.file, e.o.name, ...fc.map(c => e.o.v[c.name]), e.n, e.Present, e['One punch'], e.Absent, e.Leave, e.Off, e.late, e.avgH == null ? '' : Math.round(e.avgH * 10) / 10, Math.round(e.ot * 10) / 10, e.rate == null ? '' : e.rate]) };
+  }
+
+  /* ---------------- view + events ---------------- */
+  function css() { if (Q('#aemCss')) return; const s = document.createElement('style'); s.id = 'aemCss'; s.textContent = `
+#view-aem .aem-f{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:6px 0}#view-aem .aem-f label,#view-aem .aem-sel label{display:flex;flex-direction:column;font-size:12px;color:var(--gray-600);gap:2px}
+#view-aem .aem-sel{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px 12px;margin:8px 0}#view-aem .aem-sel select{width:100%}
+#view-aem .aem-pick{border:1px dashed var(--border);border-radius:10px;padding:8px 12px;margin:6px 0}#view-aem .aem-pick>div{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:6px}#view-aem .aem-pick label{font-size:12.5px;display:flex;gap:5px;align-items:center}#view-aem .aem-pick i{opacity:.55;font-style:normal;font-size:11px}
+#view-aem .aem-info{font-size:12px;color:var(--gray-600);margin:6px 0}#view-aem .aem-warn{background:#fef3c7;border:1px solid #f59e0b;color:#78350f;border-radius:10px;padding:10px 14px;margin:8px 0;font-size:13px}#view-aem .aem-none{padding:14px;opacity:.6;font-size:13px}
+#view-aem .aem-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:10px 0}#view-aem .aem-k{border-radius:14px;padding:10px 14px;color:#fff;background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+#view-aem .aem-k.g{background:linear-gradient(135deg,#047857,#10b981)}#view-aem .aem-k.o{background:linear-gradient(135deg,#b45309,#f59e0b)}#view-aem .aem-k.r{background:linear-gradient(135deg,#b91c1c,#ef4444)}#view-aem .aem-k.p{background:linear-gradient(135deg,#6d28d9,#a78bfa)}
+#view-aem .aem-k .t{font-size:12px;opacity:.9;font-weight:600}#view-aem .aem-k .v{font-size:25px;font-weight:800;line-height:1.2}#view-aem .aem-k .s{font-size:11px;opacity:.85}
+#view-aem .aem-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;align-items:center}#view-aem .aem-tabs button[data-t]{background:var(--gray-100,#f1f5f9);color:inherit;border:1px solid var(--border);border-radius:999px;padding:6px 14px;font-weight:600;cursor:pointer}#view-aem .aem-tabs button.on{background:#4f46e5;color:#fff;border-color:#4f46e5}
+#view-aem .aem-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}#view-aem .aem-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:12px}@media(max-width:900px){#view-aem .aem-grid{grid-template-columns:1fr}#view-aem .aem-grid>*{grid-column:auto!important}}
+#view-aem .aem-c{border:1px solid var(--border);border-radius:14px;padding:12px 14px;background:var(--card,#fff);min-width:0}#view-aem .aem-c h4{margin:0 0 2px;font-size:14px}
+#view-aem .aem-don{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:8px}#view-aem .aem-lg{display:grid;grid-template-columns:14px 1fr auto 52px;gap:6px;align-items:center;font-size:12.5px;margin:4px 0;cursor:pointer;min-width:190px}#view-aem .aem-lg i,#view-aem .aem-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px}#view-aem .aem-lg span{text-align:right;opacity:.7}
+#view-aem .aem-leg{display:flex;gap:14px;font-size:12px;margin-top:4px}#view-aem .aem-hb{display:grid;grid-template-columns:130px 1fr 52px 70px;gap:8px;align-items:center;font-size:12.5px;margin:5px 0}#view-aem .aem-hb>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#view-aem .aem-bar{background:var(--gray-100,#e5e7eb);border-radius:6px;height:11px;display:inline-block;width:110px;overflow:hidden;vertical-align:middle}#view-aem .aem-hb .aem-bar{width:100%}#view-aem .aem-bar u{display:block;height:100%;border-radius:6px}
+#view-aem .aem-tbar{display:flex;justify-content:flex-end;gap:6px;margin:2px 0 4px}#view-aem .aem-go,#view-aem [data-dbd]{cursor:pointer}#view-aem [data-dbd]:hover{background:var(--gray-100,#f1f5f9)}#view-aem .aem-go:hover{background:var(--gray-100,#f1f5f9)}#view-aem .aem-li{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;border-bottom:1px dashed var(--border)}#view-aem .aem-li i{opacity:.55;font-style:normal;font-size:11px}
+#view-aem .aem-r{color:#b91c1c;font-weight:700}#view-aem .aem-o{color:#b45309;font-weight:700}#view-aem .aem-wrap{overflow:auto;max-height:66vh;border:1px solid var(--border);border-radius:12px;margin-top:6px}
+#view-aem table.aem-t{border-collapse:collapse;width:100%;font-size:12.5px}#view-aem .aem-t th{position:sticky;top:0;background:var(--gray-100,#f1f5f9);text-align:left;padding:7px 9px;white-space:nowrap;z-index:1}#view-aem .aem-t td{padding:6px 9px;border-top:1px solid var(--border);white-space:nowrap}
+#view-aem .aem-pill{color:#fff;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}#aemM{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100050;display:flex;align-items:center;justify-content:center;padding:16px}#aemM .aem-mc{background:var(--card,#fff);color:inherit;border-radius:16px;width:min(1100px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+#aemM .aem-mh{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border);font-size:15px}#aemM .aem-mh small{opacity:.6;font-weight:400}#aemM .aem-mh button{background:none;border:0;font-size:18px;cursor:pointer;color:inherit}
+#aemM .aem-tb{display:flex;gap:8px;padding:8px 18px 0}#aemM .aem-mb{overflow:auto;padding:12px 18px}#aemM .aem-mf{padding:10px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}#aemM .aem-sec{margin-bottom:14px}#aemM .aem-sec h4{margin:0 0 6px;font-size:13.5px}
+#aemM .aem-kvs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px}#aemM .aem-kvs div{display:flex;flex-direction:column;border-bottom:1px dashed var(--border);padding-bottom:3px}#aemM .aem-kvs span{font-size:11px;color:var(--gray-600)}#aemM .aem-kvs b{font-size:13px;word-break:break-word}
+#aemM .aem-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px 14px}#aemM .aem-form label{display:flex;flex-direction:column;font-size:12px;color:var(--gray-600);gap:2px}#aemM .aem-form label.req{color:#b91c1c;font-weight:700}#aemM .aem-form input,#aemM .aem-form select,#aemM .aem-form textarea{width:100%}
+#aemM .aem-t{border-collapse:collapse;width:100%;font-size:12.5px}#aemM .aem-t th{position:sticky;top:0;background:var(--gray-100,#f1f5f9);text-align:left;padding:6px 8px;white-space:nowrap}#aemM .aem-t td{padding:5px 8px;border-top:1px solid var(--border);white-space:nowrap}#aemM .aem-wrap{overflow:auto;border:1px solid var(--border);border-radius:10px}#aemM .aem-info{font-size:12px;color:var(--gray-600);margin:4px 0}#aemM .aem-go{cursor:pointer}#aemM .aem-go:hover{background:var(--gray-100,#f1f5f9)}#aemM .aem-pill{color:#fff;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}#aemM .aem-none{padding:10px;opacity:.65}
+body.dark #aemM .aem-mc{background:#1e1b2c}body.dark #view-aem .aem-c{background:#1e1b2c}body.dark #view-aem .aem-t th{background:#2a2640}body.dark #view-aem .aem-tabs button[data-t]{background:#2a2640}`; document.head.appendChild(s); }
+  function mount() {
+    if (!Q('#aemCard')) { const ex = Q('#view-aem'), d = ex || document.createElement('div'); if (!ex) { d.className = 'view'; d.id = 'view-aem'; }
+      d.innerHTML = `<div class="card" id="aemCard"><div class="card-header"><div class="card-title">🕒 Attendance by Employees <span class="text-sm" style="font-weight:400;">— biometric attendance linked by file number to the staff master (Employees_tbl)</span></div><div class="btn-row"><button class="secondary small" type="button" data-o="refresh">🔄 Refresh</button></div></div><div id="aemStatus" class="status-msg" style="font-size:12px;margin-bottom:6px"></div><div id="aemFilters"></div><div id="aemBody"></div></div>`;
+      if (!ex) { const ref = Q('#view-att'); if (ref) ref.insertAdjacentElement('afterend', d); else document.body.appendChild(d); } }
+    if (!Q('.nav-item[data-view="aem"]')) { const ref = Q('.nav-item[data-view="att"]'); if (ref) { const n = document.createElement('div'); n.className = 'nav-item'; n.dataset.view = 'aem'; n.dataset.perm = 'att'; n.innerHTML = '<span class="icon">🕒</span><span>Attendance by Employees</span><span class="badge new">NEW</span>'; ref.insertAdjacentElement('afterend', n); } }
+    try { VIEW_META.aem = { title: 'Attendance by Employees', sub: 'Attendance of the staff in Employees_tbl — linked by file number, filtered by the Employees_tbl fields' }; } catch (e) { }
+    try { const el = Q('.nav-item[data-view="aem"]'); if (el && typeof navOrig !== 'undefined' && navOrig && !navMeta.aem) { navMeta.aem = { el, name: 'Attendance by Employees' }; const g = navOrig.groups.find(x => x.items.includes('att')); if (g && !g.items.includes('aem')) g.items.splice(g.items.indexOf('att') + 1, 0, 'aem'); navApply(true); } } catch (e) { }
+    const nav = Q('.nav-item[data-view="aem"]'); if (nav && !nav._fe) { nav._fe = 1; nav.addEventListener('click', () => init()); }
+  }
+  /* date filters — accept ISO and dd/mm/yyyy typed text (devices / browsers without a date picker, or that only fire "input") */
+  function nd(v) { v = String(v || '').trim(); if (!v) return ''; let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v), y, mo, d; if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; } else if ((m = /^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/.exec(v))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; } else return null;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null; return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  function setDate(el) { const raw = el.value; if (!raw.trim() && el.validity && el.validity.badInput) return; const v = nd(raw); if (raw.trim() && v === null) { el.style.outline = '2px solid #dc2626'; el.title = 'Use dd/mm/yyyy'; return; } el.style.outline = ''; el.title = ''; if ((E.f[el.dataset.d] || '') === v) return; E.f[el.dataset.d] = v; if (v && el.type === 'date') el.value = v; render(); }
+  function init() {
+    const v = Q('#view-aem'); if (!v) return; css(); if (!v._i) { v._i = 1;
+      v.addEventListener('input', e => { const el = e.target; if (el.dataset && el.dataset.d && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) { clearTimeout(el._t); el._t = setTimeout(() => setDate(el), 150); } });
+      v.addEventListener('blur', e => { const el = e.target; if (el.dataset && el.dataset.d) setDate(el); }, true);
+      v.addEventListener('change', e => { const el = e.target;
+        if (el.dataset.d) return setDate(el); if (el.dataset.st !== undefined) { E.f.st = el.value; return render(); } if (el.dataset.g !== undefined) { E.grace = Math.max(0, +el.value || 0); return render(); }
+        if (el.dataset.v) { E.f.v[el.dataset.v] = el.value; E.shown = 300; return render(); } if (el.dataset.grp !== undefined) { E.grp = el.value; try { localStorage.setItem(LSG, E.grp); } catch (x) { } return render(); }
+        if (el.dataset.pf) { const s = new Set(E.sel); el.checked ? s.add(el.dataset.pf) : (s.delete(el.dataset.pf), delete E.f.v[el.dataset.pf]); E.sel = E.cols.filter(c => s.has(c.name)).map(c => c.name); try { localStorage.setItem(LSF, JSON.stringify(E.sel)); } catch (x) { } if (!E.sel.includes(E.grp)) E.grp = E.sel[0] || ''; drawFilters(); render(); } });
+      v.addEventListener('input', e => { if (e.target.dataset.q !== undefined) { E.f.q = e.target.value; clearTimeout(E._q); E._q = setTimeout(render, 250); } });
+      v.addEventListener('dblclick', e => { const t = e.target.closest('[data-dbd]'); if (!t) return; const d = t.dataset.dbd, i = d.indexOf(':'); getSelection().removeAllRanges(); openBd(d.slice(0, i), d.slice(i + 1)); });
+      v.addEventListener('click', e => { const t = e.target.closest('[data-t],[data-o],[data-stf],[data-gv],[data-so],[data-mg],[data-bd],[data-add]'); if (!t || e.target.closest('input,select,textarea')) return;
+        if (t.dataset.t) { E.tab = t.dataset.t; E.shown = 300; return render(); } if (t.dataset.stf) { E.f.st = E.f.st === t.dataset.stf ? '' : t.dataset.stf; drawFilters(); return render(); }
+        if (t.dataset.gv !== undefined && E.grp) { E.f.v[E.grp] = t.dataset.gv === '(blank)' ? '' : t.dataset.gv; drawFilters(); return render(); }
+        if (t.dataset.add) return addForm(t.dataset.add);
+        if (t.dataset.bd) { const i = t.dataset.bd.indexOf(':'); return openBd(t.dataset.bd.slice(0, i), t.dataset.bd.slice(i + 1)); }
+        if (t.dataset.mg !== undefined) { E.mgr = t.dataset.mg; return render(); }
+        if (t.dataset.so) { const k = t.dataset.so; E.sort = { k, d: E.sort.k === k ? -E.sort.d : (k === 'rate' ? 1 : -1) }; return render(); }
+        const o = t.dataset.o; if (o === 'refresh') { E.loaded = false; E.emp = []; return load(true); } if (o === 'clear') { E.f.q = ''; E.f.st = ''; E.f.v = {}; E.mgr = ''; E.f.from = ''; E.f.to = ''; if (at.rows.length) { const ds = at.rows.map(r => r.date).sort(); E.f.from = ds[0]; E.f.to = ds[ds.length - 1]; } drawFilters(); return render(); }
+        if (o === 'otload') return loadOtr(true); if (o === 'pick') { E.pick = !E.pick; return drawFilters(); } if (o === 'more') { E.shown += 300; return render(); }
+        if (o === 'print') return a2Print(report()); if (o === 'excel') return a2Export(report()); }); }
+    if (!E.loaded && !E.loading) load(); else if (E.loaded) { if (!E.f.from && typeof at !== 'undefined' && at.rows.length) { const ds = at.rows.map(r => r.date).sort(); E.f.from = ds[0]; E.f.to = ds[ds.length - 1]; } drawFilters(); render(); }
+  }
+  document.addEventListener('click', e => { const ov = e.target.closest('#tblExpandOverlay'); if (ov && !e.target.closest('#aemM')) { const b = e.target.closest('[data-add]'); if (b) return addForm(b.dataset.add); const r = e.target.closest('[data-bd]'); if (r && !e.target.closest('input,select,textarea,button')) { const i = r.dataset.bd.indexOf(':'); return openBd(r.dataset.bd.slice(0, i), r.dataset.bd.slice(i + 1)); } return; }
+    const m = e.target.closest('#aemM'); if (!m) return; const x = e.target.closest('[data-bx]'); if (x) return bdAct(m, x.dataset.bx); const b = e.target.closest('[data-bd],[data-add],[data-bf],[data-bmg]'); if (!b) return;
+    if (b.dataset.add) return addForm(b.dataset.add); if (b.dataset.bd) { const i = b.dataset.bd.indexOf(':'); return openBd(b.dataset.bd.slice(0, i), b.dataset.bd.slice(i + 1)); }
+    if (b.dataset.bf !== undefined && E.grp) { E.f.v[E.grp] = b.dataset.bf === '(blank)' ? '' : b.dataset.bf; m.remove(); drawFilters(); render(); }
+    if (b.dataset.bmg !== undefined) { E.mgr = b.dataset.bmg; m.remove(); render(); } });
+  document.addEventListener('dblclick', e => { const t = e.target.closest('#tblExpandOverlay [data-dbd]'); if (!t) return; const d = t.dataset.dbd, i = d.indexOf(':'); openBd(d.slice(0, i), d.slice(i + 1)); });
+  mount(); window.AEM = { E, load, render, scope, aggregate };
+})();
