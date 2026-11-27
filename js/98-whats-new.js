@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 589, v: 'aem', area: 'Attendance by Employees', ic: '🔎', t: 'OT source records: taller list, grouped by date, numbered',
+      d: 'The source-records window opened by double-click in OT by period is now taller, the records are grouped by date (each date has a sub-total line) and every row is numbered. The numbering is also in the Excel / Print / E-mail output.',
+      pts: ['Taller list', 'Grouped by date with sub-totals', '# row numbers'] },
     { b: 588, v: 'aem', area: 'Attendance by Employees', ic: '📅', t: 'OT by period: Working days column',
       d: 'The OT days column is now Working days: the number of different calendar days on which the group (warehouse, region …) had attendance in the period — not only the days that had overtime. A full month now shows the full number of working days for every warehouse that worked every day.',
       pts: ['Working days = days with attendance per group & period'] },
