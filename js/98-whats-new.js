@@ -7,6 +7,12 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 583, v: 'aem', area: 'Attendance by Employees', ic: '🔗', t: 'WHs_Link filter · hide the OT chart · E-mail / Excel / Print on the OT table',
+      d: 'Attendance by Employees now has a WHs_Link filter (from Employees_tbl) and WHs_Link is also one of the "Group by" choices in OT by period. The OT-per-period chart has a ▾ Hide chart / ▸ Show chart button (remembered). The OT by period table has its own 📧 E-mail, 📊 Excel and 🖨 Print buttons above it.',
+      pts: ['WHs_Link filter + Group by', '▾ Hide chart / ▸ Show chart', '📧 E-mail · 📊 Excel · 🖨 Print on the table'] },
+    { b: 582, v: 'flr', area: 'Forklift Fleet — Condition', ic: '✔', t: 'Approve or reject the pending forklift requests from the dashboard',
+      d: 'Every row of "Pending approval requests" now has ✔ Approve and ✖ Reject buttons. Approve records who approved and when (ApprovedBy_Sprvsr = Yes, ApprovedBy, ApprovalTimeStamp). Reject asks for the reason and saves it in Line_Remarks and the System Indication, the same as the mobile app does. The row leaves the list at once. If the request belongs to another approval staff, you are asked to confirm that you act on their behalf (administrators are not asked).',
+      pts: ['✔ Approve · ✖ Reject on each pending request', 'Reject needs a reason', 'Confirms when approving for someone else'] },
     { b: 581, v: 'aem', area: 'Attendance by Employees', ic: '📆', t: 'New tab: OT by period — Normal / Weekend / Public OT',
       d: 'Attendance by Employees has a new tab "📆 OT by period". Choose how to group (Region, WHs Location, Job_Role — or any other Employees_tbl field, or no grouping) and the period (Daily, Weekly, Monthly, Quarterly, Yearly). Every period and group shows the staff with OT, OT days and the overtime split into Normal OT, Weekend OT (Friday + rest day), Public holiday OT and the total, with the weekend / public share. A stacked bar chart shows the trend per period; Print and Excel export the full table.',
       pts: ['Group by Region / WHs Location / Job_Role', 'Daily · Weekly · Monthly · Quarterly · Yearly', 'Normal · Weekend · Public holiday OT'] },
