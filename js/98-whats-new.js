@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 587, v: 'aem', area: 'Attendance by Employees', ic: '📅', t: 'OT by period: OT days = working days of the period',
+      d: 'In the OT by period table the OT days column now counts the different calendar days that had overtime in the period (per group, per period and in the total) instead of adding up the days of every employee.',
+      pts: ['OT days = distinct days per period'] },
     { b: 586, v: 'aem', area: 'Attendance by Employees', ic: '⏱', t: 'OT by period: OT from actual working hours, less hours',
       d: 'OT by period now counts OT from the actual working hours: on a normal day Normal OT = actual hours − 9 (standard day, editable); on weekend (Friday / rest day) and public holidays every worked hour counts as OT. Days worked below the standard are shown in new columns Less hours h and Net OT h (OT − less); double-click Less hours to see those days. An "OT basis" selector switches back to the OT fields of the attendance file.',
       pts: ['Normal OT = actual hours − 9', 'Weekend / public = full hours', 'Less hours + Net OT columns', 'OT basis selector'] },
