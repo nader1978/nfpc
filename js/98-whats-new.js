@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 588, v: 'aem', area: 'Attendance by Employees', ic: '📅', t: 'OT by period: Working days column',
+      d: 'The OT days column is now Working days: the number of different calendar days on which the group (warehouse, region …) had attendance in the period — not only the days that had overtime. A full month now shows the full number of working days for every warehouse that worked every day.',
+      pts: ['Working days = days with attendance per group & period'] },
     { b: 587, v: 'aem', area: 'Attendance by Employees', ic: '📅', t: 'OT by period: OT days = working days of the period',
       d: 'In the OT by period table the OT days column now counts the different calendar days that had overtime in the period (per group, per period and in the total) instead of adding up the days of every employee.',
       pts: ['OT days = distinct days per period'] },
