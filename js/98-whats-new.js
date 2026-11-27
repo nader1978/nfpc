@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 580, v: 'flr', area: 'Forklift Fleet — Condition', ic: '⏳', t: 'Forklift dashboard: pending approval requests',
+      d: 'The Forklift Fleet — Condition dashboard now shows the receive / park inspections that are still waiting for approval in FLOprt_CheckList_tbl (Approved By Supervisor = Not Yet): a new "Pending approval" card (count + how long the oldest has been waiting) and a "Pending approval requests" table — date, unit, type, reported by, approval staff, waiting time (red after 24 h) and the issues reported. Click the card or a row for the records / the unit history. It follows the Warehouse and Operator filters.',
+      pts: ['Pending approval card', 'Pending approval requests table (oldest first)'] },
     { b: 579, v: 'home', area: 'All pages', ic: '🎨', t: 'Buttons: white text when the cursor is on a dark button',
       d: 'Buttons that turn dark navy under the mouse (e.g. "Choose fields…" in the edit forms and the buttons of the Download pop-up) kept their dark text, so the label disappeared. The label now turns white while the cursor is on the button — on every page.',
       pts: ['Readable labels on hover everywhere'] },

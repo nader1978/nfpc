@@ -269,7 +269,7 @@ body.dark #view-rkc .rkc-mx .st{background:var(--card)}body.dark #view-rkc .rkc-
     const rem = String(g('remarks')).trim(), cm = rem.match(/\[Checklist\s+(\d+)\s*\/\s*(\d+)\s*OK([^\]]*)\]?/i);
     const nokM = cm && cm[3].match(/NOT OK:\s*([^|\]]*)/i), naM = cm && cm[3].match(/N\/A:\s*#?([\d,\s]+)/i);
     const nok = nokM ? nokM[1].split(';').map(x => x.trim()).filter(Boolean) : [];
-    const r = { id: +it.id || 0, unit, uk: unit.toUpperCase(), type: rt, rcv: /receive/i.test(rt), date, ts, odo: num(g('odoreading')), prv: num(g('prvsodo')), km: num(g('totalkms')), by: String(g('username')).trim(), appr: String(g('approvallnmngr')).trim(),
+    const r = { id: +it.id || 0, unit, uk: unit.toUpperCase(), type: rt, rcv: /receive/i.test(rt), date, ts, odo: num(g('odoreading')), prv: num(g('prvsodo')), km: num(g('totalkms')), by: String(g('username')).trim(), appr: String(g('approvallnmngr')).trim(), ap: String(g('approvedbysprvsr', 'approvedbysupervisor', 'approvalstatus')).trim(), apBy: String(g('approvedby')).trim(), apTs: (() => { const v = g('approvaltimestamp'); const t = v ? Date.parse(v) : 0; return isNaN(t) ? 0 : t; })(),
       ok: cm ? +cm[1] : null, tot: cm ? +cm[2] : null, nok, na: naM ? naM[1].split(',').map(x => x.trim()).filter(Boolean).length : 0, note: String(cm ? rem.slice(0, cm.index) : rem).trim(), sys: String(g('systemindication', 'systemindicator', 'sysindication') || '').trim(), rem, tg: {}, sc: { f: 0, r: 0, l: 0, t: 0 } };
     TG.forEach(([k, , fk]) => { r.tg[k] = bo(g(fk)); });
     Object.keys(K).forEach(k => { if (!/scratch/.test(k)) return; SC.forEach(([c, , re]) => { if (re.test(k)) r.sc[c] = Math.max(r.sc[c], num(K[k])); }); });
