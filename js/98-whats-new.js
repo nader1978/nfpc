@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 584, v: 'aem', area: 'Attendance by Employees', ic: '🎯', t: 'OT by period: double-click for source records · OT target & compliance per warehouse',
+      d: 'In the OT by period table, double-click a row (or a single figure such as Weekend OT h) to open the source attendance records behind it, with the total of that figure. Three new columns: Worked h, OT target % (read from WHs_tbl → WHs_OT_Prcntg, matched through the employee’s WHs_Link / WHs location) and Actual OT % of worked h, plus a Compliance column (✔ Within target / ✖ Over by x pts). For Region or Job role groups the target is weighted by worked hours. The new columns are also in E-mail, Excel and Print.',
+      pts: ['Double-click row / figure → source records + total', 'OT target % from WHs_tbl', 'Compliance vs target'] },
     { b: 583, v: 'aem', area: 'Attendance by Employees', ic: '🔗', t: 'WHs_Link filter · hide the OT chart · E-mail / Excel / Print on the OT table',
       d: 'Attendance by Employees now has a WHs_Link filter (from Employees_tbl) and WHs_Link is also one of the "Group by" choices in OT by period. The OT-per-period chart has a ▾ Hide chart / ▸ Show chart button (remembered). The OT by period table has its own 📧 E-mail, 📊 Excel and 🖨 Print buttons above it.',
       pts: ['WHs_Link filter + Group by', '▾ Hide chart / ▸ Show chart', '📧 E-mail · 📊 Excel · 🖨 Print on the table'] },
