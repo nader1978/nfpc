@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 581, v: 'aem', area: 'Attendance by Employees', ic: '📆', t: 'New tab: OT by period — Normal / Weekend / Public OT',
+      d: 'Attendance by Employees has a new tab "📆 OT by period". Choose how to group (Region, WHs Location, Job_Role — or any other Employees_tbl field, or no grouping) and the period (Daily, Weekly, Monthly, Quarterly, Yearly). Every period and group shows the staff with OT, OT days and the overtime split into Normal OT, Weekend OT (Friday + rest day), Public holiday OT and the total, with the weekend / public share. A stacked bar chart shows the trend per period; Print and Excel export the full table.',
+      pts: ['Group by Region / WHs Location / Job_Role', 'Daily · Weekly · Monthly · Quarterly · Yearly', 'Normal · Weekend · Public holiday OT'] },
     { b: 580, v: 'flr', area: 'Forklift Fleet — Condition', ic: '⏳', t: 'Forklift dashboard: pending approval requests',
       d: 'The Forklift Fleet — Condition dashboard now shows the receive / park inspections that are still waiting for approval in FLOprt_CheckList_tbl (Approved By Supervisor = Not Yet): a new "Pending approval" card (count + how long the oldest has been waiting) and a "Pending approval requests" table — date, unit, type, reported by, approval staff, waiting time (red after 24 h) and the issues reported. Click the card or a row for the records / the unit history. It follows the Warehouse and Operator filters.',
       pts: ['Pending approval card', 'Pending approval requests table (oldest first)'] },
