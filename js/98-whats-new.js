@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 590, v: 'aem', area: 'Attendance by Employees', ic: '▾', t: 'OT source records: collapse / expand dates',
+      d: 'In the source-records window of OT by period, click a date line to collapse or expand its records, or use Expand all dates / Collapse all dates.',
+      pts: ['Click a date to collapse / expand', 'Expand all · Collapse all'] },
     { b: 589, v: 'aem', area: 'Attendance by Employees', ic: '🔎', t: 'OT source records: taller list, grouped by date, numbered',
       d: 'The source-records window opened by double-click in OT by period is now taller, the records are grouped by date (each date has a sub-total line) and every row is numbered. The numbering is also in the Excel / Print / E-mail output.',
       pts: ['Taller list', 'Grouped by date with sub-totals', '# row numbers'] },
