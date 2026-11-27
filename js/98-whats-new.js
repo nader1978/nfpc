@@ -7,6 +7,12 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 586, v: 'aem', area: 'Attendance by Employees', ic: '⏱', t: 'OT by period: OT from actual working hours, less hours',
+      d: 'OT by period now counts OT from the actual working hours: on a normal day Normal OT = actual hours − 9 (standard day, editable); on weekend (Friday / rest day) and public holidays every worked hour counts as OT. Days worked below the standard are shown in new columns Less hours h and Net OT h (OT − less); double-click Less hours to see those days. An "OT basis" selector switches back to the OT fields of the attendance file.',
+      pts: ['Normal OT = actual hours − 9', 'Weekend / public = full hours', 'Less hours + Net OT columns', 'OT basis selector'] },
+    { b: 585, v: 'aem', area: 'Attendance by Employees', ic: '🎯', t: 'OT by period: Compliance filter',
+      d: 'The OT by period tab has a new Compliance filter (All / ✔ Within target / ✖ Over target / — No target). It applies to the table and to the E-mail, Excel and Print exports, and is remembered.',
+      pts: ['Compliance filter', 'Applies to exports'] },
     { b: 584, v: 'aem', area: 'Attendance by Employees', ic: '🎯', t: 'OT by period: double-click for source records · OT target & compliance per warehouse',
       d: 'In the OT by period table, double-click a row (or a single figure such as Weekend OT h) to open the source attendance records behind it, with the total of that figure. Three new columns: Worked h, OT target % (read from WHs_tbl → WHs_OT_Prcntg, matched through the employee’s WHs_Link / WHs location) and Actual OT % of worked h, plus a Compliance column (✔ Within target / ✖ Over by x pts). For Region or Job role groups the target is weighted by worked hours. The new columns are also in E-mail, Excel and Print.',
       pts: ['Double-click row / figure → source records + total', 'OT target % from WHs_tbl', 'Compliance vs target'] },
