@@ -642,7 +642,7 @@ async function usrSpRefresh(btn) {
     by.forEach(({ un, f, on, created }, k) => {
       const name = pick(f, /^(employee_?name|display_?name|full_?name|name)$/i), email = pick(f, /^(e-?mail(_?id)?|mail)$/i), rk = lulAllowKey(f, c.role), role0 = rk ? String(lulVals(f[rk])[0] || '').trim().toLowerCase() : '';
       let prof = {}; try { prof = locProfile(f); } catch (e) {}
-      let u = users.list.find(x => x.username.toLowerCase() === k) || (email ? users.list.find(x => x.email && x.email.toLowerCase() === email.toLowerCase() && !x.builtin) : null);
+      let u = users.list.find(x => x.username.toLowerCase() === k) || (email ? users.list.find(x => x.email && x.email.toLowerCase() === email.toLowerCase() && !x.builtin && !by.has(x.username.toLowerCase())) : null);   /* same e-mail only joins an old local user — never merges two different User_Names of the list (e.g. Gamal.M and Gamal.L share one e-mail) */
       if (u && u.builtin) return;
       if (!u) { if (!on) return; u = { id: uid(), username: un, displayName: name || un, role: ['viewer', 'operator', 'admin'].includes(role0) ? role0 : 'operator', salt: '', hash: '', email, managerEmail: '', mustChangePassword: false, allowedLists: [], editableLists: [], createdAt: Date.parse(created) || Date.now(), lastLogin: null, fromSP: true }; users.list.push(u); add++; added.push(name || un); }
       else { upd++; if (name) u.displayName = name; if (email) u.email = email; if (['viewer', 'operator', 'admin'].includes(role0)) u.role = role0; u.fromSP = true; }

@@ -7,6 +7,9 @@
 (function () {
   const Q = s => document.querySelector(s), esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const WN = [
+    { b: 591, v: 'users', area: 'Users & Roles', ic: '👥', t: 'Two accounts with the same e-mail are no longer merged',
+      d: 'When the users are read from the SharePoint list LoginUserList, a row was matched to an existing user by e-mail as well as by User_Name. Two different User_Names that share one e-mail (for example Gamal.M and Gamal.L, one e-mail, different Location ID) were therefore merged into one user and the second one never appeared. Now every User_Name of the list is its own user; the e-mail only joins an old local user that is not in the list. Press Refresh from SharePoint to bring in the missing accounts.',
+      pts: ['Every User_Name = its own user', 'Refresh from SharePoint brings the missing ones'] },
     { b: 590, v: 'aem', area: 'Attendance by Employees', ic: '▾', t: 'OT source records: collapse / expand dates',
       d: 'In the source-records window of OT by period, click a date line to collapse or expand its records, or use Expand all dates / Collapse all dates.',
       pts: ['Click a date to collapse / expand', 'Expand all · Collapse all'] },
